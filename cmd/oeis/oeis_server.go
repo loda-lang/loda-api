@@ -16,12 +16,15 @@ import (
 )
 
 type OeisServer struct {
-	dataDir        string
-	updateInterval time.Duration
-	httpClient     *http.Client
+	dataDir               string
+	bfileUpdateInterval   time.Duration
+	summaryUpdateInterval time.Duration
+	httpClient            *http.Client
 }
 
-const OEIS_WEBSITE string = "https://oeis.org/"
+const (
+	OeisWebsite string = "https://oeis.org/"
+)
 
 func NewOeisServer(dataDir string, updateInterval time.Duration) *OeisServer {
 	util.MustDirExist(dataDir)
@@ -35,9 +38,10 @@ func NewOeisServer(dataDir string, updateInterval time.Duration) *OeisServer {
 		},
 	}
 	return &OeisServer{
-		dataDir:        dataDir,
-		updateInterval: updateInterval,
-		httpClient:     httpClient,
+		dataDir:               dataDir,
+		bfileUpdateInterval:   90 * 24 * time.Hour, // hard-coded to 3 months
+		summaryUpdateInterval: updateInterval,
+		httpClient:            httpClient,
 	}
 }
 
@@ -50,8 +54,8 @@ func newSummaryHandler(s *OeisServer, filename string) http.Handler {
 		dir := filepath.Join(s.dataDir, "oeis")
 		os.MkdirAll(dir, os.ModePerm)
 		path := filepath.Join(dir, filename)
-		if !util.IsFileRecent(path, s.updateInterval) {
-			err := util.FetchFile(s.httpClient, OEIS_WEBSITE+filename, path)
+		if !util.IsFileRecent(path, s.summaryUpdateInterval) {
+			err := util.FetchFile(s.httpClient, OeisWebsite+filename, path)
 			if err != nil {
 				util.WriteHttpInternalServerError(w)
 				log.Fatal(err)
@@ -80,8 +84,8 @@ func newBFileHandler(s *OeisServer) http.Handler {
 		os.MkdirAll(dir, os.ModePerm)
 		filename := fmt.Sprintf("b%s.txt.gz", id)
 		path := filepath.Join(dir, filename)
-		if !util.IsFileRecent(path, s.updateInterval) {
-			url := fmt.Sprintf("%sA%s/b%s.txt", OEIS_WEBSITE, id, id)
+		if !util.IsFileRecent(path, s.bfileUpdateInterval) {
+			url := fmt.Sprintf("%sA%s/b%s.txt", OeisWebsite, id, id)
 			txtpath := filepath.Join(dir, fmt.Sprintf("b%s.txt", id))
 			err := util.FetchFile(s.httpClient, url, txtpath)
 			if err != nil {
