@@ -63,7 +63,6 @@ COPY image/influxdb.conf /etc/influxdb/influxdb.conf
 COPY image/grafana.ini /etc/grafana/grafana.ini
 COPY image/nginx.conf /etc/nginx/nginx.conf
 COPY image/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
-COPY image/loda-api.py /loda-api.py
 COPY image/run.sh /run.sh
 COPY image/dashboards.yaml /etc/grafana/provisioning/dashboards/dashboards.yaml
 COPY image/go-build.sh /root/
