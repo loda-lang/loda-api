@@ -11,11 +11,13 @@ import (
 
 func WriteHttpStatus(w http.ResponseWriter, statusCode int, message string) {
 	w.WriteHeader(statusCode)
-	w.Header().Add("Content-type", "text/plain")
-	if message[len(message)-1:] != "\n" {
-		message = message + "\n"
+	if len(message) > 0 {
+		w.Header().Add("Content-type", "text/plain")
+		if message[len(message)-1:] != "\n" {
+			message = message + "\n"
+		}
+		fmt.Fprint(w, message)
 	}
-	fmt.Fprint(w, message)
 }
 
 func WriteHttpOK(w http.ResponseWriter, message string) {

@@ -25,6 +25,7 @@ const (
 	MaxProgramLength     = 100000
 	CheckSessionInterval = 24 * time.Hour
 	ProfilePrefix        = "; Miner Profile:"
+	SubmittedByPrefix    = "; Submitted by "
 	CheckpointFile       = "checkpoint.txt"
 	ProgramSeparator     = "=============================="
 )
@@ -82,7 +83,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		if req.ContentLength > MaxProgramLength {
+		if req.ContentLength <= 0 || req.ContentLength > MaxProgramLength {
 			util.WriteHttpBadRequest(w)
 			return
 		}
@@ -92,12 +93,21 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpInternalServerError(w)
 			return
 		}
-		program := string(body)
+		program := strings.TrimSpace(string(body))
+		if len(program) == 0 {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		program = strings.ReplaceAll(program, "\r\n", "\n") + "\n"
 		profile := "unknown"
-		lines := strings.Split(strings.ReplaceAll(program, "\r\n", "\n"), "\n")
+		submittedBy := "unknown"
+		lines := strings.Split(program, "\n")
 		for _, l := range lines {
 			if strings.HasPrefix(l, ProfilePrefix) {
 				profile = strings.TrimSpace(l[len(ProfilePrefix):])
+			}
+			if strings.HasPrefix(l, SubmittedByPrefix) {
+				submittedBy = strings.TrimSpace(l[len(SubmittedByPrefix):])
 			}
 		}
 
@@ -118,7 +128,9 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		}
 		s.programs = append(s.programs, program)
 		s.submisstionsPerProfile[profile]++
-		util.WriteHttpCreated(w, "Program received")
+		msg := fmt.Sprintf("Received program from %s, profile %s", submittedBy, profile)
+		util.WriteHttpCreated(w, msg)
+		log.Print(msg)
 	}
 	return http.HandlerFunc(f)
 }
@@ -209,24 +221,34 @@ func (s *ProgramsServer) publishMetrics() {
 	s.submisstionsPerProfile = make(map[string]int)
 }
 
-func (s *ProgramsServer) Run(port int) {
-	// load checkpoint
+func (s *ProgramsServer) lodaCheckpoint() {
 	checkpointPath := filepath.Join(s.dataDir, CheckpointFile)
 	file, err := os.Open(checkpointPath)
-	if err == nil {
-		log.Printf("Loading checkpoint %s", checkpointPath)
-		scanner := bufio.NewScanner(file)
-		program := ""
-		for scanner.Scan() {
-			line := scanner.Text()
-			if line == ProgramSeparator {
+	if err != nil {
+		log.Printf("Cannot load checkpoint %s", checkpointPath)
+		return
+	}
+	log.Printf("Loading checkpoint %s", checkpointPath)
+	s.programs = []string{}
+	scanner := bufio.NewScanner(file)
+	program := ""
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == ProgramSeparator {
+			if len(program) > 0 {
 				s.programs = append(s.programs, program)
-				program = ""
-			} else {
-				program = program + line + "\n"
 			}
+			program = ""
+		} else {
+			program = program + line + "\n"
 		}
 	}
+	log.Printf("Loaded %v programs from checkpoint", len(s.programs))
+}
+
+func (s *ProgramsServer) Run(port int) {
+	// load checkpoint
+	s.lodaCheckpoint()
 	// regularly publish metrics and write checkpoint
 	ticker := time.NewTicker(10 * time.Minute)
 	defer ticker.Stop()
