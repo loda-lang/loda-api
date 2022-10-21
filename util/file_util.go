@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"log"
 	"os"
 	"time"
@@ -11,6 +12,11 @@ func MustDirExist(path string) {
 	if err != nil || !info.IsDir() {
 		log.Fatalf("Directory not found: %s", path)
 	}
+}
+
+func FileExists(path string) bool {
+	_, err := os.Stat(path)
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 func IsFileRecent(path string, maxAge time.Duration) bool {

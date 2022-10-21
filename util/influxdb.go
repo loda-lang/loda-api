@@ -39,6 +39,7 @@ func (c *InfluxDbClient) Write(name string, labels map[string]string, value int)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		log.Printf("Error writing to InfluxDB: %v", err)
+	} else {
+		res.Body.Close()
 	}
-	res.Body.Close()
 }
