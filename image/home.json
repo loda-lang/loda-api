@@ -489,7 +489,7 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "#c8c8c8",
+                "color": "super-light-purple",
                 "value": null
               }
             ]
@@ -709,7 +709,7 @@
     },
     {
       "aliasColors": {
-        "Active Miners": "super-light-purple"
+        "Active Miners": "#c8c8c8"
       },
       "bars": true,
       "dashLength": 10,
