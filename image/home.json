@@ -20,7 +20,7 @@
   "panels": [
     {
       "datasource": "InfluxDB",
-      "description": "Total number of OEIS programs",
+      "description": "Total number of mined programs",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -116,7 +116,7 @@
     },
     {
       "datasource": "InfluxDB",
-      "description": "Number of new OEIS programs",
+      "description": "Number of new programs",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -206,7 +206,7 @@
     },
     {
       "datasource": "InfluxDB",
-      "description": "Number of updated OEIS programs",
+      "description": "Number of updated programs",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -386,7 +386,7 @@
     },
     {
       "datasource": "InfluxDB",
-      "description": "Number of removed OEIS programs",
+      "description": "Number of removed programs",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -476,7 +476,7 @@
     },
     {
       "datasource": "InfluxDB",
-      "description": "CPU time used for mining",
+      "description": "Total number of generated formulas",
       "fieldConfig": {
         "defaults": {
           "color": {
@@ -489,12 +489,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "light-purple",
+                "color": "#c8c8c8",
                 "value": null
               }
             ]
           },
-          "unit": "h"
+          "unit": "none"
         },
         "overrides": []
       },
@@ -541,7 +541,7 @@
           "measurement": "seqs_count",
           "orderByTime": "ASC",
           "policy": "default",
-          "query": "SELECT sum(\"value\") FROM \"cpuhours\" WHERE $timeFilter",
+          "query": "SELECT last(\"value\") FROM \"formulas\" WHERE $timeFilter",
           "queryType": "randomWalk",
           "rawQuery": true,
           "refId": "A",
@@ -565,7 +565,7 @@
       ],
       "timeFrom": null,
       "timeShift": null,
-      "title": "Mining CPU Time",
+      "title": "Formulas",
       "type": "stat"
     },
     {
