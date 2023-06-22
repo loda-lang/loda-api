@@ -32,33 +32,47 @@ function gscp {
   gcloud beta compute scp --zone "$zone" --project "$project" --recurse "$1" "$2"
 }
 
-data_dirs=data grafana influxdb
-
-for dir in $data_dirs; do
-  echo "Checking directory $source_host:$dir"
-  if ! gssh "$source_host" "test -d \$HOME/$dir"; then
-    echo "Error: command failed or directory not found: $source_host:$dir"
+function ensure_dir {
+  echo "Ensuring directory $1:$2"
+  if ! gssh "$1" "test -d \$HOME/$2"; then
+    echo "Error: command failed or directory not found: $1:$2"
     exit 1
   fi
-done
+}
 
-for dir in $data_dirs; do
-  echo "Checking directory $target_host:$dir"
-  if ! gssh "$target_host" "! test -d \$HOME/$dir"; then
-    echo "Error: command failed or directory exists already: $target_host:$dir"
+function forbid_dir {
+  echo "Forbidding directory $1:$2"
+  if ! gssh "$1" "! test -d \$HOME/$2"; then
+    echo "Error: command failed or directory exists already: $1:$2"
     exit 1
   fi
-done
+}
+
+ensure_dir $source_host data
+ensure_dir $source_host grafana
+ensure_dir $source_host influxdb
+
+forbid_dir $target_host data
+forbid_dir $target_host grafana
+forbid_dir $target_host influxdb
 
 echo "Creating checkpoint"
-gssh "$source_host" "curl -X POST localhost/miner/v1/checkpoint" || true
+gssh $source_host "curl -X POST localhost/miner/v1/checkpoint"
 
-for dir in $data_dirs; do
-  gscp $source_host:$dir .
-done
+echo "Creating backup"
+gssh $source_host "docker exec loda-api /usr/bin/influxd backup -portable /influx-backup"
+# TODO copy and delete backup from container
 
-for dir in $data_dirs; do
-  gscp $dir $target_dir
-done
+echo "Fetching data"
+gscp "$source_host:data/checkpoint.txt" .
+gscp "$source_host:data/setup.txt" .
+gscp "$source_host:grafana" .
+# gscp "$source_host:influxdb" .
+
+echo "Pushing data"
+gssh $target_host "mkdir -p \$HOME/data"
+gscp checkpoint.txt $target_host:data/
+gscp setup.txt $target_host:data/
+gscp grafana $target_host
 
 # [ -n "$(docker ps -q -f name=loda-api)" ]
