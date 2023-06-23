@@ -93,6 +93,7 @@ gscp checkpoint.txt $target_host:data/
 gscp setup.txt $target_host:data/
 ensure_file $target_host data/checkpoint.txt
 ensure_file $target_host data/setup.txt
+rm_local checkpoint.txt setup.txt
 echo
 
 echo "=== Starting LODA services on $target_host ==="
@@ -118,8 +119,9 @@ gssh $target_host "rm -R influxdb-backup"
 rm_local influxdb-backup
 echo
 
-echo "=== Restoring influxsb-backup on $target_host ==="
+echo "=== Restoring influxdb-backup on $target_host ==="
 gssh $target_host "docker exec loda-api /usr/bin/influxd restore -portable /influxdb-backup"
+gssh $target_host "docker exec loda-api rm -R /influxdb-backup"
 echo
 
 echo "=== Fetching grafana data from $source_host ==="
