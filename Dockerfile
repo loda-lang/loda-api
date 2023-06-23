@@ -1,4 +1,4 @@
-FROM debian:stretch-slim
+FROM debian:bookworm-slim
 
 ENV DEBIAN_FRONTEND noninteractive
 ENV LANG C.UTF-8
