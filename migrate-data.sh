@@ -113,13 +113,14 @@ gssh $source_host "rm -R influxdb-backup"
 echo
 
 echo "=== Pushing influxdb-backup to $target_host ==="
-gscp influxdb-backup $target_host
+gscp influxdb-backup $target_host:
 gssh $target_host "docker cp influxdb-backup loda-api:/"
 gssh $target_host "rm -R influxdb-backup"
 rm_local influxdb-backup
 echo
 
 echo "=== Restoring influxdb-backup on $target_host ==="
+# TODO: delete database first
 gssh $target_host "docker exec loda-api /usr/bin/influxd restore -portable /influxdb-backup"
 gssh $target_host "docker exec loda-api rm -R /influxdb-backup"
 echo
@@ -133,7 +134,7 @@ gssh $target_host "docker exec loda-api /usr/bin/supervisorctl stop grafana"
 echo
 
 echo "=== Pushing grafana data to $target_host ==="
-gscp grafana $target_host
+gscp grafana $target_host:
 echo
 
 echo "=== Starting grafana on $target_host ==="
@@ -141,7 +142,7 @@ gssh $target_host "docker exec loda-api /usr/bin/supervisorctl start grafana"
 rm_local grafana
 echo
 
-echo "=== Starting all services on $target_host ==="
+echo "=== Checking services on $target_host ==="
 gssh $target_host "docker exec loda-api /usr/bin/supervisorctl status"
 echo
 
