@@ -9,8 +9,8 @@ for cmd in gcloud; do
   fi
 done
 
-if [ "$#" -ne 4 ]; then
-  echo "Usage: $0 <zone> <project> <source-host> <target-host>"
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 <zone> <project> <source-host> <target-host> <influxdb-root-pw>"
   exit 1
 fi
 
@@ -18,6 +18,7 @@ zone=$1
 project=$2
 source_host=$3
 target_host=$4
+INFLUXDB_ROOT_PASSWD=$5
 
 dryrun=true
 
@@ -120,8 +121,9 @@ rm_local influxdb-backup
 echo
 
 echo "=== Restoring influxdb-backup on $target_host ==="
-# TODO: delete database first
+gssh $target_host "docker exec loda-api /usr/bin/influx -username=root -password=$INFLUXDB_ROOT_PASSWD -execute 'DROP DATABASE loda'"
 gssh $target_host "docker exec loda-api /usr/bin/influxd restore -portable /influxdb-backup"
+gssh $target_host "docker exec loda-api /usr/bin/influx -username=root -password=$INFLUXDB_ROOT_PASSWD -execute 'GRANT ALL ON loda TO loda'"
 gssh $target_host "docker exec loda-api rm -R /influxdb-backup"
 echo
 

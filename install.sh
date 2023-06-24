@@ -34,7 +34,9 @@ if [ ! -d "$HOME/data" ]; then
   mkdir -p $HOME/data
 fi
 if [ ! -f "$HOME/data/setup.txt" ]; then
-  echo "LODA_LOG_DIR=/var/log/loda" > "$HOME/data/setup.txt"
+  echo "LODA_INFLUXDB_AUTH=loda:loda@$INFLUXDB_LODA_PASSWD" > "$HOME/data/setup.txt"
+  echo "LODA_INFLUXDB_HOST=http://localhost/influxdb" >> "$HOME/data/setup.txt"
+  echo "LODA_LOG_DIR=/var/log/loda" >> "$HOME/data/setup.txt"
 fi
 
 echo
