@@ -11,6 +11,7 @@ done
 
 if [ "$#" -ne 5 ]; then
   echo "Usage: $0 <zone> <project> <source-host> <target-host> <influxdb-root-pw>"
+  echo "Make sure that the InfluxDB password of the loda user match on the two hosts!"
   exit 1
 fi
 
@@ -136,6 +137,7 @@ gssh $target_host "docker exec loda-api /usr/bin/supervisorctl stop grafana"
 echo
 
 echo "=== Pushing grafana data to $target_host ==="
+gssh $target_host "sudo chmod oug+rw -R grafana"
 gscp grafana $target_host:
 echo
 

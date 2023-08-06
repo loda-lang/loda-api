@@ -12,4 +12,7 @@ There are separate API servers for:
 * Program submissions
 * Stats
 
-The Docker image is based on the images by [Phil Hawthorne](https://github.com/philhawthorne/docker-influxdb-grafana) and [Samuele Bistoletti](https://github.com/samuelebistoletti/docker-statsd-influxdb-grafana).
+## Recommended Hardware Setup
+
+We recommend running this on a micro-instance with 1 GB memory, 1 shared CPU,
+30 GB of standard persistent disk with Container-optimized OS.
