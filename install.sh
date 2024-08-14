@@ -75,7 +75,7 @@ if [[ -v GRAFANA_ROOT_PASSWD ]]; then
   sleep 5
   docker exec loda-api grafana-cli admin reset-admin-password $GRAFANA_ROOT_PASSWD
   cat ./image/datasource.json | sed "s/INFLUXDB_LODA_PASSWD/$INFLUXDB_LODA_PASSWD/" > /tmp/ds.json
-  curl -i -u root:$INFLUXDB_LODA_PASSWD -X POST -H "Content-Type: application/json" -d @/tmp/ds.json http://localhost/grafana/api/datasources
+  curl -i -u root:$GRAFANA_ROOT_PASSWD -X POST -H "Content-Type: application/json" -d @/tmp/ds.json http://localhost/grafana/api/datasources
   rm /tmp/ds.json
 fi
 
