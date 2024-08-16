@@ -60,6 +60,9 @@ func FetchFile(httpClient *http.Client, url string, localFile string) error {
 	if err != nil {
 		return err
 	}
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("HTTP error: %s", resp.Status)
+	}
 	defer resp.Body.Close()
 	_, err = io.Copy(file, resp.Body)
 	if err != nil {
