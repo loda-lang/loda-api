@@ -34,7 +34,7 @@ func (c *Crawler) Init() error {
 	c.maxId = maxId
 	c.currentId = c.rand.IntN(maxId) + 1
 	for i := 0; i < maxId; i++ {
-		c.stepSize = c.rand.IntN(maxId)
+		c.stepSize = c.rand.IntN(maxId) + 1
 		if gcd(c.stepSize, maxId) == 1 {
 			break
 		}
