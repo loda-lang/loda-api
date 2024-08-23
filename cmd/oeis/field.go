@@ -18,7 +18,7 @@ type Field struct {
 
 func ParseField(line string) (Field, error) {
 	matches := fieldRegexp.FindStringSubmatch(line)
-	if len(matches) < 3 {
+	if len(matches) != 4 {
 		return Field{}, fmt.Errorf("Field parse error")
 	}
 	seqId, err := strconv.Atoi(matches[2])
