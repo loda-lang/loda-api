@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -77,4 +78,10 @@ func ParseAuthInfo(auth string) (string, string) {
 		log.Fatalf("Invalid auth info: %s", auth)
 	}
 	return a[0], a[1]
+}
+
+func ServeBinary(w http.ResponseWriter, req *http.Request, path string) {
+	log.Printf("Serving %s to %s", filepath.Base(path), req.UserAgent())
+	w.Header().Set("Content-Type", "application/octet-stream")
+	http.ServeFile(w, req, path)
 }

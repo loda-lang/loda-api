@@ -98,9 +98,7 @@ func newBFileHandler(s *OeisServer) http.Handler {
 				log.Fatalf("Error executing gzip: %v", err)
 			}
 		}
-		w.Header().Set("Content-Type", "application/octet-stream")
-		log.Printf("Serving %s to %s", filename, req.UserAgent())
-		http.ServeFile(w, req, path)
+		util.ServeBinary(w, req, path)
 	}
 	return http.HandlerFunc(f)
 }
