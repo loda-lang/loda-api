@@ -1,0 +1,23 @@
+name: main
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.23'
+    - name: Build oeis_server
+      run: go build -o oeis_server -v cmd/oeis/oeis_server.go
+    - name: Build programs_server
+      run: go build -o programs_server -v cmd/programs/programs_server.go
+    - name: Build programs_server
+      run: go build -o stats_server -v cmd/stats/stats_server.go
+    - name: Test
+      run: go test -v ./...

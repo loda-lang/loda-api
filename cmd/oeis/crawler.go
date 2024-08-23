@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
-	"math/rand/v2"
+	"math/rand"
 	"net/http"
 	"time"
 )
@@ -20,7 +20,7 @@ type Crawler struct {
 
 func NewCrawler() *Crawler {
 	return &Crawler{
-		rand:       rand.New(rand.NewPCG(26, uint64(time.Now().UnixNano()))),
+		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
 		httpClient: &http.Client{},
 	}
 }
@@ -32,9 +32,9 @@ func (c *Crawler) Init() error {
 		return err
 	}
 	c.maxId = maxId
-	c.currentId = c.rand.IntN(maxId) + 1
+	c.currentId = c.rand.Intn(maxId) + 1
 	for i := 0; i < maxId; i++ {
-		c.stepSize = c.rand.IntN(maxId) + 1
+		c.stepSize = c.rand.Intn(maxId) + 1
 		if gcd(c.stepSize, maxId) == 1 {
 			break
 		}
