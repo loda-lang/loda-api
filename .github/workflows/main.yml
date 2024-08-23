@@ -18,6 +18,6 @@ jobs:
     - name: Build programs_server
       run: go build -o programs_server -v cmd/programs/programs_server.go
     - name: Build programs_server
-      run: go build -o stats_server -v cmd/programs/stats_server.go
+      run: go build -o stats_server -v cmd/stats/stats_server.go
     - name: Test
       run: go test -v ./...
