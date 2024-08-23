@@ -21,3 +21,5 @@ jobs:
       run: go build -o stats_server -v cmd/stats/stats_server.go
     - name: Test
       run: go test -v ./...
+    - name: Build Docker image
+      run: docker build . -t loda-api
