@@ -61,9 +61,7 @@ func newSummaryHandler(s *OeisServer, filename string) http.Handler {
 				log.Fatal(err)
 			}
 		}
-		w.Header().Set("Content-Type", "application/octet-stream")
-		log.Printf("Serving %s to %s", filename, req.UserAgent())
-		http.ServeFile(w, req, path)
+		util.ServeBinary(w, req, path)
 	}
 	return http.HandlerFunc(f)
 }
