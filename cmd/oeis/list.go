@@ -28,8 +28,8 @@ type List struct {
 	mutex   sync.Mutex
 }
 
-func NewList(key, name, dataDir string) List {
-	return List{
+func NewList(key, name, dataDir string) *List {
+	return &List{
 		key:     key,
 		name:    name,
 		dataDir: dataDir,
@@ -53,7 +53,7 @@ func (l *List) Update(fields []Field) {
 }
 
 func (l *List) Flush() error {
-	log.Printf("Flushing list %s", l.name)
+	log.Printf("Flushing %s", l.name)
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	// Check and sort fields

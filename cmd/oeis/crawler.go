@@ -18,10 +18,10 @@ type Crawler struct {
 	httpClient *http.Client
 }
 
-func NewCrawler() *Crawler {
+func NewCrawler(httpClient *http.Client) *Crawler {
 	return &Crawler{
+		httpClient: httpClient,
 		rand:       rand.New(rand.NewSource(time.Now().UnixNano())),
-		httpClient: &http.Client{},
 	}
 }
 
@@ -43,8 +43,10 @@ func (c *Crawler) Init() error {
 	return nil
 }
 
-func (c *Crawler) FetchSeq(id int) ([]Field, error) {
-	log.Printf("Fetching fields of A%06d", id)
+func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, error) {
+	if !silent {
+		log.Printf("Fetching A%06d", id)
+	}
 	url := fmt.Sprintf("https://oeis.org/search?q=id:A%06d&fmt=text", id)
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
@@ -81,7 +83,7 @@ func (c *Crawler) FetchNext() ([]Field, error) {
 		c.currentId = ((c.currentId + c.stepSize) % c.maxId) + 1
 	}
 	c.numFetched++
-	return c.FetchSeq(c.currentId)
+	return c.FetchSeq(c.currentId, false)
 }
 
 func (c *Crawler) findMaxId() (int, error) {
@@ -90,7 +92,7 @@ func (c *Crawler) findMaxId() (int, error) {
 	var lastError error
 	for l < h {
 		m := (l + h) / 2
-		_, lastError := c.FetchSeq(m)
+		_, lastError := c.FetchSeq(m, true)
 		if lastError != nil {
 			h = m
 		} else {
