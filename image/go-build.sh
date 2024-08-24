@@ -6,8 +6,18 @@ export GOROOT=/opt/go
 export GOPATH=$HOME/go
 export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
-pushd $GOPATH/src/github.com/loda-lang/loda-api > /dev/null
-go build -o /oeis_server cmd/oeis/main.go
-go build -o /programs_server cmd/programs/main.go
-go build -o /stats_server cmd/stats/main.go
+pushd $GOPATH/src/github.com/loda-lang/loda-api/cmd
+
+pushd oeis
+go build -o /oeis_server
+popd
+
+pushd programs
+go build -o /programs_server
+popd
+
+pushd stats
+go build -o /stats_server
+popd
+
 popd > /dev/null

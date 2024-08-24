@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net/http"
 	"slices"
 	"testing"
 
@@ -23,7 +24,7 @@ func checkFieldDetails(t *testing.T, fields []Field, key string, seqId int, cont
 }
 
 func TestCrawler_Init(t *testing.T) {
-	c := NewCrawler()
+	c := NewCrawler(http.DefaultClient)
 	err := c.Init()
 	assert.Equal(t, nil, err, "Expected no error")
 	assert.True(t, c.maxId > 0, "Unexpected max Id")
@@ -32,8 +33,8 @@ func TestCrawler_Init(t *testing.T) {
 }
 
 func TestCrawler_FetchSeq(t *testing.T) {
-	c := NewCrawler()
-	fields, err := c.FetchSeq(30)
+	c := NewCrawler(http.DefaultClient)
+	fields, err := c.FetchSeq(30, false)
 	assert.Equal(t, nil, err, "Expected no error")
 	checkFieldDetails(t, fields, "N", 30, "Initial digit of n.")
 	checkFieldDetails(t, fields, "K", 30, "nonn,base,easy,nice,look")
@@ -41,7 +42,7 @@ func TestCrawler_FetchSeq(t *testing.T) {
 }
 
 func TestCrawler_FetchNext(t *testing.T) {
-	c := NewCrawler()
+	c := NewCrawler(http.DefaultClient)
 	for i := 0; i < 10; i++ {
 		fields, err := c.FetchNext()
 		assert.Equal(t, nil, err, "Expected no error")
