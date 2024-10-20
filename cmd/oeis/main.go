@@ -161,11 +161,13 @@ func (s *OeisServer) StartCrawler() {
 			case <-done:
 				return
 			case <-fetchTicker.C:
-				fields, err := s.crawler.FetchNext()
+				fields, err, status := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
-					log.Print("Stopping crawler")
-					done <- true
+					if status <= 500 || status >= 600 {
+						log.Print("Stopping crawler")
+						done <- true
+					}
 				} else {
 					for _, l := range s.lists {
 						l.Update(fields)
