@@ -59,7 +59,7 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 	}
 	return &OeisServer{
 		oeisDir:               oeisDir,
-		bfileUpdateInterval:   90 * 24 * time.Hour, // 3 months
+		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
 		crawlerFetchInterval:  30 * time.Second,
 		crawlerFlushInterval:  30 * time.Minute,
