@@ -39,6 +39,7 @@ var (
 		"O": "offsets",
 		"o": "programs",
 	}
+	MissingIdsListIndex = 4 // use offsets to fetch missing ids
 )
 
 func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
@@ -174,7 +175,8 @@ func (s *OeisServer) StartCrawler() {
 				}
 				// Find missing ids every 100 fetched sequences
 				if s.crawler.numFetched%100 == 0 {
-					ids, _, err := s.lists[0].FindMissingIds(s.crawler.maxId, 100)
+					l := s.lists[MissingIdsListIndex]
+					ids, _, err := l.FindMissingIds(s.crawler.maxId, 100)
 					if err != nil {
 						stopCrawler()
 					}
