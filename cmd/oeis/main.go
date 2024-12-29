@@ -161,6 +161,15 @@ func (s *OeisServer) StartCrawler() {
 			case <-done:
 				return
 			case <-fetchTicker.C:
+				// Reinitialize the crawler every 1000 fetched sequences
+				if s.crawler.numFetched > 0 && s.crawler.numFetched%1000 == 0 {
+					err = s.crawler.Init()
+					if err != nil {
+						log.Print("Stopping crawler")
+						done <- true
+					}
+				}
+				// Fetch the next sequence
 				fields, status, err := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
@@ -169,6 +178,7 @@ func (s *OeisServer) StartCrawler() {
 						done <- true
 					}
 				} else {
+					// Update the lists with the new fields
 					for _, l := range s.lists {
 						l.Update(fields)
 					}
