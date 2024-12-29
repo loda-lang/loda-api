@@ -20,7 +20,7 @@ type OeisServer struct {
 	bfileUpdateInterval   time.Duration
 	summaryUpdateInterval time.Duration
 	crawlerFetchInterval  time.Duration
-	crawlerFlushInterval  time.Duration
+	crawlerBatchSize      int
 	crawler               *Crawler
 	httpClient            *http.Client
 	lists                 []*List
@@ -62,7 +62,7 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
 		crawlerFetchInterval:  30 * time.Second,
-		crawlerFlushInterval:  30 * time.Minute,
+		crawlerBatchSize:      100,
 		crawler:               NewCrawler(httpClient),
 		httpClient:            httpClient,
 		lists:                 lists,
@@ -172,8 +172,18 @@ func (s *OeisServer) StartCrawler() {
 						stopCrawler()
 					}
 				}
-				// Find missing ids every 100 fetched sequences
-				if s.crawler.numFetched%100 == 0 {
+				if s.crawler.numFetched%s.crawlerBatchSize == 0 {
+					if s.crawler.numFetched > 0 {
+						// Flush the lists
+						for _, l := range s.lists {
+							err := l.Flush()
+							if err != nil {
+								log.Printf("Error flushing list %s: %v", l.name, err)
+								stopCrawler()
+							}
+						}
+					}
+					// Find the missing ids
 					for _, l := range s.lists {
 						if l.name == "offsets" {
 							ids, _, err := l.FindMissingIds(s.crawler.maxId, 100)
@@ -196,24 +206,6 @@ func (s *OeisServer) StartCrawler() {
 					// Update the lists with the new fields
 					for _, l := range s.lists {
 						l.Update(fields)
-					}
-				}
-			}
-		}
-	}()
-	flushTicker := time.NewTicker(s.crawlerFlushInterval)
-	go func() {
-		for {
-			select {
-			case <-done:
-				return
-			case <-flushTicker.C:
-				for _, l := range s.lists {
-					err := l.Flush()
-					if err != nil {
-						log.Printf("Error flushing list %s: %v", l.name, err)
-						log.Print("Stopping crawler")
-						done <- true
 					}
 				}
 			}
