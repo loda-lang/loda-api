@@ -14,6 +14,7 @@ type Crawler struct {
 	currentId  int
 	stepSize   int
 	numFetched int
+	missingIds []int
 	rand       *rand.Rand
 	httpClient *http.Client
 }
@@ -75,6 +76,14 @@ func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, int, error) {
 }
 
 func (c *Crawler) FetchNext() ([]Field, int, error) {
+	// Fetch missing sequences first
+	if len(c.missingIds) > 0 {
+		id := c.missingIds[0]
+		c.missingIds = c.missingIds[1:]
+		c.numFetched++
+		return c.FetchSeq(id, false)
+	}
+	// Fetch the next sequence
 	if c.maxId == 0 || c.numFetched == c.maxId {
 		err := c.Init()
 		if err != nil {

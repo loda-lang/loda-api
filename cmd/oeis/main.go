@@ -155,6 +155,10 @@ func (s *OeisServer) StartCrawler() {
 	}
 	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
 	done := make(chan bool)
+	stopCrawler := func() {
+		log.Print("Stopping crawler")
+		done <- true
+	}
 	go func() {
 		for {
 			select {
@@ -165,17 +169,23 @@ func (s *OeisServer) StartCrawler() {
 				if s.crawler.numFetched > 0 && s.crawler.numFetched%1000 == 0 {
 					err = s.crawler.Init()
 					if err != nil {
-						log.Print("Stopping crawler")
-						done <- true
+						stopCrawler()
 					}
+				}
+				// Find missing ids every 100 fetched sequences
+				if s.crawler.numFetched%100 == 0 {
+					ids, _, err := s.lists[0].FindMissingIds(s.crawler.maxId, 100)
+					if err != nil {
+						stopCrawler()
+					}
+					s.crawler.missingIds = ids
 				}
 				// Fetch the next sequence
 				fields, status, err := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
 					if status <= 500 || status >= 600 {
-						log.Print("Stopping crawler")
-						done <- true
+						stopCrawler()
 					}
 				} else {
 					// Update the lists with the new fields

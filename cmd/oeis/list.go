@@ -114,7 +114,8 @@ func (l *List) FindMissingIds(maxId int, maxNumIds int) ([]int, int, error) {
 	path := filepath.Join(l.dataDir, l.name)
 	gzPath := path + ".gz"
 	if !util.FileExists(gzPath) {
-		return nil, 0, fmt.Errorf("file not found: %s", gzPath)
+		log.Printf("No %s available", l.name)
+		return nil, 0, nil // not an error
 	}
 	err := exec.Command("gzip", "-d", gzPath).Run()
 	if err != nil {
