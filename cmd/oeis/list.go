@@ -213,7 +213,9 @@ func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, int, error)
 		for i := nextId; i < f.SeqId && len(ids) < maxNumIds; i++ {
 			ids = append(ids, i)
 		}
-		numMissing += f.SeqId - nextId + 1
+		if f.SeqId > nextId {
+			numMissing += f.SeqId - nextId
+		}
 		nextId = f.SeqId + 1
 	}
 	if err := scanner.Err(); err != nil {
@@ -222,7 +224,9 @@ func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, int, error)
 	for i := nextId; i <= maxId && len(ids) < maxNumIds; i++ {
 		ids = append(ids, i)
 	}
-	numMissing += maxId - nextId - 1
+	if maxId >= nextId {
+		numMissing += maxId + 1 - nextId
+	}
 	return ids, numMissing, nil
 }
 
