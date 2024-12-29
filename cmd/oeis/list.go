@@ -53,9 +53,9 @@ func (l *List) Update(fields []Field) {
 }
 
 func (l *List) Flush() error {
-	log.Printf("Flushing %s", l.name)
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+	log.Printf("Flushing %s", l.name)
 	// Check and sort fields
 	if len(l.fields) == 0 {
 		return nil
@@ -107,33 +107,34 @@ func (l *List) Flush() error {
 	return nil
 }
 
-func (l *List) FindMissingIds(maxId int, maxNumIds int) ([]int, error) {
-	log.Printf("Finding missing %s", l.name)
+func (l *List) FindMissingIds(maxId int, maxNumIds int) ([]int, int, error) {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
+	log.Printf("Finding missing %s", l.name)
 	path := filepath.Join(l.dataDir, l.name)
 	gzPath := path + ".gz"
 	if !util.FileExists(gzPath) {
-		return nil, fmt.Errorf("file not found: %s", gzPath)
+		return nil, 0, fmt.Errorf("file not found: %s", gzPath)
 	}
 	err := exec.Command("gzip", "-d", gzPath).Run()
 	if err != nil {
-		return nil, fmt.Errorf("failed to gunzip file: %w", err)
+		return nil, 0, fmt.Errorf("failed to gunzip file: %w", err)
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open file: %w", err)
+		return nil, 0, fmt.Errorf("failed to open file: %w", err)
 	}
-	ids, err := findMissingIds(file, maxId, maxNumIds)
+	ids, numMissing, err := findMissingIds(file, maxId, maxNumIds)
 	file.Close()
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	err = exec.Command("gzip", "-f", path).Run()
 	if err != nil {
-		return nil, fmt.Errorf("failed to gzip file: %w", err)
+		return nil, 0, fmt.Errorf("failed to gzip file: %w", err)
 	}
-	return ids, nil
+	log.Printf("Found %d/%d missing %s", len(ids), numMissing, l.name)
+	return ids, numMissing, nil
 }
 
 func formatField(field Field) string {
@@ -197,25 +198,31 @@ func mergeLists(fields []Field, old, target *os.File) error {
 	return nil
 }
 
-func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, error) {
+func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, int, error) {
 	ids := []int{}
-	currentId := 1
+	nextId := 1
+	numMissing := 0
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
 		f, err := parseLine(line)
 		if err != nil {
-			return nil, err
+			return nil, 0, err
 		}
-		for i := currentId; i < f.SeqId && len(ids) < maxNumIds; i++ {
+		for i := nextId; i < f.SeqId && len(ids) < maxNumIds; i++ {
 			ids = append(ids, i)
 		}
-		currentId = f.SeqId + 1
+		numMissing += f.SeqId - nextId + 1
+		nextId = f.SeqId + 1
 	}
-	for i := currentId; i <= maxId && len(ids) < maxNumIds; i++ {
+	if err := scanner.Err(); err != nil {
+		return nil, 0, fmt.Errorf("failed reading list: %w", err)
+	}
+	for i := nextId; i <= maxId && len(ids) < maxNumIds; i++ {
 		ids = append(ids, i)
 	}
-	return ids, nil
+	numMissing += maxId - nextId - 1
+	return ids, numMissing, nil
 }
 
 func (l *List) ServeGzip(w http.ResponseWriter, r *http.Request) {

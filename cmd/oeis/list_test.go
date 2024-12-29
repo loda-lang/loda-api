@@ -34,9 +34,10 @@ func TestList_Flush(t *testing.T) {
 	os.Remove("test1.gz")
 }
 
-func testFindMissingIds(t *testing.T, l *List, maxId, maxNumIds int, expected []int) {
-	ids, err := l.FindMissingIds(maxId, maxNumIds)
+func testFindMissingIds(t *testing.T, l *List, maxId, maxNumIds, expectedNumMissing int, expected []int) {
+	ids, numMissing, err := l.FindMissingIds(maxId, maxNumIds)
 	assert.Equal(t, nil, err, "Expected no error")
+	assert.Equal(t, expectedNumMissing, numMissing, "Unexpected number of missing ids")
 	assert.Equal(t, expected, ids, "Unexpected ids")
 }
 
@@ -44,9 +45,11 @@ func TestList_FindMissingIds(t *testing.T) {
 	l := NewList("T", "test2", ".")
 	l.Update(testFields)
 	l.Flush()
-	testFindMissingIds(t, l, 6, 3, []int{1, 3, 4})
-	testFindMissingIds(t, l, 6, 4, []int{1, 3, 4, 6})
-	testFindMissingIds(t, l, 6, 5, []int{1, 3, 4, 6})
-	testFindMissingIds(t, l, 7, 5, []int{1, 3, 4, 6, 7})
+	testFindMissingIds(t, l, 5, 2, 3, []int{1, 3})
+	testFindMissingIds(t, l, 6, 2, 4, []int{1, 3})
+	testFindMissingIds(t, l, 6, 3, 4, []int{1, 3, 4})
+	testFindMissingIds(t, l, 6, 4, 4, []int{1, 3, 4, 6})
+	testFindMissingIds(t, l, 6, 5, 4, []int{1, 3, 4, 6})
+	testFindMissingIds(t, l, 7, 5, 5, []int{1, 3, 4, 6, 7})
 	os.Remove("test2.gz")
 }
