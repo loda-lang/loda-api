@@ -107,6 +107,35 @@ func (l *List) Flush() error {
 	return nil
 }
 
+func (l *List) FindMissingIds(maxId int, maxNumIds int) ([]int, error) {
+	log.Printf("Finding missing %s", l.name)
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+	path := filepath.Join(l.dataDir, l.name)
+	gzPath := path + ".gz"
+	if !util.FileExists(gzPath) {
+		return nil, fmt.Errorf("file not found: %s", gzPath)
+	}
+	err := exec.Command("gzip", "-d", gzPath).Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to gunzip file: %w", err)
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file: %w", err)
+	}
+	ids, err := findMissingIds(file, maxId, maxNumIds)
+	file.Close()
+	if err != nil {
+		return nil, err
+	}
+	err = exec.Command("gzip", "-f", path).Run()
+	if err != nil {
+		return nil, fmt.Errorf("failed to gzip file: %w", err)
+	}
+	return ids, nil
+}
+
 func formatField(field Field) string {
 	return fmt.Sprintf("A%06d: %s", field.SeqId, field.Content)
 }
@@ -155,6 +184,31 @@ func mergeLists(fields []Field, old, target *os.File) error {
 		i++
 	}
 	return nil
+}
+
+func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, error) {
+	ids := []int{}
+	currentId := 1
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		matches := lineRegexp.FindStringSubmatch(line)
+		if len(matches) != 3 {
+			return nil, fmt.Errorf("failed parsing line: %s", line)
+		}
+		seqId, err := strconv.Atoi(matches[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed parsing seqId: %w", err)
+		}
+		for i := currentId; i < seqId && len(ids) < maxNumIds; i++ {
+			ids = append(ids, i)
+		}
+		currentId = seqId + 1
+	}
+	for i := currentId; i <= maxId && len(ids) < maxNumIds; i++ {
+		ids = append(ids, i)
+	}
+	return ids, nil
 }
 
 func (l *List) ServeGzip(w http.ResponseWriter, r *http.Request) {
