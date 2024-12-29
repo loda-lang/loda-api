@@ -140,6 +140,22 @@ func formatField(field Field) string {
 	return fmt.Sprintf("A%06d: %s", field.SeqId, field.Content)
 }
 
+func parseLine(line string) (Field, error) {
+	matches := lineRegexp.FindStringSubmatch(line)
+	if len(matches) != 3 {
+		return Field{}, fmt.Errorf("failed parsing line: %s", line)
+	}
+	seqId, err := strconv.Atoi(matches[1])
+	if err != nil {
+		return Field{}, fmt.Errorf("failed parsing seqId: %w", err)
+	}
+	return Field{
+		Key:     "",
+		SeqId:   seqId,
+		Content: matches[2],
+	}, nil
+}
+
 func mergeLists(fields []Field, old, target *os.File) error {
 	// Merges fields with old list and writes to target list
 	i := 0
@@ -147,17 +163,12 @@ func mergeLists(fields []Field, old, target *os.File) error {
 	for scanner.Scan() {
 		// Read and parse old line
 		line := scanner.Text()
-		matches := lineRegexp.FindStringSubmatch(line)
-		if len(matches) != 3 {
-			return fmt.Errorf("failed parsing line: %s", line)
-		}
-		seqId, err := strconv.Atoi(matches[1])
+		f, err := parseLine(line)
 		if err != nil {
-			return fmt.Errorf("failed parsing seqId: %w", err)
+			return err
 		}
-		content := matches[2]
 		// Write all new fields with smaller seqId
-		for i < len(fields) && (fields[i].SeqId < seqId || (fields[i].SeqId == seqId && fields[i].Content < content)) {
+		for i < len(fields) && (fields[i].SeqId < f.SeqId || (fields[i].SeqId == f.SeqId && fields[i].Content < f.Content)) {
 			_, err := target.WriteString(formatField(fields[i]) + "\n")
 			if err != nil {
 				return fmt.Errorf("failed writing field: %w", err)
@@ -165,7 +176,7 @@ func mergeLists(fields []Field, old, target *os.File) error {
 			i++
 		}
 		// Write old line if it is not the same as the new field
-		if i >= len(fields) || fields[i].SeqId != seqId || fields[i].Content != content {
+		if i >= len(fields) || fields[i].SeqId != f.SeqId || fields[i].Content != f.Content {
 			_, err = target.WriteString(line + "\n")
 			if err != nil {
 				return fmt.Errorf("failed writing line: %w", err)
@@ -192,18 +203,14 @@ func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, error) {
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
-		matches := lineRegexp.FindStringSubmatch(line)
-		if len(matches) != 3 {
-			return nil, fmt.Errorf("failed parsing line: %s", line)
-		}
-		seqId, err := strconv.Atoi(matches[1])
+		f, err := parseLine(line)
 		if err != nil {
-			return nil, fmt.Errorf("failed parsing seqId: %w", err)
+			return nil, err
 		}
-		for i := currentId; i < seqId && len(ids) < maxNumIds; i++ {
+		for i := currentId; i < f.SeqId && len(ids) < maxNumIds; i++ {
 			ids = append(ids, i)
 		}
-		currentId = seqId + 1
+		currentId = f.SeqId + 1
 	}
 	for i := currentId; i <= maxId && len(ids) < maxNumIds; i++ {
 		ids = append(ids, i)
