@@ -43,18 +43,18 @@ func (c *Crawler) Init() error {
 	return nil
 }
 
-func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, error, int) {
+func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, int, error) {
 	if !silent {
 		log.Printf("Fetching A%06d", id)
 	}
 	url := fmt.Sprintf("https://oeis.org/search?q=id:A%06d&fmt=text", id)
 	resp, err := c.httpClient.Get(url)
 	if err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 	status := resp.StatusCode
 	if status >= 400 {
-		return nil, fmt.Errorf("HTTP error: %s", resp.Status), status
+		return nil, status, fmt.Errorf("HTTP error: %s", resp.Status)
 	}
 	scanner := bufio.NewScanner(resp.Body)
 	var fields []Field
@@ -66,19 +66,19 @@ func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, error, int) {
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err, 0
+		return nil, 0, err
 	}
 	if len(fields) == 0 {
-		return nil, fmt.Errorf("no fields found"), status
+		return nil, status, fmt.Errorf("no fields found")
 	}
-	return fields, nil, status
+	return fields, status, nil
 }
 
-func (c *Crawler) FetchNext() ([]Field, error, int) {
+func (c *Crawler) FetchNext() ([]Field, int, error) {
 	if c.maxId == 0 || c.numFetched == c.maxId {
 		err := c.Init()
 		if err != nil {
-			return nil, err, 0
+			return nil, 0, err
 		}
 	} else {
 		c.currentId = ((c.currentId + c.stepSize) % c.maxId) + 1
@@ -93,7 +93,7 @@ func (c *Crawler) findMaxId() (int, error) {
 	var lastError error
 	for l < h {
 		m := (l + h) / 2
-		_, lastError, _ := c.FetchSeq(m, true)
+		_, _, lastError := c.FetchSeq(m, true)
 		if lastError != nil {
 			h = m
 		} else {

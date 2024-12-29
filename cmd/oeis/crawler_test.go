@@ -34,7 +34,7 @@ func TestCrawler_Init(t *testing.T) {
 
 func TestCrawler_FetchSeq(t *testing.T) {
 	c := NewCrawler(http.DefaultClient)
-	fields, err, status := c.FetchSeq(30, false)
+	fields, status, err := c.FetchSeq(30, false)
 	assert.Equal(t, nil, err, "Expected no error")
 	assert.Equal(t, http.StatusOK, status, "Expected OK status")
 	checkFieldDetails(t, fields, "N", 30, "Initial digit of n.")
@@ -45,7 +45,7 @@ func TestCrawler_FetchSeq(t *testing.T) {
 func TestCrawler_FetchNext(t *testing.T) {
 	c := NewCrawler(http.DefaultClient)
 	for i := 0; i < 10; i++ {
-		fields, err, status := c.FetchNext()
+		fields, status, err := c.FetchNext()
 		assert.Equal(t, http.StatusOK, status, "Expected OK status")
 		assert.Equal(t, nil, err, "Expected no error")
 		checkFieldBasics(t, fields)

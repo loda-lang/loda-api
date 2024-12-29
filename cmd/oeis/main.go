@@ -161,7 +161,7 @@ func (s *OeisServer) StartCrawler() {
 			case <-done:
 				return
 			case <-fetchTicker.C:
-				fields, err, status := s.crawler.FetchNext()
+				fields, status, err := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
 					if status <= 500 || status >= 600 {
