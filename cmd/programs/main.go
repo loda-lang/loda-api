@@ -22,7 +22,9 @@ const (
 	NumProgramsLow       = 1000
 	NumProgramsHigh      = 2000
 	NumProgramsMax       = 50000
+	NumProgramsPerUser   = 10
 	MaxProgramLength     = 100000
+	CheckpointInterval   = 10 * time.Minute
 	CheckSessionInterval = 24 * time.Hour
 	ProfilePrefix        = "; Miner Profile:"
 	SubmittedByPrefix    = "; Submitted by "
@@ -36,6 +38,7 @@ type ProgramsServer struct {
 	session                time.Time
 	programs               []string
 	submisstionsPerProfile map[string]int
+	submisstionsPerUser    map[string]int
 	mutex                  sync.Mutex
 }
 
@@ -46,6 +49,7 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient) *Pro
 		session:                time.Now(),
 		programs:               []string{},
 		submisstionsPerProfile: make(map[string]int),
+		submisstionsPerUser:    make(map[string]int),
 	}
 }
 
@@ -100,14 +104,14 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		}
 		program = strings.ReplaceAll(program, "\r\n", "\n") + "\n"
 		profile := "unknown"
-		submittedBy := "unknown"
+		user := "unknown"
 		lines := strings.Split(program, "\n")
 		for _, l := range lines {
 			if strings.HasPrefix(l, ProfilePrefix) {
 				profile = strings.TrimSpace(l[len(ProfilePrefix):])
 			}
 			if strings.HasPrefix(l, SubmittedByPrefix) {
-				submittedBy = strings.TrimSpace(l[len(SubmittedByPrefix):])
+				user = strings.TrimSpace(l[len(SubmittedByPrefix):])
 			}
 		}
 
@@ -120,6 +124,12 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpInternalServerError(w)
 			return
 		}
+		if s.submisstionsPerUser[user] > NumProgramsPerUser {
+			log.Printf("Rejected program from %s", user)
+			util.WriteHttpTooManyRequests(w)
+			return
+		}
+		s.submisstionsPerUser[user]++
 		for _, p := range s.programs {
 			if p == program {
 				util.WriteHttpOK(w, "Duplicate program")
@@ -128,7 +138,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		}
 		s.programs = append(s.programs, program)
 		s.submisstionsPerProfile[profile]++
-		msg := fmt.Sprintf("Received program from %s, profile %s", submittedBy, profile)
+		msg := fmt.Sprintf("Received program from %s, profile %s", user, profile)
 		util.WriteHttpCreated(w, msg)
 		log.Print(msg)
 	}
@@ -221,6 +231,12 @@ func (s *ProgramsServer) publishMetrics() {
 	s.submisstionsPerProfile = make(map[string]int)
 }
 
+func (s *ProgramsServer) clearUserStats() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	s.submisstionsPerUser = make(map[string]int)
+}
+
 func (s *ProgramsServer) lodaCheckpoint() {
 	checkpointPath := filepath.Join(s.dataDir, CheckpointFile)
 	file, err := os.Open(checkpointPath)
@@ -250,11 +266,12 @@ func (s *ProgramsServer) Run(port int) {
 	// load checkpoint
 	s.lodaCheckpoint()
 	// regularly publish metrics and write checkpoint
-	ticker := time.NewTicker(10 * time.Minute)
+	ticker := time.NewTicker(CheckpointInterval)
 	defer ticker.Stop()
 	go func() {
 		for range ticker.C {
 			s.publishMetrics()
+			s.clearUserStats()
 			s.writeCheckpoint()
 		}
 	}()

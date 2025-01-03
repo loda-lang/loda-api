@@ -41,6 +41,10 @@ func WriteHttpMethodNotAllowed(w http.ResponseWriter) {
 	WriteHttpStatus(w, http.StatusMethodNotAllowed, "Method Not Allowed")
 }
 
+func WriteHttpTooManyRequests(w http.ResponseWriter) {
+	WriteHttpStatus(w, http.StatusTooManyRequests, "Too Many Requests")
+}
+
 func WriteHttpInternalServerError(w http.ResponseWriter) {
 	WriteHttpStatus(w, http.StatusInternalServerError, "Internal Server Error")
 }
