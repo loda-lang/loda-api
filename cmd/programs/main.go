@@ -125,7 +125,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		if s.submisstionsPerUser[user] > NumProgramsPerUser {
-			log.Printf("Rejected program from %s", user)
+			log.Printf("Rejected program from %s, profile %s", user, profile)
 			util.WriteHttpTooManyRequests(w)
 			return
 		}
@@ -138,7 +138,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		}
 		s.programs = append(s.programs, program)
 		s.submisstionsPerProfile[profile]++
-		msg := fmt.Sprintf("Received program from %s, profile %s", user, profile)
+		msg := fmt.Sprintf("Accepted program from %s, profile %s", user, profile)
 		util.WriteHttpCreated(w, msg)
 		log.Print(msg)
 	}
