@@ -124,7 +124,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpInternalServerError(w)
 			return
 		}
-		if s.submisstionsPerUser[user] > NumProgramsPerUser {
+		if s.submisstionsPerUser[user] >= NumProgramsPerUser {
 			log.Printf("Rejected program from %s, profile %s", user, profile)
 			util.WriteHttpTooManyRequests(w)
 			return
