@@ -22,7 +22,7 @@ const (
 	NumProgramsLow       = 1000
 	NumProgramsHigh      = 2000
 	NumProgramsMax       = 50000
-	NumProgramsPerUser   = 10
+	NumProgramsPerUser   = 100
 	MaxProgramLength     = 100000
 	CheckpointInterval   = 10 * time.Minute
 	CheckSessionInterval = 24 * time.Hour
