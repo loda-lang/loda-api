@@ -39,6 +39,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
         libfontconfig \
         nano \
         net-tools \
+        python3-certbot-nginx \
         supervisor \
         wget \
         gnupg \
@@ -66,6 +67,7 @@ COPY image/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY image/run.sh /run.sh
 COPY image/dashboards.yaml /etc/grafana/provisioning/dashboards/dashboards.yaml
 COPY image/go-build.sh /root/
+COPY image/certbot-renew.sh /root/
 
 RUN mkdir -p /root/go/src/github.com/loda-lang/loda-api
 COPY cmd /root/go/src/github.com/loda-lang/loda-api/cmd
