@@ -57,7 +57,7 @@ fi
 
 echo
 echo "### START CONTAINER ###"
-docker run -d --rm --name loda-api --hostname lodaapi -p 80:80 -v $HOME/influxdb:/var/lib/influxdb -v $HOME/grafana:/var/lib/grafana -v $HOME/data:/data loda-api:latest
+docker run -d --rm --name loda-api --hostname lodaapi -p 80:80 -p 443:443 -v $HOME/influxdb:/var/lib/influxdb -v $HOME/grafana:/var/lib/grafana -v $HOME/data:/data loda-api:latest
 
 if [[ -v INFLUXDB_ROOT_PASSWD ]]; then
   echo
