@@ -219,6 +219,6 @@ func main() {
 	oeisDir := filepath.Join(setup.DataDir, "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewOeisServer(oeisDir, setup.UpdateInterval)
-	s.StartCrawler()
+	// s.StartCrawler()
 	s.Run(8080)
 }
