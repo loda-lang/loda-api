@@ -61,7 +61,7 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		oeisDir:               oeisDir,
 		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
-		crawlerFetchInterval:  30 * time.Second,
+		crawlerFetchInterval:  60 * time.Second,
 		crawlerBatchSize:      100,
 		crawler:               NewCrawler(httpClient),
 		httpClient:            httpClient,
@@ -151,7 +151,8 @@ func (s *OeisServer) Run(port int) {
 func (s *OeisServer) StartCrawler() {
 	err := s.crawler.Init()
 	if err != nil {
-		log.Fatal(err)
+		log.Printf("Error initializing crawler: %v", err)
+		return
 	}
 	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
 	done := make(chan bool)
@@ -219,6 +220,6 @@ func main() {
 	oeisDir := filepath.Join(setup.DataDir, "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewOeisServer(oeisDir, setup.UpdateInterval)
-	// s.StartCrawler()
+	s.StartCrawler()
 	s.Run(8080)
 }
