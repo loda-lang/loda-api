@@ -164,7 +164,7 @@ func (s *OeisServer) StartCrawler() {
 		return
 	}
 	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
-	s.crawlerStopped <- false
+	s.crawlerStopped = make(chan bool)
 	go func() {
 		for {
 			select {
