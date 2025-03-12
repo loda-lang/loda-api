@@ -32,6 +32,9 @@ func (c *Crawler) Init() error {
 	if err != nil {
 		return err
 	}
+	if maxId == 0 {
+		return fmt.Errorf("No sequences found")
+	}
 	c.maxId = maxId
 	c.currentId = c.rand.Intn(maxId) + 1
 	for i := 0; i < maxId; i++ {
@@ -102,7 +105,7 @@ func (c *Crawler) findMaxId() (int, error) {
 	var lastError error
 	for l < h {
 		m := (l + h) / 2
-		_, _, lastError := c.FetchSeq(m, false)
+		_, _, lastError := c.FetchSeq(m, true)
 		if lastError != nil {
 			h = m
 		} else {
