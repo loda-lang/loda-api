@@ -102,7 +102,7 @@ func (c *Crawler) findMaxId() (int, error) {
 	var lastError error
 	for l < h {
 		m := (l + h) / 2
-		_, _, lastError := c.FetchSeq(m, true)
+		_, _, lastError := c.FetchSeq(m, false)
 		if lastError != nil {
 			h = m
 		} else {
