@@ -33,7 +33,7 @@ func (c *Crawler) Init() error {
 		return err
 	}
 	if maxId == 0 {
-		return fmt.Errorf("No sequences found")
+		return fmt.Errorf("no sequences found")
 	}
 	c.maxId = maxId
 	c.currentId = c.rand.Intn(maxId) + 1
