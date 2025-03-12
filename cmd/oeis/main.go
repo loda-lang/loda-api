@@ -16,14 +16,16 @@ import (
 )
 
 type OeisServer struct {
-	oeisDir               string
-	bfileUpdateInterval   time.Duration
-	summaryUpdateInterval time.Duration
-	crawlerFetchInterval  time.Duration
-	crawlerBatchSize      int
-	crawler               *Crawler
-	httpClient            *http.Client
-	lists                 []*List
+	oeisDir                string
+	bfileUpdateInterval    time.Duration
+	summaryUpdateInterval  time.Duration
+	crawlerFetchInterval   time.Duration
+	crawlerRestartInterval time.Duration
+	crawlerBatchSize       int
+	crawlerStopped         chan bool
+	crawler                *Crawler
+	httpClient             *http.Client
+	lists                  []*List
 }
 
 const (
@@ -58,14 +60,16 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		i++
 	}
 	return &OeisServer{
-		oeisDir:               oeisDir,
-		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
-		summaryUpdateInterval: updateInterval,
-		crawlerFetchInterval:  60 * time.Second,
-		crawlerBatchSize:      100,
-		crawler:               NewCrawler(httpClient),
-		httpClient:            httpClient,
-		lists:                 lists,
+		oeisDir:                oeisDir,
+		bfileUpdateInterval:    180 * 24 * time.Hour, // 6 months
+		summaryUpdateInterval:  updateInterval,
+		crawlerFetchInterval:   60 * time.Second,
+		crawlerRestartInterval: 24 * time.Hour,
+		crawlerBatchSize:       100,
+		crawlerStopped:         make(chan bool),
+		crawler:                NewCrawler(httpClient),
+		httpClient:             httpClient,
+		lists:                  lists,
 	}
 }
 
@@ -148,6 +152,11 @@ func (s *OeisServer) Run(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 }
 
+func (s *OeisServer) StopCrawler() {
+	log.Print("Stopping crawler")
+	s.crawlerStopped <- true
+}
+
 func (s *OeisServer) StartCrawler() {
 	err := s.crawler.Init()
 	if err != nil {
@@ -155,22 +164,18 @@ func (s *OeisServer) StartCrawler() {
 		return
 	}
 	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
-	done := make(chan bool)
-	stopCrawler := func() {
-		log.Print("Stopping crawler")
-		done <- true
-	}
+	s.crawlerStopped <- false
 	go func() {
 		for {
 			select {
-			case <-done:
+			case <-s.crawlerStopped:
 				return
 			case <-fetchTicker.C:
 				// Reinitialize the crawler every 1000 fetched sequences
 				if s.crawler.numFetched > 0 && s.crawler.numFetched%1000 == 0 {
 					err = s.crawler.Init()
 					if err != nil {
-						stopCrawler()
+						s.StopCrawler()
 					}
 				}
 				if s.crawler.numFetched%s.crawlerBatchSize == 0 {
@@ -180,7 +185,7 @@ func (s *OeisServer) StartCrawler() {
 							err := l.Flush()
 							if err != nil {
 								log.Printf("Error flushing list %s: %v", l.name, err)
-								stopCrawler()
+								s.StopCrawler()
 							}
 						}
 					}
@@ -189,7 +194,7 @@ func (s *OeisServer) StartCrawler() {
 						if l.name == "offsets" {
 							ids, _, err := l.FindMissingIds(s.crawler.maxId, 100)
 							if err != nil {
-								stopCrawler()
+								s.StopCrawler()
 							}
 							s.crawler.missingIds = ids
 							break
@@ -200,7 +205,7 @@ func (s *OeisServer) StartCrawler() {
 				fields, _, err := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
-					stopCrawler()
+					s.StopCrawler()
 				} else {
 					// Update the lists with the new fields
 					for _, l := range s.lists {
@@ -208,6 +213,17 @@ func (s *OeisServer) StartCrawler() {
 					}
 				}
 			}
+		}
+	}()
+}
+
+func (s *OeisServer) ScheduleCrawler() {
+	ticker := time.NewTicker(s.crawlerRestartInterval)
+	go func() {
+		for range ticker.C {
+			s.StopCrawler()
+			time.Sleep(5 * time.Second)
+			s.StartCrawler()
 		}
 	}()
 }
