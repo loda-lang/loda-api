@@ -197,12 +197,10 @@ func (s *OeisServer) StartCrawler() {
 					}
 				}
 				// Fetch the next sequence
-				fields, status, err := s.crawler.FetchNext()
+				fields, _, err := s.crawler.FetchNext()
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
-					// if status <= 500 || status >= 600 {
 					stopCrawler()
-					// }
 				} else {
 					// Update the lists with the new fields
 					for _, l := range s.lists {
