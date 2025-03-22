@@ -21,6 +21,7 @@ type OeisServer struct {
 	summaryUpdateInterval  time.Duration
 	crawlerFetchInterval   time.Duration
 	crawlerRestartInterval time.Duration
+	crawlerRestartPause    time.Duration
 	crawlerFlushInterval   int
 	crawlerIdsCacheSize    int
 	crawlerStopped         chan bool
@@ -64,8 +65,9 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		oeisDir:                oeisDir,
 		bfileUpdateInterval:    180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval:  updateInterval,
-		crawlerFetchInterval:   60 * time.Second,
+		crawlerFetchInterval:   1 * time.Minute,
 		crawlerRestartInterval: 24 * time.Hour,
+		crawlerRestartPause:    1 * time.Minute,
 		crawlerFlushInterval:   100,
 		crawlerIdsCacheSize:    1000,
 		crawlerStopped:         make(chan bool),
@@ -219,7 +221,7 @@ func (s *OeisServer) ScheduleCrawler() {
 	go func() {
 		for range ticker.C {
 			s.StopCrawler()
-			time.Sleep(5 * time.Second)
+			time.Sleep(s.crawlerRestartPause)
 			s.StartCrawler()
 		}
 	}()

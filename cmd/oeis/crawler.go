@@ -43,7 +43,7 @@ func (c *Crawler) Init() error {
 			break
 		}
 	}
-	log.Printf("Set max ID: %d, current ID: %d, step size: %d", c.maxId, c.currentId, c.stepSize)
+	log.Printf("Found %d sequences", c.maxId)
 	return nil
 }
 
