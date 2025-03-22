@@ -65,7 +65,7 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		summaryUpdateInterval:  updateInterval,
 		crawlerFetchInterval:   60 * time.Second,
 		crawlerRestartInterval: 24 * time.Hour,
-		crawlerBatchSize:       100,
+		crawlerBatchSize:       1000,
 		crawlerStopped:         make(chan bool),
 		crawler:                NewCrawler(httpClient),
 		httpClient:             httpClient,
@@ -235,5 +235,6 @@ func main() {
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewOeisServer(oeisDir, setup.UpdateInterval)
 	s.StartCrawler()
+	s.ScheduleCrawler()
 	s.Run(8080)
 }
