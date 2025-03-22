@@ -21,7 +21,8 @@ type OeisServer struct {
 	summaryUpdateInterval  time.Duration
 	crawlerFetchInterval   time.Duration
 	crawlerRestartInterval time.Duration
-	crawlerBatchSize       int
+	crawlerFlushInterval   int
+	crawlerIdsCacheSize    int
 	crawlerStopped         chan bool
 	crawler                *Crawler
 	httpClient             *http.Client
@@ -65,7 +66,8 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		summaryUpdateInterval:  updateInterval,
 		crawlerFetchInterval:   60 * time.Second,
 		crawlerRestartInterval: 24 * time.Hour,
-		crawlerBatchSize:       1000,
+		crawlerFlushInterval:   100,
+		crawlerIdsCacheSize:    1000,
 		crawlerStopped:         make(chan bool),
 		crawler:                NewCrawler(httpClient),
 		httpClient:             httpClient,
@@ -171,14 +173,7 @@ func (s *OeisServer) StartCrawler() {
 			case <-s.crawlerStopped:
 				return
 			case <-fetchTicker.C:
-				// Reinitialize the crawler every 1000 fetched sequences
-				if s.crawler.numFetched > 0 && s.crawler.numFetched%1000 == 0 {
-					err = s.crawler.Init()
-					if err != nil {
-						s.StopCrawler()
-					}
-				}
-				if s.crawler.numFetched%s.crawlerBatchSize == 0 {
+				if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
 					if s.crawler.numFetched > 0 {
 						// Flush the lists
 						for _, l := range s.lists {
@@ -189,10 +184,12 @@ func (s *OeisServer) StartCrawler() {
 							}
 						}
 					}
+				}
+				if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 {
 					// Find the missing ids
 					for _, l := range s.lists {
 						if l.name == "offsets" {
-							ids, _, err := l.FindMissingIds(s.crawler.maxId, 100)
+							ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
 							if err != nil {
 								s.StopCrawler()
 							}
