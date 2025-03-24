@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
@@ -22,7 +23,9 @@ type OeisServer struct {
 	crawlerFetchInterval  time.Duration
 	crawlerRestartPause   time.Duration
 	crawlerFlushInterval  int
+	crawlerReinitInterval int
 	crawlerIdsCacheSize   int
+	crawlerIdsFetchRatio  float64
 	crawlerStopped        chan bool
 	crawler               *Crawler
 	httpClient            *http.Client
@@ -67,7 +70,9 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		crawlerFetchInterval:  1 * time.Minute,
 		crawlerRestartPause:   24 * time.Hour,
 		crawlerFlushInterval:  100,
+		crawlerReinitInterval: 2000,
 		crawlerIdsCacheSize:   1000,
+		crawlerIdsFetchRatio:  0.5,
 		crawlerStopped:        make(chan bool),
 		crawler:               NewCrawler(httpClient),
 		httpClient:            httpClient,
@@ -178,25 +183,36 @@ func (s *OeisServer) StartCrawler() {
 			case <-s.crawlerStopped:
 				return
 			case <-fetchTicker.C:
-				if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
-					if s.crawler.numFetched > 0 {
-						// Flush the lists
+				if s.crawler.numFetched > 0 {
+					// Regularly flush the lists
+					if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
 						for _, l := range s.lists {
 							err := l.Flush()
 							if err != nil {
 								log.Printf("Error flushing list %s: %v", l.name, err)
 								s.StopCrawler()
+								continue
 							}
 						}
 					}
+					// Regularly re-initialize the crawler
+					if s.crawler.numFetched%s.crawlerReinitInterval == 0 {
+						err = s.crawler.Init()
+						if err != nil {
+							log.Printf("Error re-initializing crawler: %v", err)
+							s.StopCrawler()
+							continue
+						}
+					}
 				}
-				if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 {
+				if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
 					// Find the missing ids
 					for _, l := range s.lists {
 						if l.name == "offsets" {
 							ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
 							if err != nil {
 								s.StopCrawler()
+								continue
 							}
 							s.crawler.missingIds = ids
 							break
@@ -208,11 +224,11 @@ func (s *OeisServer) StartCrawler() {
 				if err != nil {
 					log.Printf("Error fetching fields: %v", err)
 					s.StopCrawler()
-				} else {
-					// Update the lists with the new fields
-					for _, l := range s.lists {
-						l.Update(fields)
-					}
+					continue
+				}
+				// Update the lists with the new fields
+				for _, l := range s.lists {
+					l.Update(fields)
 				}
 			}
 		}
