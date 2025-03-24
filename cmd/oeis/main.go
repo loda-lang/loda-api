@@ -159,6 +159,12 @@ func (s *OeisServer) Run(port int) {
 func (s *OeisServer) StopCrawler() {
 	log.Print("Stopping crawler")
 	s.crawlerStopped <- true
+	restartTimer := time.NewTimer(s.crawlerRestartInterval)
+	go func() {
+		<-restartTimer.C
+		time.Sleep(s.crawlerRestartPause)
+		s.StartCrawler()
+	}()
 }
 
 func (s *OeisServer) StartCrawler() {
@@ -216,17 +222,6 @@ func (s *OeisServer) StartCrawler() {
 	}()
 }
 
-func (s *OeisServer) ScheduleCrawler() {
-	ticker := time.NewTicker(s.crawlerRestartInterval)
-	go func() {
-		for range ticker.C {
-			s.StopCrawler()
-			time.Sleep(s.crawlerRestartPause)
-			s.StartCrawler()
-		}
-	}()
-}
-
 func main() {
 	setup := cmd.GetSetup("oeis")
 	util.MustDirExist(setup.DataDir)
@@ -234,6 +229,5 @@ func main() {
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewOeisServer(oeisDir, setup.UpdateInterval)
 	s.StartCrawler()
-	s.ScheduleCrawler()
 	s.Run(8080)
 }
