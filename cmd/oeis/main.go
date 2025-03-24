@@ -16,18 +16,17 @@ import (
 )
 
 type OeisServer struct {
-	oeisDir                string
-	bfileUpdateInterval    time.Duration
-	summaryUpdateInterval  time.Duration
-	crawlerFetchInterval   time.Duration
-	crawlerRestartInterval time.Duration
-	crawlerRestartPause    time.Duration
-	crawlerFlushInterval   int
-	crawlerIdsCacheSize    int
-	crawlerStopped         chan bool
-	crawler                *Crawler
-	httpClient             *http.Client
-	lists                  []*List
+	oeisDir               string
+	bfileUpdateInterval   time.Duration
+	summaryUpdateInterval time.Duration
+	crawlerFetchInterval  time.Duration
+	crawlerRestartPause   time.Duration
+	crawlerFlushInterval  int
+	crawlerIdsCacheSize   int
+	crawlerStopped        chan bool
+	crawler               *Crawler
+	httpClient            *http.Client
+	lists                 []*List
 }
 
 const (
@@ -62,18 +61,17 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		i++
 	}
 	return &OeisServer{
-		oeisDir:                oeisDir,
-		bfileUpdateInterval:    180 * 24 * time.Hour, // 6 months
-		summaryUpdateInterval:  updateInterval,
-		crawlerFetchInterval:   1 * time.Minute,
-		crawlerRestartInterval: 24 * time.Hour,
-		crawlerRestartPause:    1 * time.Minute,
-		crawlerFlushInterval:   100,
-		crawlerIdsCacheSize:    1000,
-		crawlerStopped:         make(chan bool),
-		crawler:                NewCrawler(httpClient),
-		httpClient:             httpClient,
-		lists:                  lists,
+		oeisDir:               oeisDir,
+		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
+		summaryUpdateInterval: updateInterval,
+		crawlerFetchInterval:  1 * time.Minute,
+		crawlerRestartPause:   24 * time.Hour,
+		crawlerFlushInterval:  100,
+		crawlerIdsCacheSize:   1000,
+		crawlerStopped:        make(chan bool),
+		crawler:               NewCrawler(httpClient),
+		httpClient:            httpClient,
+		lists:                 lists,
 	}
 }
 
@@ -159,10 +157,9 @@ func (s *OeisServer) Run(port int) {
 func (s *OeisServer) StopCrawler() {
 	log.Print("Stopping crawler")
 	s.crawlerStopped <- true
-	restartTimer := time.NewTimer(s.crawlerRestartInterval)
+	restartTimer := time.NewTimer(s.crawlerRestartPause)
 	go func() {
 		<-restartTimer.C
-		time.Sleep(s.crawlerRestartPause)
 		s.StartCrawler()
 	}()
 }
