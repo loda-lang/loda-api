@@ -52,7 +52,7 @@ func (l *List) Update(fields []Field) {
 	}
 }
 
-func (l *List) Flush() error {
+func (l *List) Flush(deduplicate bool) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	log.Printf("Flushing %s", l.name)
@@ -91,7 +91,7 @@ func (l *List) Flush() error {
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	err = mergeLists(l.fields, old, target)
+	err = mergeLists(l.fields, old, target, deduplicate)
 	target.Close()
 	old.Close()
 	os.Remove(oldPath)
@@ -158,10 +158,12 @@ func parseLine(line string) (Field, error) {
 	}, nil
 }
 
-func mergeLists(fields []Field, old, target *os.File) error {
+func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	// Merges fields with old list and writes to target list
+	// If deduplicate is true, remove duplicate entries (same SeqId)
 	i := 0
 	scanner := bufio.NewScanner(old)
+	var lastSeqId int = -1
 	for scanner.Scan() {
 		// Read and parse old line
 		line := scanner.Text()
@@ -170,19 +172,21 @@ func mergeLists(fields []Field, old, target *os.File) error {
 			return err
 		}
 		// Write all new fields with smaller seqId
-		for i < len(fields) && (fields[i].SeqId < f.SeqId || (fields[i].SeqId == f.SeqId && fields[i].Content < f.Content)) {
+		for i < len(fields) && (fields[i].SeqId < f.SeqId || (fields[i].SeqId == f.SeqId && (deduplicate || fields[i].Content < f.Content))) {
 			_, err := target.WriteString(formatField(fields[i]) + "\n")
 			if err != nil {
 				return fmt.Errorf("failed writing field: %w", err)
 			}
+			lastSeqId = fields[i].SeqId
 			i++
 		}
 		// Write old line if it is not the same as the new field
-		if i >= len(fields) || fields[i].SeqId != f.SeqId || fields[i].Content != f.Content {
+		if (i >= len(fields) || fields[i].SeqId != f.SeqId || fields[i].Content != f.Content) && (!deduplicate || f.SeqId != lastSeqId) {
 			_, err = target.WriteString(line + "\n")
 			if err != nil {
 				return fmt.Errorf("failed writing line: %w", err)
 			}
+			lastSeqId = f.SeqId
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -190,9 +194,12 @@ func mergeLists(fields []Field, old, target *os.File) error {
 	}
 	// Write remaining new fields
 	for i < len(fields) {
-		_, err := target.WriteString(formatField(fields[i]) + "\n")
-		if err != nil {
-			return fmt.Errorf("failed writing field: %w", err)
+		if !deduplicate || fields[i].SeqId != lastSeqId {
+			_, err := target.WriteString(formatField(fields[i]) + "\n")
+			if err != nil {
+				return fmt.Errorf("failed writing field: %w", err)
+			}
+			lastSeqId = fields[i].SeqId
 		}
 		i++
 	}

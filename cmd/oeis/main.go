@@ -187,7 +187,8 @@ func (s *OeisServer) StartCrawler() {
 					// Regularly flush the lists
 					if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
 						for _, l := range s.lists {
-							err := l.Flush()
+							deduplicate := l.name == "offsets"
+							err := l.Flush(deduplicate)
 							if err != nil {
 								log.Printf("Error flushing list %s: %v", l.name, err)
 								s.StopCrawler()

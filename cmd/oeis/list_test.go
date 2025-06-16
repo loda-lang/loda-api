@@ -27,7 +27,7 @@ func TestList_Update(t *testing.T) {
 func TestList_Flush(t *testing.T) {
 	l := NewList("T", "test1", ".")
 	l.Update(testFields)
-	err := l.Flush()
+	err := l.Flush(false)
 	assert.Equal(t, nil, err, "Expected no error")
 	assert.Equal(t, 0, l.Len(), "Unexpected length")
 	assert.True(t, util.FileExists("test1.gz"), "Expected file to exist")
@@ -44,7 +44,7 @@ func testFindMissingIds(t *testing.T, l *List, maxId, maxNumIds, expectedNumMiss
 func TestList_FindMissingIds(t *testing.T) {
 	l := NewList("T", "test2", ".")
 	l.Update(testFields)
-	l.Flush()
+	l.Flush(false)
 	testFindMissingIds(t, l, 5, 2, 3, []int{1, 3})
 	testFindMissingIds(t, l, 6, 2, 4, []int{1, 3})
 	testFindMissingIds(t, l, 6, 3, 4, []int{1, 3, 4})
