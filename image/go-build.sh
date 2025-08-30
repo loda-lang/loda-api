@@ -8,8 +8,8 @@ export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
 pushd $GOPATH/src/github.com/loda-lang/loda-api/cmd
 
-pushd oeis
-go build -o /oeis_server
+pushd seqs
+go build -o /seqs_server
 popd
 
 pushd submit
