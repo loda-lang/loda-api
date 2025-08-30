@@ -12,10 +12,10 @@ jobs:
     - uses: actions/setup-go@v4
       with:
         go-version: '1.23'
-    - name: Build oeis server
-      run: cd cmd/oeis && go build
-    - name: Build programs server
-      run: cd cmd/programs && go build
+    - name: Build seqs server
+      run: cd cmd/seqs && go build
+    - name: Build submit server
+      run: cd cmd/submit && go build
     - name: Build stats server
       run: cd cmd/stats && go build
     - name: Test
