@@ -12,8 +12,8 @@ pushd oeis
 go build -o /oeis_server
 popd
 
-pushd programs
-go build -o /programs_server
+pushd submit
+go build -o /submit_server
 popd
 
 pushd stats
