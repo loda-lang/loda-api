@@ -21,7 +21,7 @@ source_host=$3
 target_host=$4
 INFLUXDB_ROOT_PASSWD=$5
 
-dryrun=
+dryrun=true
 
 if [ "$source_host" = "$target_host" ]; then
   echo "Error: source host equals target host"
