@@ -93,6 +93,11 @@ func newSummaryHandler(s *OeisServer, filename string) http.Handler {
 				util.WriteHttpInternalServerError(w)
 				log.Fatal(err)
 			}
+			cmd := exec.Command("gunzip", "-f", "-k", path)
+			if err := cmd.Run(); err != nil {
+				util.WriteHttpInternalServerError(w)
+				log.Fatalf("Error executing gunzip: %v", err)
+			}
 		}
 		util.ServeBinary(w, req, path)
 	}
@@ -242,6 +247,7 @@ func main() {
 	oeisDir := filepath.Join(setup.DataDir, "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewOeisServer(oeisDir, setup.UpdateInterval)
+	// Sequence index is now available as s.seqIndex
 	s.StartCrawler()
 	s.Run(8080)
 }
