@@ -21,7 +21,7 @@ source_host=$3
 target_host=$4
 INFLUXDB_ROOT_PASSWD=$5
 
-dryrun=true
+dryrun=
 
 if [ "$source_host" = "$target_host" ]; then
   echo "Error: source host equals target host"
@@ -87,7 +87,7 @@ gscp "$source_host:data/setup.txt" .
 echo
 
 echo "=== Stopping LODA services on $target_host ==="
-gssh $target_host "docker exec loda-api /usr/bin/supervisorctl stop oeis programs stats"
+gssh $target_host "docker exec loda-api /usr/bin/supervisorctl stop programs sequences stats"
 echo
 
 echo "=== Pushing LODA checkpoint and setup to $target_host ==="
@@ -99,7 +99,7 @@ rm_local checkpoint.txt setup.txt
 echo
 
 echo "=== Starting LODA services on $target_host ==="
-gssh $target_host "docker exec loda-api /usr/bin/supervisorctl start oeis programs stats"
+gssh $target_host "docker exec loda-api /usr/bin/supervisorctl start programs sequences stats"
 echo
 
 echo "=== Creating influxdb-backup on $source_host ==="
