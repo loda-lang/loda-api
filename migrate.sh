@@ -74,6 +74,7 @@ echo "=== Checking data on $target_host ==="
 ensure_dir $target_host data
 ensure_dir $target_host grafana
 ensure_dir $target_host influxdb
+gssh $target_host "docker exec loda-api /usr/bin/influx -username=root -password=$INFLUXDB_ROOT_PASSWD -execute 'SHOW DATABASES'"
 echo
 
 echo "=== Creating LODA checkpoint on $source_host ==="
