@@ -1,0 +1,14 @@
+# OEIS Sequence Names (http://oeis.org/names.gz)
+# Last Modified: August 23 23:46 EDT 2025
+# Use of this content is governed by the
+# OEIS End-User License: http://oeis.org/LICENSE
+A000001 Number of groups of order n.
+A000002 Kolakoski sequence: a(n) is length of n-th run; a(1) = 1; sequence consists just of 1's and 2's.
+A000003 Number of classes of primitive positive definite binary quadratic forms of discriminant D = -4n; or equivalently the class number of the quadratic order of discriminant D = -4n.
+A000004 The zero sequence.
+A000005 d(n) (also called tau(n) or sigma_0(n)), the number of divisors of n.
+A000006 Integer part of square root of n-th prime.
+A000007 The characteristic function of {0}: a(n) = 0^n.
+A000008 Number of ways of making change for n cents using coins of 1, 2, 5, 10 cents.
+A000009 Expansion of Product_{m >= 1} (1 + x^m); number of partitions of n into distinct parts; number of partitions of n into odd parts.
+A000010 Euler totient function phi(n): count numbers <= n and prime to n.
