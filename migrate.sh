@@ -63,7 +63,7 @@ function ensure_file {
   fi
 }
 
-OEIS_FILES=authors.gz comments.gz formulas.gz keywords.gz names names.gz offsets.gz programs.gz stripped stripped.gz
+OEIS_FILES="authors.gz comments.gz formulas.gz keywords.gz names names.gz offsets.gz programs.gz stripped stripped.gz"
 
 echo "=== Checking data on $source_host ==="
 ensure_dir $source_host data
