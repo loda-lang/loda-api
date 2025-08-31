@@ -63,9 +63,15 @@ function ensure_file {
   fi
 }
 
+OEIS_FILES=authors.gz comments.gz formulas.gz keywords.gz names names.gz offsets.gz programs.gz stripped stripped.gz
+
 echo "=== Checking data on $source_host ==="
 ensure_dir $source_host data
+ensure_file $source_host data/checkpoint.txt
 ensure_file $source_host data/setup.txt
+for f in $OEIS_FILES; do
+  ensure_file $source_host data/oeis/$f
+done
 ensure_dir $source_host grafana
 ensure_dir $source_host influxdb
 echo
@@ -82,9 +88,12 @@ gssh $source_host "curl -X POST localhost/miner/v1/checkpoint"
 ensure_file $source_host data/checkpoint.txt
 echo
 
-echo "=== Fetching LODA checkpoint and setup from $source_host ==="
+echo "=== Fetching LODA data from $source_host ==="
 gscp "$source_host:data/checkpoint.txt" .
 gscp "$source_host:data/setup.txt" .
+for f in $OEIS_FILES; do
+  gscp "$source_host:data/oeis/$f" .
+done
 echo
 
 echo "=== Stopping LODA services on $target_host ==="
@@ -96,7 +105,11 @@ gscp checkpoint.txt $target_host:data/
 gscp setup.txt $target_host:data/
 ensure_file $target_host data/checkpoint.txt
 ensure_file $target_host data/setup.txt
-rm_local checkpoint.txt setup.txt
+for f in $OEIS_FILES; do
+  gscp $f $target_host:data/oeis/
+  ensure_file $target_host data/oeis/$f
+done
+rm_local checkpoint.txt setup.txt $OEIS_FILES
 echo
 
 echo "=== Starting LODA services on $target_host ==="
