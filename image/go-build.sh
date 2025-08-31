@@ -8,12 +8,12 @@ export PATH=$GOROOT/bin:$GOPATH/bin:$PATH
 
 pushd $GOPATH/src/github.com/loda-lang/loda-api/cmd
 
-pushd seqs
-go build -o /seqs_server
+pushd sequences
+go build -o /sequences_server
 popd
 
-pushd submit
-go build -o /submit_server
+pushd programs
+go build -o /programs_server
 popd
 
 pushd stats

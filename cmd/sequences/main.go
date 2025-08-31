@@ -237,7 +237,7 @@ func (s *OeisServer) StartCrawler() {
 }
 
 func main() {
-	setup := cmd.GetSetup("seqs")
+	setup := cmd.GetSetup("sequences")
 	util.MustDirExist(setup.DataDir)
 	oeisDir := filepath.Join(setup.DataDir, "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)

@@ -290,7 +290,7 @@ func (s *ProgramsServer) Run(port int) {
 }
 
 func main() {
-	setup := cmd.GetSetup("submit")
+	setup := cmd.GetSetup("programs")
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
 	s := NewProgramsServer(setup.DataDir, i)
