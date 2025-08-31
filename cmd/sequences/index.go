@@ -14,6 +14,17 @@ type Sequence struct {
 	Terms string
 }
 
+func (s *Sequence) TermsList() []string {
+	var terms []string
+	for _, t := range strings.Split(s.Terms, ",") {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			terms = append(terms, t)
+		}
+	}
+	return terms
+}
+
 type Index struct {
 	Sequences []Sequence
 }
