@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -14,6 +15,18 @@ type Sequence struct {
 	Name     string
 	Keywords []string
 	Terms    string
+}
+
+func (s *Sequence) IdDomain() byte {
+	return s.Id[0]
+}
+
+func (s *Sequence) IdNumber() int64 {
+	i, err := strconv.ParseInt(s.Id[1:], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return i
 }
 
 func (s *Sequence) TermsList() []string {

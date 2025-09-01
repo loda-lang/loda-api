@@ -5,6 +5,24 @@ import (
 	"testing"
 )
 
+func TestIdDomain(t *testing.T) {
+	seq := Sequence{Id: "A123456"}
+	got := seq.IdDomain()
+	want := byte('A')
+	if got != want {
+		t.Errorf("IdDomain: got %q, want %q", got, want)
+	}
+}
+
+func TestIdNumber(t *testing.T) {
+	seq := Sequence{Id: "A123456"}
+	got := seq.IdNumber()
+	var want int64 = 123456
+	if got != want {
+		t.Errorf("IdNumber: got %d, want %d", got, want)
+	}
+}
+
 func TestTermsList(t *testing.T) {
 	seq := Sequence{
 		Id:    "A000001",
