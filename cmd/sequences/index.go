@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 )
 
@@ -57,6 +58,10 @@ func (idx *Index) Load(dataDir string) error {
 			sequences[i].Keywords = kws
 		}
 	}
+	// Sort sequences by ID
+	sort.Slice(sequences, func(i, j int) bool {
+		return sequences[i].Id < sequences[j].Id
+	})
 	idx.Sequences = sequences
 	return nil
 }
