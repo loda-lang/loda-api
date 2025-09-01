@@ -16,7 +16,7 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-type OeisServer struct {
+type SeqServer struct {
 	oeisDir               string
 	bfileUpdateInterval   time.Duration
 	summaryUpdateInterval time.Duration
@@ -28,6 +28,7 @@ type OeisServer struct {
 	crawlerIdsFetchRatio  float64
 	crawlerStopped        chan bool
 	crawler               *Crawler
+	seqIndex              *Index
 	httpClient            *http.Client
 	lists                 []*List
 }
@@ -47,7 +48,7 @@ var (
 	}
 )
 
-func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
+func NewSeqServer(oeisDir string, updateInterval time.Duration) *SeqServer {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -63,7 +64,7 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		lists[i] = NewList(key, name, oeisDir)
 		i++
 	}
-	return &OeisServer{
+	return &SeqServer{
 		oeisDir:               oeisDir,
 		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
@@ -75,12 +76,25 @@ func NewOeisServer(oeisDir string, updateInterval time.Duration) *OeisServer {
 		crawlerIdsFetchRatio:  0.5,
 		crawlerStopped:        make(chan bool),
 		crawler:               NewCrawler(httpClient),
+		seqIndex:              nil,
 		httpClient:            httpClient,
 		lists:                 lists,
 	}
 }
 
-func newSummaryHandler(s *OeisServer, filename string) http.Handler {
+func GetIndex(s *SeqServer) *Index {
+	if s.seqIndex == nil {
+		idx := NewIndex()
+		err := idx.Load(s.oeisDir)
+		if err != nil {
+			log.Fatalf("Failed to load sequence index: %v", err)
+		}
+		s.seqIndex = idx
+	}
+	return s.seqIndex
+}
+
+func newSummaryHandler(s *SeqServer, filename string) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			util.WriteHttpMethodNotAllowed(w)
@@ -104,7 +118,7 @@ func newSummaryHandler(s *OeisServer, filename string) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func newBFileHandler(s *OeisServer) http.Handler {
+func newBFileHandler(s *SeqServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			util.WriteHttpMethodNotAllowed(w)
@@ -150,7 +164,7 @@ func newListHandler(l *List) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func (s *OeisServer) Run(port int) {
+func (s *SeqServer) Run(port int) {
 	router := mux.NewRouter()
 	router.Handle("/v1/oeis/names.gz", newSummaryHandler(s, "names.gz"))
 	router.Handle("/v1/oeis/stripped.gz", newSummaryHandler(s, "stripped.gz"))
@@ -164,7 +178,7 @@ func (s *OeisServer) Run(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
 }
 
-func (s *OeisServer) StopCrawler() {
+func (s *SeqServer) StopCrawler() {
 	log.Print("Stopping crawler")
 	s.crawlerStopped <- true
 	restartTimer := time.NewTimer(s.crawlerRestartPause)
@@ -174,7 +188,7 @@ func (s *OeisServer) StopCrawler() {
 	}()
 }
 
-func (s *OeisServer) StartCrawler() {
+func (s *SeqServer) StartCrawler() {
 	err := s.crawler.Init()
 	if err != nil {
 		log.Printf("Error initializing crawler: %v", err)
@@ -246,8 +260,7 @@ func main() {
 	util.MustDirExist(setup.DataDir)
 	oeisDir := filepath.Join(setup.DataDir, "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
-	s := NewOeisServer(oeisDir, setup.UpdateInterval)
-	// Sequence index is now available as s.seqIndex
+	s := NewSeqServer(oeisDir, setup.UpdateInterval)
 	s.StartCrawler()
 	s.Run(8080)
 }
