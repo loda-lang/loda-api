@@ -90,6 +90,7 @@ ensure_file $source_host data/checkpoint.txt
 echo
 
 echo "=== Fetching LODA data from $source_host ==="
+gssh $source_host "sudo chmod -R o+r data"
 gscp "$source_host:data/checkpoint.txt" .
 gscp "$source_host:data/setup.txt" .
 for f in $OEIS_FILES; do
@@ -113,7 +114,10 @@ for f in $OEIS_FILES; do
   ensure_file $target_host data/oeis/${f}
   ensure_file $target_host data/oeis/${f}.gz
 done
-rm_local checkpoint.txt setup.txt $OEIS_FILES
+rm_local checkpoint.txt setup.txt 
+for f in $OEIS_FILES; do
+  rm_local ${f} ${f}.gz
+done
 echo
 
 echo "=== Starting LODA services on $target_host ==="
@@ -147,6 +151,7 @@ gssh $target_host "docker exec loda-api rm -R /influxdb-backup"
 echo
 
 echo "=== Fetching grafana data from $source_host ==="
+gssh $source_host "sudo chmod -R o+r grafana"
 gscp "$source_host:grafana" .
 echo
 
