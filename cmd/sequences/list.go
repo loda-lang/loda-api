@@ -65,15 +65,9 @@ func (l *List) Flush(deduplicate bool) error {
 		g := l.fields[j]
 		return (f.SeqId < g.SeqId) || (f.SeqId == g.SeqId && f.Content < g.Content)
 	})
-	// Uncompress old file
 	path := filepath.Join(l.dataDir, l.name)
-	gzPath := path + ".gz"
-	if util.FileExists(gzPath) {
-		err := exec.Command("gzip", "-d", gzPath).Run()
-		if err != nil {
-			return fmt.Errorf("failed to gunzip file: %w", err)
-		}
-	} else {
+	// Create file if not exists yet
+	if !util.FileExists(path) {
 		file, err := os.Create(path)
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
@@ -99,7 +93,7 @@ func (l *List) Flush(deduplicate bool) error {
 		return fmt.Errorf("failed to merge lists: %w", err)
 	}
 	// Compress new file
-	err = exec.Command("gzip", "-f", path).Run()
+	err = exec.Command("gzip", "-f", "-k", path).Run()
 	if err != nil {
 		return fmt.Errorf("failed to gzip file: %w", err)
 	}
@@ -112,27 +106,18 @@ func (l *List) FindMissingIds(maxId int, maxNumIds int) ([]int, int, error) {
 	defer l.mutex.Unlock()
 	log.Printf("Finding missing %s", l.name)
 	path := filepath.Join(l.dataDir, l.name)
-	gzPath := path + ".gz"
-	if !util.FileExists(gzPath) {
+	if !util.FileExists(path) {
 		log.Printf("No %s available", l.name)
 		return nil, 0, nil // not an error
-	}
-	err := exec.Command("gzip", "-d", gzPath).Run()
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to gunzip file: %w", err)
 	}
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, 0, fmt.Errorf("failed to open file: %w", err)
 	}
+	defer file.Close()
 	ids, numMissing, err := findMissingIds(file, maxId, maxNumIds)
-	file.Close()
 	if err != nil {
 		return nil, 0, err
-	}
-	err = exec.Command("gzip", "-f", path).Run()
-	if err != nil {
-		return nil, 0, fmt.Errorf("failed to gzip file: %w", err)
 	}
 	log.Printf("Found %d/%d missing %s", len(ids), numMissing, l.name)
 	return ids, numMissing, nil
