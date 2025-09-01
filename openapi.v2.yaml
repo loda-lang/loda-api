@@ -205,10 +205,12 @@ components:
         id:
           type: string
           pattern: '^[A-Z]\d{1,10}$'
-          description: ID of the integer sequence or LODA program (e.g. A000045)
+          description: ID of the integer sequence or LODA program
+          example: A000045
         name:
           type: string
           description: Name of the integer sequence or LODA program
+          example: Fibonacci numbers
     SearchResult:
       type: array
       items:
@@ -267,30 +269,33 @@ components:
         properties:
           terms:
             $ref: '#/components/schemas/Terms'
-          author:
-            type: string
-            description: Name of the author of the sequence
-            nullable: true
-          references:
-            type: array
-            items:
-              type: string
           keywords:
             type: array
+            description: Keywords for this sequence
             items:
-              type: string
+              $ref: '#/components/schemas/Keyword'
+          oeisRef:
+            type: string
+            description: Reference to the OEIS entry (if applicable)
+            example: https://oeis.org/A000045
+            nullable: true
     ProgramDetails:
       allOf:
       - $ref: '#/components/schemas/IDAndName'
       - type: object
         properties:
+          code:
+            type: string
+            description: LODA program code in plain text format
           submitter:
             type: string
             description: Name of the submitter of the program
             nullable: true
-          code:
-            type: string
-            description: LODA program code in plain text format
+          keywords:
+            type: array
+            description: Keywords for this program
+            items:
+              $ref: '#/components/schemas/Keyword'
           operations:
             type: array
             description: Operations of the LODA program as an array of strings
