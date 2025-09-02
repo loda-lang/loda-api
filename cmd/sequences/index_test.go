@@ -2,6 +2,7 @@ package main
 
 import (
 	"path/filepath"
+	"sort"
 	"testing"
 
 	"github.com/loda-lang/loda-api/util"
@@ -47,6 +48,7 @@ func TestIndexLoad(t *testing.T) {
 			if len(seq.Keywords) != len(w.keywords) {
 				t.Errorf("Sequence %s: got %d keywords, want %d", seq.Id, len(seq.Keywords), len(w.keywords))
 			} else {
+				sort.Strings(w.keywords)
 				for i := range w.keywords {
 					if seq.Keywords[i] != w.keywords[i] {
 						t.Errorf("Sequence %s: keyword %d: got %q, want %q", seq.Id, i, seq.Keywords[i], w.keywords[i])

@@ -101,6 +101,7 @@ func loadKeywordsFile(path string) (map[string][]string, error) {
 					trimmed = append(trimmed, k)
 				}
 			}
+			sort.Strings(trimmed)
 			keywordsMap[id] = trimmed
 		}
 	}
