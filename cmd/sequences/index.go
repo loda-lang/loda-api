@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/loda-lang/loda-api/util"
 )
 
 type Index struct {
@@ -36,13 +38,14 @@ func (idx *Index) Load(dataDir string) error {
 	}
 	// Attach keywords to sequences
 	for i := range sequences {
-		if kws, ok := keywordsMap[sequences[i].Id]; ok {
+		id := sequences[i].Id.String()
+		if kws, ok := keywordsMap[id]; ok {
 			sequences[i].Keywords = kws
 		}
 	}
 	// Sort sequences by ID
 	sort.Slice(sequences, func(i, j int) bool {
-		return sequences[i].Id < sequences[j].Id
+		return sequences[i].Id.IsLessThan(sequences[j].Id)
 	})
 	idx.Sequences = sequences
 	return nil
@@ -123,10 +126,14 @@ func loadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		parts := strings.SplitN(line, " ", 2)
 		if len(parts) == 2 {
 			id := strings.TrimSpace(parts[0])
+			uid, err := util.NewUIDFromString(id)
+			if err != nil {
+				return nil, fmt.Errorf("invalid UID %q in stripped file: %w", id, err)
+			}
 			terms := strings.TrimSpace(parts[1])
 			name := nameMap[id]
 			sequences = append(sequences, Sequence{
-				Id:    id,
+				Id:    uid,
 				Name:  name,
 				Terms: terms,
 			})
@@ -138,34 +145,30 @@ func loadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 	return sequences, nil
 }
 
-func (idx *Index) FindById(id string) *Sequence {
-	if len(id) < 2 {
-		return nil
-	}
-	test := Sequence{Id: id}
-	d := test.IdDomain()
-	n := int64(test.IdNumber())
-	if n >= 0 && n < int64(len(idx.Sequences)) && idx.Sequences[n].IdDomain() == d {
-		k := idx.Sequences[n].IdNumber()
+func (idx *Index) FindById(id util.UID) *Sequence {
+	d := id.Domain()
+	n := int64(id.Number())
+	if n >= 0 && n < int64(len(idx.Sequences)) && idx.Sequences[n].Id.Domain() == d {
+		k := idx.Sequences[n].Id.Number()
 		if k == n {
 			return &idx.Sequences[n]
 		} else if k < n {
 			// Search forward
 			for i := n + 1; i < int64(len(idx.Sequences)); i++ {
-				if idx.Sequences[i].IdDomain() != d {
+				if idx.Sequences[i].Id.Domain() != d {
 					break
 				}
-				if idx.Sequences[i].IdNumber() == n {
+				if idx.Sequences[i].Id.Equals(id) {
 					return &idx.Sequences[i]
 				}
 			}
 		} else {
 			// Search backward
 			for i := n - 1; i >= 0; i-- {
-				if idx.Sequences[i].IdDomain() != d {
+				if idx.Sequences[i].Id.Domain() != d {
 					break
 				}
-				if idx.Sequences[i].IdNumber() == n {
+				if idx.Sequences[i].Id.Equals(id) {
 					return &idx.Sequences[i]
 				}
 			}
@@ -173,7 +176,7 @@ func (idx *Index) FindById(id string) *Sequence {
 	} else {
 		// Full search
 		for _, s := range idx.Sequences {
-			if s.IdDomain() == d && s.IdNumber() == n {
+			if s.Id.Equals(id) {
 				return &s
 			}
 		}

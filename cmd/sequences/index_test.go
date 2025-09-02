@@ -3,6 +3,8 @@ package main
 import (
 	"path/filepath"
 	"testing"
+
+	"github.com/loda-lang/loda-api/util"
 )
 
 func TestIndexLoad(t *testing.T) {
@@ -35,7 +37,7 @@ func TestIndexLoad(t *testing.T) {
 		},
 	}
 	for _, seq := range idx.Sequences {
-		if w, ok := want[seq.Id]; ok {
+		if w, ok := want[seq.Id.String()]; ok {
 			if seq.Name != w.name {
 				t.Errorf("Sequence %s: got name %q, want %q", seq.Id, seq.Name, w.name)
 			}
@@ -51,7 +53,7 @@ func TestIndexLoad(t *testing.T) {
 					}
 				}
 			}
-			delete(want, seq.Id)
+			delete(want, seq.Id.String())
 		}
 	}
 	for id := range want {
@@ -68,15 +70,17 @@ func TestFindById(t *testing.T) {
 	}
 
 	// Test known sequence
-	seq := idx.FindById("A001")
+	id, _ := util.NewUIDFromString("A001")
+	seq := idx.FindById(id)
 	if seq == nil {
 		t.Errorf("FindById: did not find A000001")
-	} else if seq.Id != "A000001" {
+	} else if seq.Id.String() != "A000001" {
 		t.Errorf("FindById: got %q, want %q", seq.Id, "A000001")
 	}
 
 	// Test non-existent ID
-	seq = idx.FindById("A999999")
+	id, _ = util.NewUIDFromString("A999999")
+	seq = idx.FindById(id)
 	if seq != nil {
 		t.Errorf("FindById: expected nil for non-existent ID, got %q", seq.Id)
 	}
@@ -97,7 +101,9 @@ func TestFindById(t *testing.T) {
 		if got == nil || got.Id != seq.Id {
 			t.Errorf("FindById: failed for %q", seq.Id)
 		}
-		got2 := idx.FindById(string(seq.Id[0]) + "0" + seq.Id[1:])
+		s := seq.Id.String()
+		id2, _ := util.NewUIDFromString(string(s[0]) + "0" + s[1:])
+		got2 := idx.FindById(id2)
 		if got2 == nil || got2.Id != seq.Id {
 			t.Errorf("FindById: failed for %q", seq.Id)
 		}
