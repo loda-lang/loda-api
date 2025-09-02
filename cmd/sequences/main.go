@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -89,6 +90,7 @@ func GetIndex(s *SeqServer) *Index {
 		if err != nil {
 			log.Fatalf("Failed to load sequence index: %v", err)
 		}
+		log.Printf("Loaded %d sequences", len(idx.Sequences))
 		s.seqIndex = idx
 	}
 	return s.seqIndex
@@ -164,6 +166,31 @@ func newListHandler(l *List) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func (s *SeqServer) SequenceHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		params := mux.Vars(req)
+		idStr := params["id"]
+		uid, err := util.NewUIDFromString(idStr)
+		if err != nil {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		seq := GetIndex(s).FindById(uid)
+		if seq == nil {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(seq); err != nil {
+			util.WriteHttpInternalServerError(w)
+		}
+	})
+}
+
 func (s *SeqServer) Run(port int) {
 	router := mux.NewRouter()
 	router.Handle("/v1/oeis/names.gz", newSummaryHandler(s, "names.gz"))
@@ -172,6 +199,7 @@ func (s *SeqServer) Run(port int) {
 	for _, l := range s.lists {
 		router.Handle(fmt.Sprintf("/v1/oeis/%s.gz", l.name), newListHandler(l))
 	}
+	router.Handle("/v2/sequences/{id}", s.SequenceHandler())
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)
