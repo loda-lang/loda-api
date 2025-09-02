@@ -15,6 +15,7 @@ for f in cmd util go.mod go.sum; do
   docker cp $f loda-api:/root/go/src/github.com/loda-lang/loda-api/
 done
 docker cp image/go-build.sh loda-api:/root/
+docker cp openapi.v2.yaml loda-api:/data/
 docker exec loda-api chmod u+x /root/go-build.sh
 
 echo
