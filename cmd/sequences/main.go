@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"log"
 	"math/rand"
@@ -184,10 +183,31 @@ func (s *SeqServer) SequenceHandler() http.Handler {
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		w.Header().Set("Content-Type", "application/json")
-		if err := json.NewEncoder(w).Encode(seq); err != nil {
-			util.WriteHttpInternalServerError(w)
+		util.WriteJsonResponse(w, seq)
+	})
+}
+
+func (s *SeqServer) SequenceSearchHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
 		}
+		q := req.URL.Query().Get("q")
+		rk := req.URL.Query()["rk"]
+		fk := req.URL.Query()["fk"]
+		limit, skip := util.ParseLimitSkip(req, 10, 100)
+		results := GetIndex(s).Search(q, rk, fk, limit, skip)
+		// Return only id and name for each sequence (per SearchResult schema)
+		type IDAndName struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		}
+		var resp []IDAndName
+		for _, seq := range results {
+			resp = append(resp, IDAndName{Id: seq.Id.String(), Name: seq.Name})
+		}
+		util.WriteJsonResponse(w, resp)
 	})
 }
 
@@ -200,6 +220,7 @@ func (s *SeqServer) Run(port int) {
 		router.Handle(fmt.Sprintf("/v1/oeis/%s.gz", l.name), newListHandler(l))
 	}
 	router.Handle("/v2/sequences/{id}", s.SequenceHandler())
+	router.Handle("/v2/sequences/search", s.SequenceSearchHandler())
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)

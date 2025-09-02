@@ -1,6 +1,7 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -49,6 +50,14 @@ func WriteHttpInternalServerError(w http.ResponseWriter) {
 	WriteHttpStatus(w, http.StatusInternalServerError, "Internal Server Error")
 }
 
+// WriteJsonResponse writes the given value as JSON to the response writer, sets content-type, and handles errors
+func WriteJsonResponse(w http.ResponseWriter, value interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(value); err != nil {
+		WriteHttpInternalServerError(w)
+	}
+}
+
 func HandleNotFound(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Not found: %s", r.URL.String())
 	WriteHttpNotFound(w)
@@ -88,4 +97,25 @@ func ServeBinary(w http.ResponseWriter, req *http.Request, path string) {
 	log.Printf("Serving %s to %s", filepath.Base(path), req.UserAgent())
 	w.Header().Set("Content-Type", "application/octet-stream")
 	http.ServeFile(w, req, path)
+}
+
+// ParseLimitSkip extracts 'limit' and 'skip' query params, applies bounds, and returns (limit, skip)
+func ParseLimitSkip(req *http.Request, defaultLimit, maxLimit int) (limit, skip int) {
+	limit = defaultLimit
+	skip = 0
+	if l := req.URL.Query().Get("limit"); l != "" {
+		fmt.Sscanf(l, "%d", &limit)
+		if limit < 0 {
+			limit = 0
+		} else if limit > maxLimit {
+			limit = maxLimit
+		}
+	}
+	if s := req.URL.Query().Get("skip"); s != "" {
+		fmt.Sscanf(s, "%d", &skip)
+		if skip < 0 {
+			skip = 0
+		}
+	}
+	return
 }
