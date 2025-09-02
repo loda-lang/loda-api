@@ -3,18 +3,24 @@ package main
 import (
 	"path/filepath"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/loda-lang/loda-api/util"
 )
 
-func TestIndexLoad(t *testing.T) {
+func loadTestIndex(t *testing.T) *Index {
 	idx := NewIndex()
 	testdataDir := filepath.Join("..", "..", "testdata")
 	err := idx.Load(testdataDir)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
+	return idx
+}
+
+func TestIndexLoad(t *testing.T) {
+	idx := loadTestIndex(t)
 
 	if len(idx.Sequences) != 10 {
 		t.Fatalf("Expected 10 sequences, got %d", len(idx.Sequences))
@@ -64,12 +70,7 @@ func TestIndexLoad(t *testing.T) {
 }
 
 func TestFindById(t *testing.T) {
-	idx := NewIndex()
-	testdataDir := filepath.Join("..", "..", "testdata")
-	err := idx.Load(testdataDir)
-	if err != nil {
-		t.Fatalf("Load failed: %v", err)
-	}
+	idx := loadTestIndex(t)
 
 	// Test known sequence
 	id, _ := util.NewUIDFromString("A001")
@@ -109,5 +110,61 @@ func TestFindById(t *testing.T) {
 		if got2 == nil || got2.Id != seq.Id {
 			t.Errorf("FindById: failed for %q", seq.Id)
 		}
+	}
+}
+
+func TestIndexSearch(t *testing.T) {
+	idx := loadTestIndex(t)
+
+	// Search by query string (name substring)
+	results := idx.Search("Kolakoski", nil, nil, 0, 0)
+	if len(results) != 1 {
+		t.Errorf("Search Kolakoski: got %d results, want 1", len(results))
+	} else if !strings.Contains(results[0].Name, "Kolakoski") {
+		t.Errorf("Search Kolakoski: wrong sequence name %q", results[0].Name)
+	}
+
+	// Search by required keyword
+	results = idx.Search("", []string{"core"}, nil, 0, 0)
+	for _, seq := range results {
+		found := false
+		for _, kw := range seq.Keywords {
+			if kw == "core" {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Search core: sequence %q missing required keyword", seq.Id)
+		}
+	}
+
+	// Search by forbidden keyword
+	results = idx.Search("", nil, []string{"hard"}, 0, 0)
+	for _, seq := range results {
+		for _, kw := range seq.Keywords {
+			if kw == "hard" {
+				t.Errorf("Search forbidden hard: sequence %q contains forbidden keyword", seq.Id)
+			}
+		}
+	}
+
+	// Search with query tokens (all must match)
+	results = idx.Search("groups order", nil, nil, 0, 0)
+	if len(results) != 1 || !strings.Contains(results[0].Name, "groups") || !strings.Contains(results[0].Name, "order") {
+		t.Errorf("Search groups order: got %d results, want 1 with correct name", len(results))
+	}
+
+	// Pagination: skip and limit
+	allResults := idx.Search("", nil, nil, 0, 0)
+	if len(allResults) != 10 {
+		t.Fatalf("All results: got %d results, want 10", len(allResults))
+	}
+	paged := idx.Search("", nil, nil, 2, 1)
+	if len(paged) != 2 {
+		t.Errorf("Pagination: got %d results, want 2", len(paged))
+	}
+	if paged[0].Id != allResults[1].Id || paged[1].Id != allResults[2].Id {
+		t.Errorf("Pagination: unexpected sequence IDs")
 	}
 }

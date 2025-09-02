@@ -184,3 +184,72 @@ func (idx *Index) FindById(id util.UID) *Sequence {
 	}
 	return nil
 }
+
+// Search finds sequences matching the query, required/forbidden keywords, and applies pagination.
+func (idx *Index) Search(query string, requiredKeywords, forbiddenKeywords []string, limit, skip int) []Sequence {
+	var results []Sequence
+	required := make(map[string]struct{})
+	forbidden := make(map[string]struct{})
+	for _, k := range requiredKeywords {
+		required[strings.ToLower(k)] = struct{}{}
+	}
+	for _, k := range forbiddenKeywords {
+		forbidden[strings.ToLower(k)] = struct{}{}
+	}
+	var tokens []string
+	if query != "" {
+		tokens = strings.Fields(query)
+	}
+	count := 0
+	for _, seq := range idx.Sequences {
+		// Keyword filtering
+		kwset := make(map[string]struct{})
+		for _, kw := range seq.Keywords {
+			kwset[strings.ToLower(kw)] = struct{}{}
+		}
+		// Must have all required keywords
+		match := true
+		for k := range required {
+			if _, ok := kwset[k]; !ok {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		// Must not have any forbidden keywords
+		for k := range forbidden {
+			if _, ok := kwset[k]; ok {
+				match = false
+				break
+			}
+		}
+		if !match {
+			continue
+		}
+		// Query string filtering (case-insensitive, all tokens must be present in name)
+		if len(tokens) > 0 {
+			nameLower := strings.ToLower(seq.Name)
+			for _, token := range tokens {
+				if !strings.Contains(nameLower, strings.ToLower(token)) {
+					match = false
+					break
+				}
+			}
+			if !match {
+				continue
+			}
+		}
+		// Pagination: skip first 'skip' matches, then collect up to 'limit'
+		if count < skip {
+			count++
+			continue
+		}
+		if limit > 0 && len(results) >= limit {
+			break
+		}
+		results = append(results, seq)
+	}
+	return results
+}
