@@ -6,39 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 )
-
-type Sequence struct {
-	Id       string
-	Name     string
-	Keywords []string
-	Terms    string
-}
-
-func (s *Sequence) IdDomain() byte {
-	return s.Id[0]
-}
-
-func (s *Sequence) IdNumber() int64 {
-	i, err := strconv.ParseInt(s.Id[1:], 10, 64)
-	if err != nil {
-		return 0
-	}
-	return i
-}
-
-func (s *Sequence) TermsList() []string {
-	var terms []string
-	for _, t := range strings.Split(s.Terms, ",") {
-		t = strings.TrimSpace(t)
-		if t != "" {
-			terms = append(terms, t)
-		}
-	}
-	return terms
-}
 
 type Index struct {
 	Sequences []Sequence
@@ -48,7 +17,7 @@ func NewIndex() *Index {
 	return &Index{}
 }
 
-// Load reads and parses the "names" and "stripped" files to populate the Sequences index.
+// Load reads and parses the "names", "keywords" and "stripped" files to populate the Sequences index.
 func (idx *Index) Load(dataDir string) error {
 	namesPath := filepath.Join(dataDir, "names")
 	nameMap, err := loadNamesFile(namesPath)
@@ -167,4 +136,47 @@ func loadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		return nil, fmt.Errorf("failed to read stripped file: %w", err)
 	}
 	return sequences, nil
+}
+
+func (idx *Index) FindById(id string) *Sequence {
+	if len(id) < 2 {
+		return nil
+	}
+	test := Sequence{Id: id}
+	d := test.IdDomain()
+	n := int64(test.IdNumber())
+	if n >= 0 && n < int64(len(idx.Sequences)) && idx.Sequences[n].IdDomain() == d {
+		k := idx.Sequences[n].IdNumber()
+		if k == n {
+			return &idx.Sequences[n]
+		} else if k < n {
+			// Search forward
+			for i := n + 1; i < int64(len(idx.Sequences)); i++ {
+				if idx.Sequences[i].IdDomain() != d {
+					break
+				}
+				if idx.Sequences[i].IdNumber() == n {
+					return &idx.Sequences[i]
+				}
+			}
+		} else {
+			// Search backward
+			for i := n - 1; i >= 0; i-- {
+				if idx.Sequences[i].IdDomain() != d {
+					break
+				}
+				if idx.Sequences[i].IdNumber() == n {
+					return &idx.Sequences[i]
+				}
+			}
+		}
+	} else {
+		// Full search
+		for _, s := range idx.Sequences {
+			if s.IdDomain() == d && s.IdNumber() == n {
+				return &s
+			}
+		}
+	}
+	return nil
 }
