@@ -34,8 +34,9 @@ func (t *LODATool) Install() error {
 	// Install the "loda" executable in the "bin" directory
 	lodaExec := filepath.Join(binDir, "loda")
 	if !util.FileExists(lodaExec) {
-		log.Printf("Downloading loda executable to: %s", lodaExec)
-		cmd := exec.Command("curl", "-fsSLo", "loda", "https://github.com/loda-lang/loda-cpp/releases/latest/download/loda-macos-arm64")
+		executable := "loda-linux-x86"
+		log.Printf("Downloading %s to: %s", executable, lodaExec)
+		cmd := exec.Command("curl", "-fsSLo", "loda", "https://github.com/loda-lang/loda-cpp/releases/latest/download/"+executable)
 		cmd.Dir = binDir
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
