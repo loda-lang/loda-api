@@ -307,7 +307,7 @@ func (s *SeqServer) StartCrawler() {
 func main() {
 	setup := cmd.GetSetup("sequences")
 	util.MustDirExist(setup.DataDir)
-	oeisDir := filepath.Join(setup.DataDir, "oeis")
+	oeisDir := filepath.Join(setup.DataDir, "seqs", "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewSeqServer(oeisDir, setup.UpdateInterval)
 	s.StartCrawler()

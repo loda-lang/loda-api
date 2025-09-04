@@ -70,8 +70,8 @@ ensure_dir $source_host data
 ensure_file $source_host data/checkpoint.txt
 ensure_file $source_host data/setup.txt
 for f in $OEIS_FILES; do
-  ensure_file $source_host data/oeis/${f}
-  ensure_file $source_host data/oeis/${f}.gz
+  ensure_file $source_host data/seqs/oeis/${f}
+  ensure_file $source_host data/seqs/oeis/${f}.gz
 done
 ensure_dir $source_host grafana
 ensure_dir $source_host influxdb
@@ -94,8 +94,8 @@ gssh $source_host "sudo chmod -R o+r data"
 gscp "$source_host:data/checkpoint.txt" .
 gscp "$source_host:data/setup.txt" .
 for f in $OEIS_FILES; do
-  gscp "$source_host:data/oeis/${f}" .
-  gscp "$source_host:data/oeis/${f}.gz" .
+  gscp "$source_host:data/seqs/oeis/${f}" .
+  gscp "$source_host:data/seqs/oeis/${f}.gz" .
 done
 echo
 
@@ -109,10 +109,10 @@ gscp setup.txt $target_host:data/
 ensure_file $target_host data/checkpoint.txt
 ensure_file $target_host data/setup.txt
 for f in $OEIS_FILES; do
-  gscp ${f} $target_host:data/oeis/
-  gscp ${f}.gz $target_host:data/oeis/
-  ensure_file $target_host data/oeis/${f}
-  ensure_file $target_host data/oeis/${f}.gz
+  gscp ${f} $target_host:data/seqs/oeis/
+  gscp ${f}.gz $target_host:data/seqs/oeis/
+  ensure_file $target_host data/seqs/oeis/${f}
+  ensure_file $target_host data/seqs/oeis/${f}.gz
 done
 rm_local checkpoint.txt setup.txt 
 for f in $OEIS_FILES; do
