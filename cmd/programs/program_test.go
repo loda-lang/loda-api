@@ -17,7 +17,7 @@ func checkProgramMeta(t *testing.T, prog Program, wantID, wantNamePrefix, wantSu
 	if !strings.HasPrefix(prog.Name, wantNamePrefix) {
 		t.Errorf("unexpected Name: %q", prog.Name)
 	}
-	if prog.Submitter != wantSubmitter {
+	if len(wantSubmitter) > 0 && prog.Submitter.Name != wantSubmitter {
 		t.Errorf("expected Submitter %q, got %q", wantSubmitter, prog.Submitter)
 	}
 }
@@ -85,5 +85,43 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 	}
 	if len(out.Operations) != len(prog.Operations) {
 		t.Errorf("Operations length mismatch after roundtrip")
+	}
+}
+
+func TestLoadProgramsCSV(t *testing.T) {
+	submittersPath := filepath.Join("../../testdata/stats/submitters.csv")
+	programsPath := filepath.Join("../../testdata/stats/programs.csv")
+	submitters, err := LoadSubmitters(submittersPath)
+	if err != nil {
+		t.Fatalf("LoadSubmitters failed: %v", err)
+	}
+	programs, err := LoadProgramsCSV(programsPath, submitters)
+	if err != nil {
+		t.Fatalf("LoadProgramsCSV failed: %v", err)
+	}
+	if len(programs) != 10 {
+		t.Errorf("expected 10 programs, got %d", len(programs))
+	}
+	// Check a few known values
+	p := programs[0]
+	if p.Id.String() != "A000002" || p.Length != 10 || p.Usages != 20 || p.IncEval != true || p.LogEval != false {
+		t.Errorf("unexpected program[0]: %+v", p)
+	}
+	if p.Submitter == nil || p.Submitter.Name != "" {
+		t.Errorf("unexpected submitter for program[0]: %+v", p.Submitter)
+	}
+	p = programs[2]
+	if p.Id.String() != "A000006" || p.Length != 2 || p.Usages != 1 || p.IncEval != false || p.LogEval != true {
+		t.Errorf("unexpected program[2]: %+v", p)
+	}
+	if p.Submitter == nil || p.Submitter.Name != "Nova_Sky" {
+		t.Errorf("unexpected submitter for program[2]: %+v", p.Submitter)
+	}
+	p = programs[9]
+	if p.Id.String() != "A000016" || p.Length != 15 || p.Usages != 4 {
+		t.Errorf("unexpected program[9]: %+v", p)
+	}
+	if p.Submitter == nil || p.Submitter.Name != "@Pixel$Hero" {
+		t.Errorf("unexpected submitter for program[9]: %+v", p.Submitter)
 	}
 }
