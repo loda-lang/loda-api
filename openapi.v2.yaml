@@ -3,7 +3,7 @@ info:
   title: LODA API v2
   version: "2.0.0"
   description: |
-    API for analyzing, evaluating and submitting LODA programs and integer sequences.
+    API for managing, evaluating and submitting LODA programs and integer sequences.
 servers:
 - url: https://api.loda-lang.org/v2
 tags:
