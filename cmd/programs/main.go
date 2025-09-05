@@ -293,10 +293,10 @@ func main() {
 	setup := cmd.GetSetup("programs")
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
-	// t := NewLODATool(setup.DataDir)
-	// if err := t.Install(); err != nil {
-	//	log.Fatalf("LODA tool installation failed: %v", err)
-	//}
+	t := NewLODATool(setup.DataDir)
+	if err := t.Install(); err != nil {
+		log.Fatalf("LODA tool installation failed: %v", err)
+	}
 	s := NewProgramsServer(setup.DataDir, i)
 	s.Run(8081)
 }

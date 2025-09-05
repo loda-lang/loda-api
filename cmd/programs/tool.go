@@ -49,6 +49,12 @@ func (t *LODATool) Install() error {
 		if err := os.Chmod(lodaExec, 0755); err != nil {
 			return fmt.Errorf("failed to set executable permission on loda: %w", err)
 		}
+	} else {
+		log.Printf("Checking for new LODA version")
+		err := t.Exec("upgrade")
+		if err != nil {
+			return fmt.Errorf("failed to upgrade loda executable: %w", err)
+		}
 	}
 	// Ensure the "programs" directory exists by cloning the repository if necessary
 	progsDir := filepath.Join(t.dataDir, "programs")
