@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/loda-lang/loda-api/util"
 )
@@ -83,9 +84,12 @@ func (t *LODATool) Exec(args ...string) error {
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LODA_HOME="+t.dataDir)
 	output, err := cmd.CombinedOutput()
-	log.Printf("loda output: %s", string(output))
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		log.Print(line)
+	}
 	if err != nil {
-		log.Printf("loda error: %v", err)
+		log.Printf("loda execution error: %v", err)
 	}
 	return err
 }
