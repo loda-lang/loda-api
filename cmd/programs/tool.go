@@ -80,9 +80,12 @@ func (t *LODATool) Exec(args ...string) error {
 		return fmt.Errorf("loda executable not found at: %s", lodaExec)
 	}
 	cmd := exec.Command(lodaExec, args...)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LODA_HOME="+t.dataDir)
-	return cmd.Run()
+	output, err := cmd.CombinedOutput()
+	log.Printf("loda output: %s", string(output))
+	if err != nil {
+		log.Printf("loda error: %v", err)
+	}
+	return err
 }
