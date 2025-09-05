@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -15,7 +16,7 @@ type Program struct {
 	Id         util.UID
 	Name       string
 	Code       string
-	Submitter  *Submitter
+	Submitter  *shared.Submitter
 	Keywords   []string
 	Operations []string
 	Length     int
@@ -42,7 +43,7 @@ func NewProgramFromText(code string) Program {
 var expectedHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
 
 // LoadProgramsCSV parses the programs.csv file and returns a slice of Program structs.
-func LoadProgramsCSV(path string, submitters []*Submitter) ([]*Program, error) {
+func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]*Program, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -72,7 +73,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]*Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		var submitter *Submitter = nil
+		var submitter *shared.Submitter = nil
 		if refId, err := strconv.Atoi(rec[1]); err == nil {
 			if refId >= 0 && refId < len(submitters) {
 				submitter = submitters[refId]
@@ -141,7 +142,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	submitter := &Submitter{Name: aux.Submitter}
+	submitter := &shared.Submitter{Name: aux.Submitter}
 	p.Id = uid
 	p.Name = aux.Name
 	p.Code = aux.Code

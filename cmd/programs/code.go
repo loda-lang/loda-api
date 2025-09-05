@@ -3,6 +3,7 @@ package main
 import (
 	"strings"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -41,13 +42,13 @@ func extractIdAndName(code string) (util.UID, string) {
 	return id, name
 }
 
-func extractSubmitter(code string) *Submitter {
+func extractSubmitter(code string) *shared.Submitter {
 	lines := strings.Split(code, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if after, ok := strings.CutPrefix(line, "; Submitted by "); ok {
 			name := strings.TrimSpace(after)
-			return &Submitter{Name: name}
+			return &shared.Submitter{Name: name}
 		}
 	}
 	return nil

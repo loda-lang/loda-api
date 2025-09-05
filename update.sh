@@ -11,8 +11,10 @@ fi
 
 echo
 echo "### COPY SOURCES ###"
-for f in cmd util go.mod go.sum; do
-  docker cp $f loda-api:/root/go/src/github.com/loda-lang/loda-api/
+GOROOT=/root/go/src/github.com/loda-lang/loda-api/
+for f in cmd shared util go.mod go.sum; do
+  docker exec loda-api rm -rf $GOROOT/$f
+  docker cp $f loda-api:$GOROOT/$f
 done
 docker cp image/go-build.sh loda-api:/root/
 docker cp openapi.v2.yaml loda-api:/data/

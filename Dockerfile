@@ -71,6 +71,7 @@ COPY image/certbot-renew.sh /root/
 
 RUN mkdir -p /root/go/src/github.com/loda-lang/loda-api
 COPY cmd /root/go/src/github.com/loda-lang/loda-api/cmd
+COPY shared /root/go/src/github.com/loda-lang/loda-api/shared
 COPY util /root/go/src/github.com/loda-lang/loda-api/util
 COPY go.mod go.sum /root/go/src/github.com/loda-lang/loda-api/
 RUN chmod +x /root/go-build.sh

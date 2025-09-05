@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/loda-lang/loda-api/shared"
 )
 
 // checkProgramMeta checks the ID, name prefix, and submitter of a Program.
@@ -91,7 +93,7 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 func TestLoadProgramsCSV(t *testing.T) {
 	submittersPath := filepath.Join("../../testdata/stats/submitters.csv")
 	programsPath := filepath.Join("../../testdata/stats/programs.csv")
-	submitters, err := LoadSubmitters(submittersPath)
+	submitters, err := shared.LoadSubmitters(submittersPath)
 	if err != nil {
 		t.Fatalf("LoadSubmitters failed: %v", err)
 	}
