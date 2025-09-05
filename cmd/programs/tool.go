@@ -52,7 +52,7 @@ func (t *LODATool) Install() error {
 		}
 	} else {
 		log.Printf("Checking for new LODA version")
-		err := t.Exec("upgrade")
+		err, _ := t.Exec("upgrade")
 		if err != nil {
 			return fmt.Errorf("failed to upgrade loda executable: %w", err)
 		}
@@ -71,25 +71,32 @@ func (t *LODATool) Install() error {
 	return nil
 }
 
-func (t *LODATool) Exec(args ...string) error {
+func (t *LODATool) Exec(args ...string) (error, string) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
-		return fmt.Errorf("failed to get user home directory: %w", err)
+		return fmt.Errorf("failed to get user home directory: %w", err), ""
 	}
 	lodaExec := filepath.Join(homeDir, "bin", "loda")
 	if !util.FileExists(lodaExec) {
-		return fmt.Errorf("loda executable not found at: %s", lodaExec)
+		return fmt.Errorf("loda executable not found at: %s", lodaExec), ""
 	}
 	cmd := exec.Command(lodaExec, args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LODA_HOME="+t.dataDir)
-	output, err := cmd.CombinedOutput()
-	lines := strings.Split(string(output), "\n")
+	out, err := cmd.CombinedOutput()
+	output := string(out)
+	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		log.Print(line)
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		parts := strings.SplitN(line, "|", 2)
+		if len(parts) == 2 {
+			log.Print(parts[1])
+		} else {
+			log.Print(line)
+		}
 	}
-	if err != nil {
-		log.Printf("loda execution error: %v", err)
-	}
-	return err
+	return err, output
 }
