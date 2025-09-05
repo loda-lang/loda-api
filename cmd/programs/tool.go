@@ -24,14 +24,17 @@ func (t *LODATool) Install() error {
 	if !util.FileExists(setupFile) {
 		return fmt.Errorf("setup.txt file not found in data directory: %s", t.dataDir)
 	}
-	// Create the "bin" directory if it doesn't exist
-	binDir := filepath.Join(t.dataDir, "bin")
+	// Install the "loda" executable in $HOME/bin
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	binDir := filepath.Join(homeDir, "bin")
 	if !util.FileExists(binDir) {
 		if err := os.MkdirAll(binDir, 0755); err != nil {
-			return fmt.Errorf("failed to create bin directory: %w", err)
+			return fmt.Errorf("failed to create $HOME/bin directory: %w", err)
 		}
 	}
-	// Install the "loda" executable in the "bin" directory
 	lodaExec := filepath.Join(binDir, "loda")
 	if !util.FileExists(lodaExec) {
 		executable := "loda-linux-x86"
@@ -62,7 +65,11 @@ func (t *LODATool) Install() error {
 }
 
 func (t *LODATool) Exec(args ...string) error {
-	lodaExec := filepath.Join(t.dataDir, "bin", "loda")
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get user home directory: %w", err)
+	}
+	lodaExec := filepath.Join(homeDir, "bin", "loda")
 	if !util.FileExists(lodaExec) {
 		return fmt.Errorf("loda executable not found at: %s", lodaExec)
 	}
