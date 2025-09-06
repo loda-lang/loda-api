@@ -44,16 +44,16 @@ func TestContainsAllKeywords(t *testing.T) {
 	c, _ := EncodeKeywords([]string{"base"})
 	d, _ := EncodeKeywords([]string{"nice"})
 
-	if !ContainsAllKeywords(a, b) {
+	if !ContainsAllKeywords(b, a) {
 		t.Error("expected a to be contained in b")
 	}
-	if !ContainsAllKeywords(c, a) {
+	if !ContainsAllKeywords(a, c) {
 		t.Error("expected c to be contained in a")
 	}
-	if ContainsAllKeywords(b, a) {
-		t.Error("expected b not to be contained in a")
+	if ContainsAllKeywords(a, b) {
+		t.Error("expected a not to be contained in b")
 	}
-	if ContainsAllKeywords(d, a) {
+	if ContainsAllKeywords(a, d) {
 		t.Error("expected d not to be contained in a")
 	}
 }
