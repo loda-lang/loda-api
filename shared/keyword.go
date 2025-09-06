@@ -47,12 +47,12 @@ func DecodeKeywords(bits uint64) []string {
 	return result
 }
 
-// ContainsAllKeywords returns true if all keywords in bits1 are present in bits2
+// ContainsAllKeywords returns true if all keywords in bits2 are present in bits1
 func ContainsAllKeywords(bits1, bits2 uint64) bool {
-	return bits1&bits2 == bits1
+	return bits1&bits2 == bits2
 }
 
-// ContainsNoKeywords returns true if none of the keywords in bits1 are present in bits2
+// ContainsNoKeywords returns true if none of the keywords in bits2 are present in bits1
 func ContainsNoKeywords(bits1, bits2 uint64) bool {
 	return bits1&bits2 == 0
 }

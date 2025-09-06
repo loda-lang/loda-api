@@ -1,10 +1,10 @@
 A000001: nonn,core,nice,hard
-A000002: nonn,core,easy,nice,changed
+A000002: nonn,core,easy,nice
 A000003: nonn,nice,easy
 A000004: core,easy,nonn,mult
-A000005: easy,core,nonn,nice,mult,hear
+A000005: easy,core,nonn,nice,mult
 A000006: nonn,easy,nice
 A000007: core,nonn,mult,cons,easy
 A000008: nonn,easy,nice
 A000009: nonn,core,easy,nice
-A000010: easy,core,nonn,mult,nice,hear,changed
+A000010: easy,core,nonn,mult,nice

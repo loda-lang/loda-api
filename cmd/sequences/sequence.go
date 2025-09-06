@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
 type Sequence struct {
 	Id       util.UID
 	Name     string
-	Keywords []string
+	Keywords uint64 // Bitmask of keywords
 	Terms    string
 }
 
@@ -34,7 +35,7 @@ func (s Sequence) MarshalJSON() ([]byte, error) {
 	}{
 		Id:       s.Id.String(),
 		Name:     s.Name,
-		Keywords: s.Keywords,
+		Keywords: shared.DecodeKeywords(s.Keywords),
 		Terms:    s.TermsList(),
 	})
 }
@@ -53,9 +54,13 @@ func (s *Sequence) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
+	keywords, err := shared.EncodeKeywords(aux.Keywords)
+	if err != nil {
+		return err
+	}
 	s.Id = uid
 	s.Name = aux.Name
-	s.Keywords = aux.Keywords
+	s.Keywords = keywords
 	s.Terms = strings.Join(aux.Terms, ",")
 	if len(s.Terms) > 0 {
 		s.Terms = "," + s.Terms + ","

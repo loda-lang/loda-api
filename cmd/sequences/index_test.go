@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -40,7 +41,7 @@ func TestIndexLoad(t *testing.T) {
 		"A000002": {
 			name:     "Kolakoski sequence: a(n) is length of n-th run; a(1) = 1; sequence consists just of 1's and 2's.",
 			terms:    ",1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,",
-			keywords: []string{"nonn", "core", "easy", "nice", "changed"},
+			keywords: []string{"nonn", "core", "easy", "nice"},
 		},
 	}
 	for _, seq := range idx.Sequences {
@@ -51,13 +52,15 @@ func TestIndexLoad(t *testing.T) {
 			if seq.Terms != w.terms {
 				t.Errorf("Sequence %s: got terms %q, want %q", seq.Id, seq.Terms, w.terms)
 			}
-			if len(seq.Keywords) != len(w.keywords) {
-				t.Errorf("Sequence %s: got %d keywords, want %d", seq.Id, len(seq.Keywords), len(w.keywords))
+			gotKeywords := shared.DecodeKeywords(seq.Keywords)
+			sort.Strings(gotKeywords)
+			sort.Strings(w.keywords)
+			if len(gotKeywords) != len(w.keywords) {
+				t.Errorf("Sequence %s: got %d keywords, want %d", seq.Id, len(gotKeywords), len(w.keywords))
 			} else {
-				sort.Strings(w.keywords)
 				for i := range w.keywords {
-					if seq.Keywords[i] != w.keywords[i] {
-						t.Errorf("Sequence %s: keyword %d: got %q, want %q", seq.Id, i, seq.Keywords[i], w.keywords[i])
+					if gotKeywords[i] != w.keywords[i] {
+						t.Errorf("Sequence %s: keyword %d: got %q, want %q", seq.Id, i, gotKeywords[i], w.keywords[i])
 					}
 				}
 			}
@@ -127,8 +130,9 @@ func TestIndexSearch(t *testing.T) {
 	// Search by required keyword
 	results = idx.Search("", []string{"core"}, nil, 0, 0)
 	for _, seq := range results {
+		gotKeywords := shared.DecodeKeywords(seq.Keywords)
 		found := false
-		for _, kw := range seq.Keywords {
+		for _, kw := range gotKeywords {
 			if kw == "core" {
 				found = true
 				break
@@ -142,7 +146,8 @@ func TestIndexSearch(t *testing.T) {
 	// Search by forbidden keyword
 	results = idx.Search("", nil, []string{"hard"}, 0, 0)
 	for _, seq := range results {
-		for _, kw := range seq.Keywords {
+		gotKeywords := shared.DecodeKeywords(seq.Keywords)
+		for _, kw := range gotKeywords {
 			if kw == "hard" {
 				t.Errorf("Search forbidden hard: sequence %q contains forbidden keyword", seq.Id)
 			}

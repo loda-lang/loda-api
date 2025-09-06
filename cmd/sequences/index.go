@@ -8,6 +8,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -39,8 +40,12 @@ func (idx *Index) Load(dataDir string) error {
 	// Attach keywords to sequences
 	for i := range sequences {
 		id := sequences[i].Id.String()
-		if kws, ok := keywordsMap[id]; ok {
-			sequences[i].Keywords = kws
+		if keywords, ok := keywordsMap[id]; ok {
+			encoded, err := shared.EncodeKeywords(keywords)
+			if err != nil {
+				return err
+			}
+			sequences[i].Keywords = encoded
 		}
 	}
 	// Sort sequences by ID
@@ -97,7 +102,7 @@ func loadKeywordsFile(path string) (map[string][]string, error) {
 			var trimmed []string
 			for _, k := range keywords {
 				k = strings.TrimSpace(k)
-				if k != "" {
+				if k != "" && k != "changed" && k != "hear" {
 					trimmed = append(trimmed, k)
 				}
 			}
@@ -188,13 +193,13 @@ func (idx *Index) FindById(id util.UID) *Sequence {
 // Search finds sequences matching the query, required/forbidden keywords, and applies pagination.
 func (idx *Index) Search(query string, requiredKeywords, forbiddenKeywords []string, limit, skip int) []Sequence {
 	var results []Sequence
-	required := make(map[string]struct{})
-	forbidden := make(map[string]struct{})
-	for _, k := range requiredKeywords {
-		required[strings.ToLower(k)] = struct{}{}
+	required, err := shared.EncodeKeywords(requiredKeywords)
+	if err != nil {
+		return results
 	}
-	for _, k := range forbiddenKeywords {
-		forbidden[strings.ToLower(k)] = struct{}{}
+	forbidden, err := shared.EncodeKeywords(forbiddenKeywords)
+	if err != nil {
+		return results
 	}
 	var tokens []string
 	if query != "" {
@@ -202,32 +207,14 @@ func (idx *Index) Search(query string, requiredKeywords, forbiddenKeywords []str
 	}
 	count := 0
 	for _, seq := range idx.Sequences {
-		// Keyword filtering
-		kwset := make(map[string]struct{})
-		for _, kw := range seq.Keywords {
-			kwset[strings.ToLower(kw)] = struct{}{}
+		// Check required and forbidden keywords
+		if !shared.ContainsAllKeywords(seq.Keywords, required) {
+			continue
 		}
-		// Must have all required keywords
+		if !shared.ContainsNoKeywords(seq.Keywords, forbidden) {
+			continue
+		}
 		match := true
-		for k := range required {
-			if _, ok := kwset[k]; !ok {
-				match = false
-				break
-			}
-		}
-		if !match {
-			continue
-		}
-		// Must not have any forbidden keywords
-		for k := range forbidden {
-			if _, ok := kwset[k]; ok {
-				match = false
-				break
-			}
-		}
-		if !match {
-			continue
-		}
 		// Query string filtering (case-insensitive, all tokens must be present in name)
 		if len(tokens) > 0 {
 			nameLower := strings.ToLower(seq.Name)
