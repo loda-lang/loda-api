@@ -102,9 +102,14 @@ func loadKeywordsFile(path string) (map[string][]string, error) {
 			var trimmed []string
 			for _, k := range keywords {
 				k = strings.TrimSpace(k)
-				if k != "" && k != "changed" && k != "hear" {
-					trimmed = append(trimmed, k)
+				if k == "" {
+					continue
 				}
+				_, err := shared.EncodeKeywords([]string{k})
+				if err != nil {
+					continue
+				}
+				trimmed = append(trimmed, k)
 			}
 			sort.Strings(trimmed)
 			keywordsMap[id] = trimmed
