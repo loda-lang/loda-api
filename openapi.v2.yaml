@@ -11,6 +11,8 @@ tags:
   description: Endpoints related to LODA programs
 - name: Sequences
   description: Endpoints related to integer sequences
+- name: Stats
+  description: Endpoints related to statistics
 paths:
   /sequences/{id}:
     get:
@@ -119,6 +121,20 @@ paths:
           description: Program submitted successfully
         '400':
           description: Program validation error
+  /stats/submitters:
+    get:
+      tags: [ Stats ]
+      summary: List all submitters
+      description: Returns a list of all submitters with their number of submitted programs.
+      responses:
+        '200':
+          description: List of submitters
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Submitter'
 components:
   parameters:
     ID:
@@ -241,3 +257,12 @@ components:
       properties:
         terms:
           $ref: '#/components/schemas/Terms'
+    Submitter:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the submitter
+        numPrograms:
+          type: integer
+          description: Number of programs submitted by this user

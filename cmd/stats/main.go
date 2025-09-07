@@ -11,21 +11,39 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/loda-lang/loda-api/cmd"
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
 type StatsServer struct {
+	dataDir        string
 	openApiSpec    []byte
+	submitters     []*shared.Submitter
 	influxDbClient *util.InfluxDbClient
 	cpuHours       int
 	mutex          sync.Mutex
 }
 
-func NewStatsServer(influxDbClient *util.InfluxDbClient, openApiSpec []byte) *StatsServer {
+func NewStatsServer(influxDbClient *util.InfluxDbClient, openApiSpec []byte, dataDir string) *StatsServer {
 	return &StatsServer{
+		dataDir:        dataDir,
 		openApiSpec:    openApiSpec,
 		influxDbClient: influxDbClient,
 		cpuHours:       0,
+	}
+}
+
+func (s *StatsServer) loadSubmitters() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	path := filepath.Join(s.dataDir, "stats", "submitters.csv")
+	submitters, err := shared.LoadSubmittersCSV(path)
+	if err != nil {
+		log.Printf("Failed to load submitters: %v", err)
+		s.submitters = nil
+	} else {
+		log.Printf("Loaded %d submitters", len(submitters))
+		s.submitters = submitters
 	}
 }
 
@@ -98,20 +116,56 @@ func newOpenAPIYAMLHandler(s *StatsServer) http.Handler {
 	})
 }
 
+// Handler for /v2/stats/submitters
+func newSubmittersHandler(s *StatsServer) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		if len(s.submitters) == 0 {
+			log.Printf("No submitters found")
+			util.WriteHttpInternalServerError(w)
+			return
+		}
+		// Remove nils (from sparse array)
+		var result []shared.Submitter
+		for _, sub := range s.submitters {
+			if sub != nil {
+				result = append(result, *sub)
+			}
+		}
+		util.WriteJsonResponse(w, result)
+	})
+}
+
 func (s *StatsServer) Run(port int) {
-	// regularly publish metrics
-	ticker := time.NewTicker(10 * time.Minute)
-	defer ticker.Stop()
+
+	// initial data load
+	s.loadSubmitters()
+
+	// schedule background tasks
+	reloadTicker := time.NewTicker(24 * time.Hour)
+	defer reloadTicker.Stop()
 	go func() {
-		for range ticker.C {
+		for range reloadTicker.C {
+			s.loadSubmitters()
+		}
+	}()
+	metricsTicker := time.NewTicker(10 * time.Minute)
+	defer metricsTicker.Stop()
+	go func() {
+		for range metricsTicker.C {
 			s.publishMetrics()
 		}
 	}()
+
 	// start web server
 	router := mux.NewRouter()
 	router.Handle("/v1/cpuhours", newCpuHourHandler(s))
 	router.Handle("/v2/openapi", newOpenAPIHandler(s))
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
+	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
@@ -127,6 +181,6 @@ func main() {
 	}
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
-	s := NewStatsServer(i, openApiSpec)
+	s := NewStatsServer(i, openApiSpec, setup.DataDir)
 	s.Run(8082)
 }
