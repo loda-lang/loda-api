@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,7 +39,7 @@ type ProgramsServer struct {
 	influxDbClient        *util.InfluxDbClient
 	lodaTool              *LODATool
 	session               time.Time
-	programs              []*Program
+	programs              []Program
 	submitters            []*shared.Submitter
 	submissions           []string
 	submissionsPerProfile map[string]int
@@ -99,7 +99,7 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		defer req.Body.Close()
-		body, err := ioutil.ReadAll(req.Body)
+		body, err := io.ReadAll(req.Body)
 		if err != nil {
 			util.WriteHttpInternalServerError(w)
 			return

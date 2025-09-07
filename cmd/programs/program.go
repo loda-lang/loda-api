@@ -43,7 +43,7 @@ func NewProgramFromText(code string) Program {
 var expectedHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
 
 // LoadProgramsCSV parses the programs.csv file and returns a slice of Program structs.
-func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]*Program, error) {
+func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]Program, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]*Program, e
 	if !slices.Equal(header, expectedHeader) {
 		return nil, err
 	}
-	var programs []*Program
+	var programs []Program
 	for {
 		rec, err := r.Read()
 		if err == io.EOF {
@@ -89,7 +89,7 @@ func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]*Program, e
 		}
 		incEval := rec[4] == "1"
 		logEval := rec[5] == "1"
-		p := &Program{
+		p := Program{
 			Id:        uid,
 			Submitter: submitter,
 			Length:    length,
