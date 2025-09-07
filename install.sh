@@ -38,6 +38,7 @@ if [ ! -f "$HOME/data/setup.txt" ]; then
   echo "LODA_INFLUXDB_HOST=http://localhost/influxdb" >> "$HOME/data/setup.txt"
   echo "LODA_LOG_DIR=/var/log/loda" >> "$HOME/data/setup.txt"
   echo "LODA_OEIS_FETCH_DIRECT=yes" >> "$HOME/data/setup.txt"
+  echo "LODA_IS_API_SERVER=yes" >> "$HOME/data/setup.txt"
 fi
 if [ ! -f "$HOME/data/openapi.v2.yaml" ]; then
   cp ./openapi.v2.yaml $HOME/data/openapi.v2.yaml
