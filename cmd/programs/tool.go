@@ -39,6 +39,12 @@ func (t *LODATool) Install() error {
 			return fmt.Errorf("failed to create $HOME/bin directory: %w", err)
 		}
 	}
+	dataBinDir := filepath.Join(t.dataDir, "bin")
+	if !util.FileExists(dataBinDir) {
+		if err := os.Symlink(binDir, dataBinDir); err != nil && !os.IsExist(err) {
+			return fmt.Errorf("failed to create symlink from %s to %s: %w", binDir, dataBinDir, err)
+		}
+	}
 	lodaExec := filepath.Join(binDir, "loda")
 	if !util.FileExists(lodaExec) {
 		executable := "loda-linux-x86"
