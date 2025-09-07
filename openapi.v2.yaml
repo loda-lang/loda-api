@@ -208,7 +208,7 @@ components:
             type: array
             description: Keywords for this sequence
             items:
-              $ref: '#/components/schemas/Keyword'
+              type: string
           oeisRef:
             type: string
             description: Reference to the OEIS entry (if applicable)
@@ -230,7 +230,7 @@ components:
             type: array
             description: Keywords for this program
             items:
-              $ref: '#/components/schemas/Keyword'
+              type: string
           operations:
             type: array
             description: Operations of the LODA program as an array of strings
