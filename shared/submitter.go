@@ -10,9 +10,9 @@ import (
 )
 
 type Submitter struct {
-	Name        string
-	RefId       int
-	NumPrograms int
+	Name        string `json:"name"`
+	RefId       int    `json:"-"`
+	NumPrograms int    `json:"numPrograms"`
 }
 
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
