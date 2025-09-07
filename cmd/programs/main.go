@@ -308,7 +308,8 @@ func (s *ProgramsServer) loadCheckpoint() {
 }
 
 func (s *ProgramsServer) Run(port int) {
-	// load checkpoint
+	// load programs and checkpoint
+	s.loadPrograms()
 	s.loadCheckpoint()
 
 	// schedule background tasks
