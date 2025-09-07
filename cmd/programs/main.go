@@ -25,6 +25,7 @@ const (
 	NumProgramsPerUser   = 100
 	MaxProgramLength     = 100000
 	CheckpointInterval   = 10 * time.Minute
+	UpdateInterval       = 24 * time.Hour
 	CheckSessionInterval = 24 * time.Hour
 	ProfilePrefix        = "; Miner Profile:"
 	SubmittedByPrefix    = "; Submitted by "
@@ -35,17 +36,20 @@ const (
 type ProgramsServer struct {
 	dataDir                string
 	influxDbClient         *util.InfluxDbClient
+	lodaTool               *LODATool
 	session                time.Time
 	programs               []string
 	submisstionsPerProfile map[string]int
 	submisstionsPerUser    map[string]int
-	mutex                  sync.Mutex
+	dataMutex              sync.Mutex
+	updateMutex            sync.Mutex
 }
 
-func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient) *ProgramsServer {
+func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, lodaTool *LODATool) *ProgramsServer {
 	return &ProgramsServer{
 		dataDir:                dataDir,
 		influxDbClient:         influxDbClient,
+		lodaTool:               lodaTool,
 		session:                time.Now(),
 		programs:               []string{},
 		submisstionsPerProfile: make(map[string]int),
@@ -59,8 +63,8 @@ func newCountHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
 		util.WriteHttpOK(w, fmt.Sprint(len(s.programs)))
 	}
 	return http.HandlerFunc(f)
@@ -72,8 +76,8 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
 		s.checkSession()
 		util.WriteHttpOK(w, fmt.Sprint(s.session.Unix()))
 	}
@@ -116,8 +120,8 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		}
 
 		// main work
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
 		s.checkSession()
 		if len(s.programs) > NumProgramsMax {
 			log.Print("Maximum number of programs exceeded")
@@ -156,8 +160,8 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 		index, _ := strconv.Atoi(params["index"])
 
 		// main work
-		s.mutex.Lock()
-		defer s.mutex.Unlock()
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
 		s.checkSession()
 		if index < 0 || index >= len(s.programs) {
 			util.WriteHttpNotFound(w)
@@ -189,8 +193,8 @@ func newCheckpointHandler(s *ProgramsServer) http.Handler {
 }
 
 func (s *ProgramsServer) writeCheckpoint() error {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
 	f, err := os.Create(filepath.Join(s.dataDir, CheckpointFile))
 	if err != nil {
 		return fmt.Errorf("cannot opening checkpoint file: %v", err)
@@ -222,8 +226,8 @@ func (s *ProgramsServer) checkSession() {
 }
 
 func (s *ProgramsServer) publishMetrics() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
 	for profile, count := range s.submisstionsPerProfile {
 		labels := map[string]string{"kind": "submitted", "profile": profile}
 		s.influxDbClient.Write("programs", labels, count)
@@ -232,9 +236,20 @@ func (s *ProgramsServer) publishMetrics() {
 }
 
 func (s *ProgramsServer) clearUserStats() {
-	s.mutex.Lock()
-	defer s.mutex.Unlock()
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
 	s.submisstionsPerUser = make(map[string]int)
+}
+
+func (s *ProgramsServer) update() {
+	s.updateMutex.Lock()
+	defer s.updateMutex.Unlock()
+	if err := s.lodaTool.Install(); err != nil {
+		log.Fatalf("LODA tool installation failed: %v", err)
+	}
+	if _, err := s.lodaTool.Exec("update"); err != nil {
+		log.Printf("LODA tool update failed: %v", err)
+	}
 }
 
 func (s *ProgramsServer) lodaCheckpoint() {
@@ -265,14 +280,21 @@ func (s *ProgramsServer) lodaCheckpoint() {
 func (s *ProgramsServer) Run(port int) {
 	// load checkpoint
 	s.lodaCheckpoint()
-	// regularly publish metrics and write checkpoint
-	ticker := time.NewTicker(CheckpointInterval)
-	defer ticker.Stop()
+	// schedule background tasks
+	checkpointTicker := time.NewTicker(CheckpointInterval)
+	defer checkpointTicker.Stop()
 	go func() {
-		for range ticker.C {
+		for range checkpointTicker.C {
 			s.publishMetrics()
 			s.clearUserStats()
 			s.writeCheckpoint()
+		}
+	}()
+	updateTicker := time.NewTicker(UpdateInterval)
+	defer updateTicker.Stop()
+	go func() {
+		for range updateTicker.C {
+			s.update()
 		}
 	}()
 	// start web server
@@ -294,9 +316,6 @@ func main() {
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
 	t := NewLODATool(setup.DataDir)
-	if err := t.Install(); err != nil {
-		log.Fatalf("LODA tool installation failed: %v", err)
-	}
-	s := NewProgramsServer(setup.DataDir, i)
+	s := NewProgramsServer(setup.DataDir, i, t)
 	s.Run(8081)
 }
