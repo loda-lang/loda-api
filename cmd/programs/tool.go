@@ -1,12 +1,15 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/loda-lang/loda-api/util"
 )
@@ -83,20 +86,46 @@ func (t *LODATool) Exec(args ...string) (string, error) {
 	cmd := exec.Command(lodaExec, args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LODA_HOME="+t.dataDir)
-	out, err := cmd.CombinedOutput()
-	output := string(out)
-	lines := strings.Split(output, "\n")
-	for _, line := range lines {
-		line = strings.TrimSpace(line)
-		if line == "" {
-			continue
-		}
-		parts := strings.SplitN(line, "|", 2)
-		if len(parts) == 2 {
-			log.Print(parts[1])
-		} else {
-			log.Print(line)
+
+	// Create pipes for stdout and stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stdout pipe: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return "", fmt.Errorf("failed to get stderr pipe: %w", err)
+	}
+
+	if err := cmd.Start(); err != nil {
+		return "", fmt.Errorf("failed to start command: %w", err)
+	}
+
+	// Stream output in real-time
+	var outputBuilder strings.Builder
+	var wg sync.WaitGroup
+	stream := func(r io.Reader) {
+		scanner := bufio.NewScanner(r)
+		for scanner.Scan() {
+			line := scanner.Text()
+			outputBuilder.WriteString(line + "\n")
+			line = strings.TrimSpace(line)
+			if line == "" {
+				continue
+			}
+			parts := strings.SplitN(line, "|", 2)
+			if len(parts) == 2 {
+				log.Print(parts[1])
+			} else {
+				log.Print(line)
+			}
 		}
 	}
-	return output, err
+	wg.Add(2)
+	go func() { defer wg.Done(); stream(stdout) }()
+	go func() { defer wg.Done(); stream(stderr) }()
+	wg.Wait()
+
+	err = cmd.Wait()
+	return outputBuilder.String(), err
 }
