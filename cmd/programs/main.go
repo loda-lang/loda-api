@@ -280,6 +280,7 @@ func (s *ProgramsServer) lodaCheckpoint() {
 func (s *ProgramsServer) Run(port int) {
 	// load checkpoint
 	s.lodaCheckpoint()
+
 	// schedule background tasks
 	checkpointTicker := time.NewTicker(CheckpointInterval)
 	defer checkpointTicker.Stop()
@@ -297,6 +298,10 @@ func (s *ProgramsServer) Run(port int) {
 			s.update()
 		}
 	}()
+
+	// perform update in background on startup
+	go s.update()
+
 	// start web server
 	router := mux.NewRouter()
 	router.Handle("/v1/count", newCountHandler(s))
