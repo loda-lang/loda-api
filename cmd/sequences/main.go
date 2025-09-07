@@ -194,10 +194,8 @@ func (s *SeqServer) SequenceSearchHandler() http.Handler {
 			return
 		}
 		q := req.URL.Query().Get("q")
-		rk := req.URL.Query()["rk"]
-		fk := req.URL.Query()["fk"]
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
-		results := GetIndex(s).Search(q, rk, fk, limit, skip)
+		results := GetIndex(s).Search(q, limit, skip)
 		// Return only id and name for each sequence (per SearchResult schema)
 		type IDAndName struct {
 			Id   string `json:"id"`

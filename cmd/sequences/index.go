@@ -195,36 +195,56 @@ func (idx *Index) FindById(id util.UID) *Sequence {
 	return nil
 }
 
-// Search finds sequences matching the query, required/forbidden keywords, and applies pagination.
-func (idx *Index) Search(query string, requiredKeywords, forbiddenKeywords []string, limit, skip int) []Sequence {
-	var results []Sequence
-	required, err := shared.EncodeKeywords(requiredKeywords)
-	if err != nil {
-		return results
-	}
-	forbidden, err := shared.EncodeKeywords(forbiddenKeywords)
-	if err != nil {
-		return results
-	}
+// Search finds sequences matching the query and applies pagination.
+func (idx *Index) Search(query string, limit, skip int) []Sequence {
+	// Split the query into lower-case tokens
 	var tokens []string
 	if query != "" {
 		tokens = strings.Fields(query)
+		for i, t := range tokens {
+			tokens[i] = strings.ToLower(t)
+		}
 	}
+
+	// Extract included/excluded keywords and remove them from tokens
+	var inc, exc []string
+	filteredTokens := tokens[:0] // reuse underlying array
+	for _, t := range tokens {
+		if shared.IsKeyword(t) {
+			inc = append(inc, t)
+		} else if len(t) > 1 && t[0] == '+' && shared.IsKeyword(t[1:]) {
+			inc = append(inc, t[1:])
+		} else if len(t) > 1 && (t[0] == '-' || t[0] == '!') && shared.IsKeyword(t[1:]) {
+			exc = append(exc, t[1:])
+		} else {
+			filteredTokens = append(filteredTokens, t)
+		}
+	}
+	included, err := shared.EncodeKeywords(inc)
+	if err != nil {
+		return nil
+	}
+	excluded, err := shared.EncodeKeywords(exc)
+	if err != nil {
+		return nil
+	}
+
 	count := 0
+	var results []Sequence
 	for _, seq := range idx.Sequences {
-		// Check required and forbidden keywords
-		if !shared.ContainsAllKeywords(seq.Keywords, required) {
+		// Check included and excluded keywords
+		if !shared.ContainsAllKeywords(seq.Keywords, included) {
 			continue
 		}
-		if !shared.ContainsNoKeywords(seq.Keywords, forbidden) {
+		if !shared.ContainsNoKeywords(seq.Keywords, excluded) {
 			continue
 		}
 		match := true
 		// Query string filtering (case-insensitive, all tokens must be present in name)
-		if len(tokens) > 0 {
+		if len(filteredTokens) > 0 {
 			nameLower := strings.ToLower(seq.Name)
-			for _, token := range tokens {
-				if !strings.Contains(nameLower, strings.ToLower(token)) {
+			for _, t := range filteredTokens {
+				if !strings.Contains(nameLower, t) {
 					match = false
 					break
 				}

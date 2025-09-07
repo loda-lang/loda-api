@@ -23,6 +23,11 @@ var keywordToBit = func() map[string]uint {
 	return m
 }()
 
+func IsKeyword(s string) bool {
+	_, ok := keywordToBit[s]
+	return ok
+}
+
 // EncodeKeywords encodes a list of keywords into a uint64 bitmask
 func EncodeKeywords(keywords []string) (uint64, error) {
 	var bits uint64

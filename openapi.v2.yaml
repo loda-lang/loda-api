@@ -32,11 +32,9 @@ paths:
     get:
       tags: [ Sequences ]
       summary: Search integer sequences
-      description: Search for integer sequences based on keywords, properties, and other criteria. Supports filtering with required and forbidden keywords, as well as pagination.
+      description: Search for integer sequences by name, ID, keywords and other criteria. Supports pagination.
       parameters:
       - $ref: '#/components/parameters/Query'
-      - $ref: '#/components/parameters/RequiredKeywords'
-      - $ref: '#/components/parameters/ForbiddenKeywords'
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
       responses:
@@ -66,11 +64,9 @@ paths:
     get:
       tags: [ Programs ]
       summary: Search LODA programs
-      description: Search for LODA programs based on keywords, properties, and other criteria. Supports filtering with required and forbidden keywords, as well as pagination.
+      description: Search for LODA programs by name, ID, keywords, and other criteria. Supports pagination.
       parameters:
       - $ref: '#/components/parameters/Query'
-      - $ref: '#/components/parameters/RequiredKeywords'
-      - $ref: '#/components/parameters/ForbiddenKeywords'
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
       responses:
@@ -142,26 +138,6 @@ components:
       example: Fibonacci numbers
       schema:
         type: string
-    RequiredKeywords:
-      name: rk
-      in: query
-      required: false
-      description: Required keywords for filtering search results
-      example: [ easy, loda ]
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Keyword'
-    ForbiddenKeywords:
-      name: fk
-      in: query
-      required: false
-      description: Forbidden keywords for filtering search results
-      example: [ dead, dumb ]
-      schema:
-        type: array
-        items:
-          $ref: '#/components/schemas/Keyword'
     EvalNumTerms:
       name: t
       in: query
@@ -221,47 +197,6 @@ components:
         type: string
         pattern: '^-?\d+$'
         description: Sequence term encoded as a string to support arbitrary-sized integers
-    Keyword:
-      type: string
-      description: OEIS/LODA keyword
-      enum:
-      - base
-      - bref
-      - cofr
-      - conjecture
-      - cons
-      - core
-      - dead
-      - decimal-expansion
-      - dumb
-      - easy
-      - egf-expansion
-      - eigen
-      - fini
-      - formula
-      - frac
-      - full
-      - gf-expansion
-      - hard
-      - less
-      - loda
-      - loda-formula
-      - loda-inceval
-      - loda-logeval
-      - loda-loop
-      - look
-      - more
-      - mult
-      - nice
-      - nonn
-      - obsc
-      - pari
-      - sign
-      - tabf
-      - tabl
-      - unkn
-      - walk
-      - word
     SequenceDetails:
       allOf:
       - $ref: '#/components/schemas/IDAndName'
