@@ -291,18 +291,16 @@ func (s *ProgramsServer) Run(port int) {
 			s.writeCheckpoint()
 		}
 	}()
-	/*
-		updateTicker := time.NewTicker(UpdateInterval)
-		defer updateTicker.Stop()
-		go func() {
-			for range updateTicker.C {
-				s.update()
-			}
-		}()
+	updateTicker := time.NewTicker(UpdateInterval)
+	defer updateTicker.Stop()
+	go func() {
+		for range updateTicker.C {
+			s.update()
+		}
+	}()
 
-		// perform update in background on startup
-		go s.update()
-	*/
+	// perform update in background on startup
+	go s.update()
 
 	// start web server
 	router := mux.NewRouter()
