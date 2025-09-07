@@ -25,4 +25,12 @@ echo "### GO BUILD ###"
 docker exec loda-api /root/go-build.sh
 
 echo
+echo "### CREATE CHECKPOINT ###"
+docker exec loda-api curl -sX POST localhost/miner/v1/checkpoint
+
+echo
+echo "### RESTART LODA SERVICES ###"
+docker exec loda-api /usr/bin/supervisorctl restart programs sequences stats
+
+echo
 echo "### FINISHED ###"
