@@ -217,8 +217,8 @@ func (s *SeqServer) Run(port int) {
 	for _, l := range s.lists {
 		router.Handle(fmt.Sprintf("/v1/oeis/%s.gz", l.name), newListHandler(l))
 	}
-	router.Handle("/v2/sequences/{id}", s.SequenceHandler())
 	router.Handle("/v2/sequences/search", s.SequenceSearchHandler())
+	router.Handle("/v2/sequences/{id}", s.SequenceHandler())
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)
