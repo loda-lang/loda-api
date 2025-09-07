@@ -93,7 +93,7 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 func TestLoadProgramsCSV(t *testing.T) {
 	submittersPath := filepath.Join("../../testdata/stats/submitters.csv")
 	programsPath := filepath.Join("../../testdata/stats/programs.csv")
-	submitters, err := shared.LoadSubmitters(submittersPath)
+	submitters, err := shared.LoadSubmittersCSV(submittersPath)
 	if err != nil {
 		t.Fatalf("LoadSubmitters failed: %v", err)
 	}

@@ -15,45 +15,48 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/loda-lang/loda-api/cmd"
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
 const (
-	NumProgramsLow       = 1000
-	NumProgramsHigh      = 2000
-	NumProgramsMax       = 50000
-	NumProgramsPerUser   = 100
-	MaxProgramLength     = 100000
-	CheckpointInterval   = 10 * time.Minute
-	UpdateInterval       = 24 * time.Hour
-	CheckSessionInterval = 24 * time.Hour
-	ProfilePrefix        = "; Miner Profile:"
-	SubmittedByPrefix    = "; Submitted by "
-	CheckpointFile       = "checkpoint.txt"
-	ProgramSeparator     = "=============================="
+	NumSubmissionsLow     = 1000
+	NumSubmissionsHigh    = 2000
+	NumSubmissionsMax     = 50000
+	NumSubmissionsPerUser = 100
+	MaxProgramLength      = 100000
+	CheckpointInterval    = 10 * time.Minute
+	UpdateInterval        = 24 * time.Hour
+	CheckSessionInterval  = 24 * time.Hour
+	ProfilePrefix         = "; Miner Profile:"
+	SubmittedByPrefix     = "; Submitted by "
+	CheckpointFile        = "checkpoint.txt"
+	ProgramSeparator      = "=============================="
 )
 
 type ProgramsServer struct {
-	dataDir                string
-	influxDbClient         *util.InfluxDbClient
-	lodaTool               *LODATool
-	session                time.Time
-	programs               []string
-	submisstionsPerProfile map[string]int
-	submisstionsPerUser    map[string]int
-	dataMutex              sync.Mutex
-	updateMutex            sync.Mutex
+	dataDir               string
+	influxDbClient        *util.InfluxDbClient
+	lodaTool              *LODATool
+	session               time.Time
+	programs              []*Program
+	submitters            []*shared.Submitter
+	submissions           []string
+	submissionsPerProfile map[string]int
+	submissionsPerUser    map[string]int
+	dataMutex             sync.Mutex
+	updateMutex           sync.Mutex
 }
 
 func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, lodaTool *LODATool) *ProgramsServer {
 	return &ProgramsServer{
-		dataDir:                dataDir,
-		influxDbClient:         influxDbClient,
-		lodaTool:               lodaTool,
-		session:                time.Now(),
-		programs:               []string{},
-		submisstionsPerProfile: make(map[string]int),
-		submisstionsPerUser:    make(map[string]int),
+		dataDir:               dataDir,
+		influxDbClient:        influxDbClient,
+		lodaTool:              lodaTool,
+		session:               time.Now(),
+		submissions:           []string{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 }
 
@@ -65,7 +68,7 @@ func newCountHandler(s *ProgramsServer) http.Handler {
 		}
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
-		util.WriteHttpOK(w, fmt.Sprint(len(s.programs)))
+		util.WriteHttpOK(w, fmt.Sprint(len(s.submissions)))
 	}
 	return http.HandlerFunc(f)
 }
@@ -123,26 +126,26 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
 		s.checkSession()
-		if len(s.programs) > NumProgramsMax {
-			log.Print("Maximum number of programs exceeded")
+		if len(s.submissions) > NumSubmissionsMax {
+			log.Print("Maximum number of submissions exceeded")
 			util.WriteHttpInternalServerError(w)
 			return
 		}
-		if s.submisstionsPerUser[user] >= NumProgramsPerUser {
+		if s.submissionsPerUser[user] >= NumSubmissionsPerUser {
 			log.Printf("Rejected program from %s, profile %s", user, profile)
 			util.WriteHttpTooManyRequests(w)
 			return
 		}
-		s.submisstionsPerUser[user]++
-		for _, p := range s.programs {
+		s.submissionsPerUser[user]++
+		for _, p := range s.submissions {
 			if p == program {
-				util.WriteHttpOK(w, "Duplicate program")
+				util.WriteHttpOK(w, "Duplicate submission")
 				return
 			}
 		}
-		s.programs = append(s.programs, program)
-		s.submisstionsPerProfile[profile]++
-		msg := fmt.Sprintf("Accepted program from %s, profile %s", user, profile)
+		s.submissions = append(s.submissions, program)
+		s.submissionsPerProfile[profile]++
+		msg := fmt.Sprintf("Accepted submission from %s, profile %s", user, profile)
 		util.WriteHttpCreated(w, msg)
 		log.Print(msg)
 	}
@@ -163,11 +166,11 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
 		s.checkSession()
-		if index < 0 || index >= len(s.programs) {
+		if index < 0 || index >= len(s.submissions) {
 			util.WriteHttpNotFound(w)
 			return
 		}
-		util.WriteHttpOK(w, s.programs[index])
+		util.WriteHttpOK(w, s.submissions[index])
 	}
 	return http.HandlerFunc(f)
 }
@@ -200,7 +203,7 @@ func (s *ProgramsServer) writeCheckpoint() error {
 		return fmt.Errorf("cannot opening checkpoint file: %v", err)
 	}
 	defer f.Close()
-	for _, p := range s.programs {
+	for _, p := range s.submissions {
 		_, err = f.WriteString(fmt.Sprintf("%s%s\n", p, ProgramSeparator))
 		if err != nil {
 			return fmt.Errorf("cannot write to checkpoint file: %v", err)
@@ -210,7 +213,7 @@ func (s *ProgramsServer) writeCheckpoint() error {
 }
 
 func (s *ProgramsServer) checkSession() {
-	if len(s.programs) < NumProgramsHigh {
+	if len(s.submissions) < NumSubmissionsHigh {
 		return
 	}
 	if time.Since(s.session).Minutes() < CheckSessionInterval.Minutes() {
@@ -218,41 +221,68 @@ func (s *ProgramsServer) checkSession() {
 	}
 	s.session = time.Now()
 	log.Printf("Starting new session: %v", s.session)
-	if len(s.programs) > NumProgramsLow {
-		end := len(s.programs)
-		start := end - NumProgramsLow
-		s.programs = s.programs[start:end]
+	if len(s.submissions) > NumSubmissionsLow {
+		end := len(s.submissions)
+		start := end - NumSubmissionsLow
+		s.submissions = s.submissions[start:end]
 	}
 }
 
 func (s *ProgramsServer) publishMetrics() {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
-	for profile, count := range s.submisstionsPerProfile {
+	for profile, count := range s.submissionsPerProfile {
 		labels := map[string]string{"kind": "submitted", "profile": profile}
 		s.influxDbClient.Write("programs", labels, count)
 	}
-	s.submisstionsPerProfile = make(map[string]int)
+	s.submissionsPerProfile = make(map[string]int)
 }
 
 func (s *ProgramsServer) clearUserStats() {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
-	s.submisstionsPerUser = make(map[string]int)
+	s.submissionsPerUser = make(map[string]int)
 }
 
 func (s *ProgramsServer) update() {
-	s.updateMutex.Lock()
-	defer s.updateMutex.Unlock()
-	if err := s.lodaTool.Install(); err != nil {
-		log.Fatalf("LODA tool installation failed: %v", err)
+	{
+		s.updateMutex.Lock()
+		defer s.updateMutex.Unlock()
+		if err := s.lodaTool.Install(); err != nil {
+			log.Fatalf("LODA tool installation failed: %v", err)
+		}
+		if _, err := s.lodaTool.Exec("update"); err != nil {
+			log.Printf("LODA tool update failed: %v", err)
+		}
 	}
-	if _, err := s.lodaTool.Exec("update"); err != nil {
-		log.Printf("LODA tool update failed: %v", err)
-	}
+	s.loadPrograms()
 }
 
-func (s *ProgramsServer) lodaCheckpoint() {
+// loadPrograms loads submitters and programs from the stats directory
+func (s *ProgramsServer) loadPrograms() {
+	statsDir := filepath.Join(s.dataDir, "stats")
+	submittersPath := filepath.Join(statsDir, "submitters.csv")
+	programsPath := filepath.Join(statsDir, "programs.csv")
+
+	submitters, err := shared.LoadSubmittersCSV(submittersPath)
+	if err != nil {
+		log.Printf("Failed to load submitters: %v", err)
+		return
+	}
+	programs, err := LoadProgramsCSV(programsPath, submitters)
+	if err != nil {
+		log.Printf("Failed to load programs: %v", err)
+		return
+	}
+
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
+	s.submitters = submitters
+	s.programs = programs
+	log.Printf("Loaded %d submitters and %d programs", len(submitters), len(programs))
+}
+
+func (s *ProgramsServer) loadCheckpoint() {
 	checkpointPath := filepath.Join(s.dataDir, CheckpointFile)
 	file, err := os.Open(checkpointPath)
 	if err != nil {
@@ -260,26 +290,26 @@ func (s *ProgramsServer) lodaCheckpoint() {
 		return
 	}
 	log.Printf("Loading checkpoint %s", checkpointPath)
-	s.programs = []string{}
+	s.submissions = []string{}
 	scanner := bufio.NewScanner(file)
 	program := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == ProgramSeparator {
 			if len(program) > 0 {
-				s.programs = append(s.programs, program)
+				s.submissions = append(s.submissions, program)
 			}
 			program = ""
 		} else {
 			program = program + line + "\n"
 		}
 	}
-	log.Printf("Loaded %v programs from checkpoint", len(s.programs))
+	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
 }
 
 func (s *ProgramsServer) Run(port int) {
 	// load checkpoint
-	s.lodaCheckpoint()
+	s.loadCheckpoint()
 
 	// schedule background tasks
 	checkpointTicker := time.NewTicker(CheckpointInterval)

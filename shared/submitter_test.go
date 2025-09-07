@@ -5,9 +5,9 @@ import (
 	"testing"
 )
 
-func TestLoadSubmitters(t *testing.T) {
+func TestLoadSubmittersCSV(t *testing.T) {
 	path := filepath.Join("../testdata/stats/submitters.csv")
-	submitters, err := LoadSubmitters(path)
+	submitters, err := LoadSubmittersCSV(path)
 	if err != nil {
 		t.Fatalf("LoadSubmitters failed: %v", err)
 	}

@@ -18,7 +18,7 @@ type Submitter struct {
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
 
 // Loads submitters.csv file and returns a slice of Submitter structs indexed by RefId.
-func LoadSubmitters(path string) ([]*Submitter, error) {
+func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
