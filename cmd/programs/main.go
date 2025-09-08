@@ -212,11 +212,21 @@ func newProgramByIdHandler(s *ProgramsServer) http.Handler {
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
 		p := shared.FindById(s.programs, uid)
-		if p != nil {
-			util.WriteJsonResponse(w, p)
-		} else {
+		if p == nil {
 			w.WriteHeader(http.StatusNotFound)
+			return
 		}
+		path, err := p.GetPath(filepath.Join(s.dataDir, "programs"))
+		if err != nil {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		code, err := os.ReadFile(path)
+		if err != nil {
+			util.WriteHttpNotFound(w)
+		}
+		p.SetCode(string(code))
+		util.WriteJsonResponse(w, p)
 	}
 	return http.HandlerFunc(f)
 }
@@ -259,8 +269,8 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		program, err := shared.NewProgramFromCode(string(code))
-		if err != nil || len(program.Operations) == 0 {
+		p, err := shared.NewProgramFromCode(string(code))
+		if err != nil || len(p.Operations) == 0 {
 			util.WriteHttpBadRequest(w)
 			return
 		}
@@ -277,14 +287,14 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 		}
 		if o := req.URL.Query().Get("o"); o != "" {
 			if v, err := strconv.Atoi(o); err == nil {
-				program.SetOffset(v)
+				p.SetOffset(v)
 			} else {
 				util.WriteHttpBadRequest(w)
 				return
 			}
 		}
-		log.Printf("Evaluating program %v", program.Id)
-		terms, err := s.lodaTool.Eval(program, numTerms)
+		log.Printf("Evaluating program %v", p.Id)
+		terms, err := s.lodaTool.Eval(p, numTerms)
 		if err != nil {
 			util.WriteHttpInternalServerError(w)
 			return

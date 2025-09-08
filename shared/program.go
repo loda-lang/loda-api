@@ -3,8 +3,10 @@ package shared
 import (
 	"encoding/csv"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"slices"
 	"strconv"
 	"strings"
@@ -184,4 +186,29 @@ func (p *Program) SetOffset(offset int) {
 		lines = append([]string{"#offset " + strconv.Itoa(offset)}, lines...)
 	}
 	p.Code = strings.Join(lines, "\n")
+}
+
+func (p *Program) SetCode(code string) error {
+	id, name := extractIdAndName(code)
+	submitter := extractSubmitter(code)
+	if !id.IsZero() {
+		p.Id = id
+	}
+	if name != "" {
+		p.Name = name
+	}
+	if submitter != nil {
+		p.Submitter = submitter
+	}
+	p.Code = code
+	p.Operations = extractOperations(code)
+	return nil
+}
+
+func (p *Program) GetPath(programsDir string) (string, error) {
+	if p.Id.Domain() == 'A' {
+		idStr := p.Id.String()
+		return filepath.Join(programsDir, idStr[1:3], idStr+".asm"), nil
+	}
+	return "", fmt.Errorf("unsupport domain: %c", p.Id.Domain())
 }
