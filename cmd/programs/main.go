@@ -213,17 +213,20 @@ func newProgramByIdHandler(s *ProgramsServer) http.Handler {
 		defer s.dataMutex.Unlock()
 		p := shared.FindById(s.programs, uid)
 		if p == nil {
+			log.Printf("Program ID not found: %v", uid.String())
 			w.WriteHeader(http.StatusNotFound)
 			return
 		}
-		path, err := p.GetPath(filepath.Join(s.dataDir, "programs"))
+		path, err := p.GetPath(filepath.Join(s.dataDir, "programs", "oeis"))
 		if err != nil {
-			util.WriteHttpBadRequest(w)
+			util.WriteHttpInternalServerError(w)
 			return
 		}
 		code, err := os.ReadFile(path)
 		if err != nil {
+			log.Printf("Program file not found: %v", path)
 			util.WriteHttpNotFound(w)
+			return
 		}
 		p.SetCode(string(code))
 		util.WriteJsonResponse(w, p)

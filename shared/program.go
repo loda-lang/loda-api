@@ -208,7 +208,7 @@ func (p *Program) SetCode(code string) error {
 func (p *Program) GetPath(programsDir string) (string, error) {
 	if p.Id.Domain() == 'A' {
 		idStr := p.Id.String()
-		return filepath.Join(programsDir, idStr[1:3], idStr+".asm"), nil
+		return filepath.Join(programsDir, idStr[1:4], idStr+".asm"), nil
 	}
 	return "", fmt.Errorf("unsupport domain: %c", p.Id.Domain())
 }
