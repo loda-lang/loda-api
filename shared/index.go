@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"bufio"
@@ -8,7 +8,6 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -23,17 +22,17 @@ func NewIndex() *Index {
 // Load reads and parses the "names", "keywords" and "stripped" files to populate the Sequences index.
 func (idx *Index) Load(dataDir string) error {
 	namesPath := filepath.Join(dataDir, "names")
-	nameMap, err := loadNamesFile(namesPath)
+	nameMap, err := LoadNamesFile(namesPath)
 	if err != nil {
 		return err
 	}
 	keywordsPath := filepath.Join(dataDir, "keywords")
-	keywordsMap, err := loadKeywordsFile(keywordsPath)
+	keywordsMap, err := LoadKeywordsFile(keywordsPath)
 	if err != nil {
 		return err
 	}
 	strippedPath := filepath.Join(dataDir, "stripped")
-	sequences, err := loadStrippedFile(strippedPath, nameMap)
+	sequences, err := LoadStrippedFile(strippedPath, nameMap)
 	if err != nil {
 		return err
 	}
@@ -41,7 +40,7 @@ func (idx *Index) Load(dataDir string) error {
 	for i := range sequences {
 		id := sequences[i].Id.String()
 		if keywords, ok := keywordsMap[id]; ok {
-			encoded, err := shared.EncodeKeywords(keywords)
+			encoded, err := EncodeKeywords(keywords)
 			if err != nil {
 				return err
 			}
@@ -56,7 +55,7 @@ func (idx *Index) Load(dataDir string) error {
 	return nil
 }
 
-func loadNamesFile(path string) (map[string]string, error) {
+func LoadNamesFile(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open names file: %w", err)
@@ -82,7 +81,7 @@ func loadNamesFile(path string) (map[string]string, error) {
 	return nameMap, nil
 }
 
-func loadKeywordsFile(path string) (map[string][]string, error) {
+func LoadKeywordsFile(path string) (map[string][]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open keywords file: %w", err)
@@ -105,7 +104,7 @@ func loadKeywordsFile(path string) (map[string][]string, error) {
 				if k == "" {
 					continue
 				}
-				_, err := shared.EncodeKeywords([]string{k})
+				_, err := EncodeKeywords([]string{k})
 				if err != nil {
 					continue
 				}
@@ -121,7 +120,7 @@ func loadKeywordsFile(path string) (map[string][]string, error) {
 	return keywordsMap, nil
 }
 
-func loadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error) {
+func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stripped file: %w", err)
@@ -210,21 +209,21 @@ func (idx *Index) Search(query string, limit, skip int) []Sequence {
 	var inc, exc []string
 	filteredTokens := tokens[:0] // reuse underlying array
 	for _, t := range tokens {
-		if shared.IsKeyword(t) {
+		if IsKeyword(t) {
 			inc = append(inc, t)
-		} else if len(t) > 1 && t[0] == '+' && shared.IsKeyword(t[1:]) {
+		} else if len(t) > 1 && t[0] == '+' && IsKeyword(t[1:]) {
 			inc = append(inc, t[1:])
-		} else if len(t) > 1 && (t[0] == '-' || t[0] == '!') && shared.IsKeyword(t[1:]) {
+		} else if len(t) > 1 && (t[0] == '-' || t[0] == '!') && IsKeyword(t[1:]) {
 			exc = append(exc, t[1:])
 		} else {
 			filteredTokens = append(filteredTokens, t)
 		}
 	}
-	included, err := shared.EncodeKeywords(inc)
+	included, err := EncodeKeywords(inc)
 	if err != nil {
 		return nil
 	}
-	excluded, err := shared.EncodeKeywords(exc)
+	excluded, err := EncodeKeywords(exc)
 	if err != nil {
 		return nil
 	}
@@ -233,10 +232,10 @@ func (idx *Index) Search(query string, limit, skip int) []Sequence {
 	var results []Sequence
 	for _, seq := range idx.Sequences {
 		// Check included and excluded keywords
-		if !shared.ContainsAllKeywords(seq.Keywords, included) {
+		if !ContainsAllKeywords(seq.Keywords, included) {
 			continue
 		}
-		if !shared.ContainsNoKeywords(seq.Keywords, excluded) {
+		if !ContainsNoKeywords(seq.Keywords, excluded) {
 			continue
 		}
 		match := true

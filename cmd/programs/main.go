@@ -25,6 +25,7 @@ const (
 	NumSubmissionsMax     = 50000
 	NumSubmissionsPerUser = 100
 	MaxProgramLength      = 100000
+	MaxNumParallelEval    = 10
 	CheckpointInterval    = 10 * time.Minute
 	UpdateInterval        = 24 * time.Hour
 	CheckSessionInterval  = 24 * time.Hour
@@ -39,7 +40,7 @@ type ProgramsServer struct {
 	influxDbClient        *util.InfluxDbClient
 	lodaTool              *LODATool
 	session               time.Time
-	programs              []Program
+	programs              []shared.Program
 	submitters            []*shared.Submitter
 	submissions           []string
 	submissionsPerProfile map[string]int
@@ -195,6 +196,104 @@ func newCheckpointHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func newProgramByIdHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		params := mux.Vars(req)
+		idStr := params["id"]
+		uid, err := util.NewUIDFromString(idStr)
+		if err != nil {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
+		p := shared.FindById(s.programs, uid)
+		if p != nil {
+			util.WriteJsonResponse(w, p)
+		} else {
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}
+	return http.HandlerFunc(f)
+}
+
+func newProgramSearchHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		q := req.URL.Query().Get("q")
+		limit, skip := util.ParseLimitSkip(req, 10, 100)
+		s.dataMutex.Lock()
+		defer s.dataMutex.Unlock()
+		results := shared.Search(s.programs, q, limit, skip)
+		// Return only id and name for each program (per SearchResult schema)
+		type IDAndName struct {
+			Id   string `json:"id"`
+			Name string `json:"name"`
+		}
+		var resp []IDAndName
+		for _, prog := range results {
+			resp = append(resp, IDAndName{Id: prog.Id.String(), Name: prog.Name})
+		}
+		util.WriteJsonResponse(w, resp)
+	}
+	return http.HandlerFunc(f)
+}
+
+func newProgramEvalHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		// Read program code from body
+		defer req.Body.Close()
+		code, err := io.ReadAll(req.Body)
+		if err != nil || len(code) == 0 {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		program, err := shared.NewProgramFromCode(string(code))
+		if err != nil || len(program.Operations) == 0 {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+
+		// Parse query params
+		numTerms := 8
+		if t := req.URL.Query().Get("t"); t != "" {
+			if v, err := strconv.Atoi(t); err == nil && v > 0 && v <= 10000 {
+				numTerms = v
+			} else {
+				util.WriteHttpBadRequest(w)
+				return
+			}
+		}
+		if o := req.URL.Query().Get("o"); o != "" {
+			if v, err := strconv.Atoi(o); err == nil {
+				program.SetOffset(v)
+			} else {
+				util.WriteHttpBadRequest(w)
+				return
+			}
+		}
+		log.Printf("Evaluating program %v", program.Id)
+		terms, err := s.lodaTool.Eval(program, numTerms)
+		if err != nil {
+			util.WriteHttpInternalServerError(w)
+			return
+		}
+		util.WriteJsonResponse(w, map[string]interface{}{"terms": terms})
+	}
+	return http.HandlerFunc(f)
+}
+
 func (s *ProgramsServer) writeCheckpoint() error {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
@@ -251,7 +350,7 @@ func (s *ProgramsServer) update() {
 		if err := s.lodaTool.Install(); err != nil {
 			log.Fatalf("LODA tool installation failed: %v", err)
 		}
-		if _, err := s.lodaTool.Exec("update"); err != nil {
+		if _, err := s.lodaTool.Exec(0, "update"); err != nil {
 			log.Printf("LODA tool update failed: %v", err)
 		}
 	}
@@ -269,7 +368,14 @@ func (s *ProgramsServer) loadPrograms() {
 		log.Printf("Failed to load submitters: %v", err)
 		return
 	}
-	programs, err := LoadProgramsCSV(programsPath, submitters)
+	oeisDir := filepath.Join(s.dataDir, "seqs", "oeis")
+	index := shared.NewIndex()
+	err = index.Load(oeisDir)
+	if err != nil {
+		log.Printf("Failed to load sequences: %v", err)
+		return
+	}
+	programs, err := shared.LoadProgramsCSV(programsPath, submitters, index)
 	if err != nil {
 		log.Printf("Failed to load programs: %v", err)
 		return
@@ -342,6 +448,9 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v1/programs/", postHandler)
 	router.Handle("/v1/programs/{index:[0-9]+}", newGetHandler(s))
 	router.Handle("/v1/checkpoint", newCheckpointHandler(s))
+	router.Handle("/v2/programs/{id:[A-Z][0-9]+}", newProgramByIdHandler(s))
+	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
+	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
@@ -351,7 +460,7 @@ func main() {
 	setup := cmd.GetSetup("programs")
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
-	t := NewLODATool(setup.DataDir)
+	t := NewLODATool(setup.DataDir, MaxNumParallelEval)
 	s := NewProgramsServer(setup.DataDir, i, t)
 	s.Run(8081)
 }

@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"path/filepath"
@@ -6,13 +6,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
 func loadTestIndex(t *testing.T) *Index {
 	idx := NewIndex()
-	testdataDir := filepath.Join("..", "..", "testdata")
+	testdataDir := filepath.Join("..", "testdata")
 	err := idx.Load(testdataDir)
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
@@ -52,7 +51,7 @@ func TestIndexLoad(t *testing.T) {
 			if seq.Terms != w.terms {
 				t.Errorf("Sequence %s: got terms %q, want %q", seq.Id, seq.Terms, w.terms)
 			}
-			gotKeywords := shared.DecodeKeywords(seq.Keywords)
+			gotKeywords := DecodeKeywords(seq.Keywords)
 			sort.Strings(gotKeywords)
 			sort.Strings(w.keywords)
 			if len(gotKeywords) != len(w.keywords) {
@@ -130,7 +129,7 @@ func TestIndexSearch(t *testing.T) {
 	// Search by included keyword (as +core)
 	results = idx.Search("+core", 0, 0)
 	for _, seq := range results {
-		gotKeywords := shared.DecodeKeywords(seq.Keywords)
+		gotKeywords := DecodeKeywords(seq.Keywords)
 		found := false
 		for _, kw := range gotKeywords {
 			if kw == "core" {
@@ -146,7 +145,7 @@ func TestIndexSearch(t *testing.T) {
 	// Search by excluded keyword (as -hard)
 	results = idx.Search("-hard", 0, 0)
 	for _, seq := range results {
-		gotKeywords := shared.DecodeKeywords(seq.Keywords)
+		gotKeywords := DecodeKeywords(seq.Keywords)
 		for _, kw := range gotKeywords {
 			if kw == "hard" {
 				t.Errorf("Search forbidden hard: sequence %q contains forbidden keyword", seq.Id)

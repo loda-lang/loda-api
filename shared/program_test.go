@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"encoding/json"
@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/loda-lang/loda-api/shared"
 )
 
 // checkProgramMeta checks the ID, name prefix, and submitter of a Program.
@@ -26,13 +24,13 @@ func checkProgramMeta(t *testing.T, prog Program, wantID, wantNamePrefix, wantSu
 
 // loadProgramFromTestFile reads a .asm test file and returns the parsed Program.
 func loadProgramFromTestFile(filename string) (Program, error) {
-	path := filepath.Join("../../testdata/programs", filename)
+	path := filepath.Join("../testdata/programs", filename)
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Program{}, err
 	}
 	code := string(data)
-	return NewProgramFromText(code), nil
+	return NewProgramFromCode(code)
 }
 
 func TestNewProgramFromText_A000030(t *testing.T) {
@@ -91,13 +89,14 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 }
 
 func TestLoadProgramsCSV(t *testing.T) {
-	submittersPath := filepath.Join("../../testdata/stats/submitters.csv")
-	programsPath := filepath.Join("../../testdata/stats/programs.csv")
-	submitters, err := shared.LoadSubmittersCSV(submittersPath)
+	submittersPath := filepath.Join("../testdata/stats/submitters.csv")
+	programsPath := filepath.Join("../testdata/stats/programs.csv")
+	submitters, err := LoadSubmittersCSV(submittersPath)
 	if err != nil {
 		t.Fatalf("LoadSubmitters failed: %v", err)
 	}
-	programs, err := LoadProgramsCSV(programsPath, submitters)
+	index := loadTestIndex(t)
+	programs, err := LoadProgramsCSV(programsPath, submitters, index)
 	if err != nil {
 		t.Fatalf("LoadProgramsCSV failed: %v", err)
 	}

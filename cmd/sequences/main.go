@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/loda-lang/loda-api/cmd"
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -28,7 +29,7 @@ type SeqServer struct {
 	crawlerIdsFetchRatio  float64
 	crawlerStopped        chan bool
 	crawler               *Crawler
-	seqIndex              *Index
+	seqIndex              *shared.Index
 	httpClient            *http.Client
 	lists                 []*List
 }
@@ -82,9 +83,9 @@ func NewSeqServer(oeisDir string, updateInterval time.Duration) *SeqServer {
 	}
 }
 
-func GetIndex(s *SeqServer) *Index {
+func GetIndex(s *SeqServer) *shared.Index {
 	if s.seqIndex == nil {
-		idx := NewIndex()
+		idx := shared.NewIndex()
 		err := idx.Load(s.oeisDir)
 		if err != nil {
 			log.Fatalf("Failed to load sequence index: %v", err)
@@ -218,7 +219,7 @@ func (s *SeqServer) Run(port int) {
 		router.Handle(fmt.Sprintf("/v1/oeis/%s.gz", l.name), newListHandler(l))
 	}
 	router.Handle("/v2/sequences/search", s.SequenceSearchHandler())
-	router.Handle("/v2/sequences/{id}", s.SequenceHandler())
+	router.Handle("/v2/sequences/{id:[A-Z][0-9]+}", s.SequenceHandler())
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)

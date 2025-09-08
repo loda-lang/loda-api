@@ -2,24 +2,33 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
 type LODATool struct {
 	dataDir string
+	evalSem chan struct{}
 }
 
-func NewLODATool(dataDir string) *LODATool {
-	return &LODATool{dataDir: dataDir}
+func NewLODATool(dataDir string, maxNumParallelEval int) *LODATool {
+	evalSem := make(chan struct{}, maxNumParallelEval)
+	return &LODATool{
+		dataDir: dataDir,
+		evalSem: evalSem,
+	}
 }
 
 func (t *LODATool) Install() error {
@@ -61,7 +70,7 @@ func (t *LODATool) Install() error {
 		}
 	} else {
 		log.Printf("Checking for new LODA version")
-		_, err := t.Exec("upgrade")
+		_, err := t.Exec(0, "upgrade")
 		if err != nil {
 			return fmt.Errorf("failed to upgrade loda executable: %w", err)
 		}
@@ -80,7 +89,8 @@ func (t *LODATool) Install() error {
 	return nil
 }
 
-func (t *LODATool) Exec(args ...string) (string, error) {
+// Exec runs the loda command. If timeout > 0, enforces a timeout. Accepts args as variadic.
+func (t *LODATool) Exec(timeout time.Duration, args ...string) (string, error) {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return "", fmt.Errorf("failed to get user home directory: %w", err)
@@ -89,7 +99,17 @@ func (t *LODATool) Exec(args ...string) (string, error) {
 	if !util.FileExists(lodaExec) {
 		return "", fmt.Errorf("loda executable not found at: %s", lodaExec)
 	}
-	cmd := exec.Command(lodaExec, args...)
+
+	var cmd *exec.Cmd
+	if timeout > 0 {
+		ctx, cancel := context.WithTimeout(context.Background(), timeout)
+		defer cancel()
+		execArgs := args
+		execArgs = append(execArgs, "-z", fmt.Sprintf("%d", int(timeout.Seconds())))
+		cmd = exec.CommandContext(ctx, lodaExec, execArgs...)
+	} else {
+		cmd = exec.Command(lodaExec, args...)
+	}
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "LODA_HOME="+t.dataDir)
 
@@ -134,4 +154,31 @@ func (t *LODATool) Exec(args ...string) (string, error) {
 
 	err = cmd.Wait()
 	return outputBuilder.String(), err
+}
+
+// Eval evaluates a LODA program and returns the terms.
+// Handles maximum parallel evalustions, temp file creation and output parsing.
+func (t *LODATool) Eval(program shared.Program, numTerms int) ([]string, error) {
+	t.evalSem <- struct{}{}
+	defer func() { <-t.evalSem }()
+	tmpfile, err := os.CreateTemp("", "loda_eval_*.asm")
+	if err != nil {
+		return nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer os.Remove(tmpfile.Name())
+	if _, err := tmpfile.Write([]byte(program.Code)); err != nil {
+		return nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	tmpfile.Close()
+
+	args := []string{"eval", tmpfile.Name(), "-t", strconv.Itoa(numTerms)}
+	output, execErr := t.Exec(10*time.Second, args...)
+	if execErr != nil {
+		return nil, fmt.Errorf("loda eval failed: %w", execErr)
+	}
+	terms := strings.Split(output, ",")
+	for i := range terms {
+		terms[i] = strings.TrimSpace(terms[i])
+	}
+	return terms, nil
 }

@@ -1,11 +1,10 @@
-package main
+package shared
 
 import (
 	"encoding/json"
 	"reflect"
 	"testing"
 
-	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -30,7 +29,7 @@ func TestTermsList(t *testing.T) {
 
 func TestSequenceMarshalUnmarshalJSON(t *testing.T) {
 	uid, _ := util.NewUID('A', 123456)
-	keywords, _ := shared.EncodeKeywords([]string{"easy", "core"})
+	keywords, _ := EncodeKeywords([]string{"easy", "core"})
 	seq := Sequence{
 		Id:       uid,
 		Name:     "Test Sequence",

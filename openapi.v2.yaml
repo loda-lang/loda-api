@@ -93,6 +93,11 @@ paths:
             schema:
               type: string
               description: LODA program code
+            example: |
+              mov $1,10
+              pow $1,$0
+              mov $0,$1
+              div $0,9
       responses:
         '200':
           description: Evaluation result

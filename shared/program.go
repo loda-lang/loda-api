@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"encoding/csv"
@@ -7,8 +7,8 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 
-	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -16,8 +16,8 @@ type Program struct {
 	Id         util.UID
 	Name       string
 	Code       string
-	Submitter  *shared.Submitter
-	Keywords   []string
+	Submitter  *Submitter
+	Keywords   uint64 // Bitmask of keywords
 	Operations []string
 	Length     int
 	Usages     int
@@ -27,7 +27,7 @@ type Program struct {
 
 // ProgramFromText creates a Program instance from LODA code in plain text format.
 // It expects the code as input, and extracts metadata from comments as in .asm files.
-func NewProgramFromText(code string) Program {
+func NewProgramFromCode(code string) (Program, error) {
 	id, name := extractIdAndName(code)
 	submitter := extractSubmitter(code)
 	operations := extractOperations(code)
@@ -37,13 +37,14 @@ func NewProgramFromText(code string) Program {
 		Code:       code,
 		Submitter:  submitter,
 		Operations: operations,
-	}
+	}, nil
 }
 
 var expectedHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
 
 // LoadProgramsCSV parses the programs.csv file and returns a slice of Program structs.
-func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]Program, error) {
+// It also takes a slice of sequences, and for each program, if a matching sequence is found by ID, sets the program's name and keywords accordingly.
+func LoadProgramsCSV(path string, submitters []*Submitter, index *Index) ([]Program, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -73,7 +74,7 @@ func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]Program, er
 		if err != nil {
 			return nil, err
 		}
-		var submitter *shared.Submitter = nil
+		var submitter *Submitter = nil
 		if refId, err := strconv.Atoi(rec[1]); err == nil {
 			if refId >= 0 && refId < len(submitters) {
 				submitter = submitters[refId]
@@ -89,8 +90,20 @@ func LoadProgramsCSV(path string, submitters []*shared.Submitter) ([]Program, er
 		}
 		incEval := rec[4] == "1"
 		logEval := rec[5] == "1"
+
+		// Find matching sequence by ID
+		var name string
+		var keywords uint64
+		seq := index.FindById(uid)
+		if seq != nil {
+			name = seq.Name
+			keywords = seq.Keywords
+		}
+
 		p := Program{
 			Id:        uid,
+			Name:      name,
+			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
 			Usages:    usages,
@@ -120,7 +133,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Name:       p.Name,
 		Code:       p.Code,
 		Submitter:  submitter,
-		Keywords:   p.Keywords,
+		Keywords:   DecodeKeywords(p.Keywords),
 		Operations: p.Operations,
 	})
 }
@@ -142,12 +155,33 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	submitter := &shared.Submitter{Name: aux.Submitter}
+	keywords, err := EncodeKeywords(aux.Keywords)
+	if err != nil {
+		return err
+	}
+	submitter := &Submitter{Name: aux.Submitter}
 	p.Id = uid
 	p.Name = aux.Name
 	p.Code = aux.Code
 	p.Submitter = submitter
-	p.Keywords = aux.Keywords
+	p.Keywords = keywords
 	p.Operations = aux.Operations
 	return nil
+}
+
+func (p *Program) SetOffset(offset int) {
+	lines := []string{}
+	found := false
+	for _, line := range strings.Split(p.Code, "\n") {
+		if len(line) > 8 && line[:8] == "#offset " {
+			lines = append(lines, "#offset "+strconv.Itoa(offset))
+			found = true
+		} else {
+			lines = append(lines, line)
+		}
+	}
+	if !found {
+		lines = append([]string{"#offset " + strconv.Itoa(offset)}, lines...)
+	}
+	p.Code = strings.Join(lines, "\n")
 }

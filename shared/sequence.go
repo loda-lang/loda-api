@@ -1,10 +1,9 @@
-package main
+package shared
 
 import (
 	"encoding/json"
 	"strings"
 
-	"github.com/loda-lang/loda-api/shared"
 	"github.com/loda-lang/loda-api/util"
 )
 
@@ -35,7 +34,7 @@ func (s Sequence) MarshalJSON() ([]byte, error) {
 	}{
 		Id:       s.Id.String(),
 		Name:     s.Name,
-		Keywords: shared.DecodeKeywords(s.Keywords),
+		Keywords: DecodeKeywords(s.Keywords),
 		Terms:    s.TermsList(),
 	})
 }
@@ -54,7 +53,7 @@ func (s *Sequence) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	keywords, err := shared.EncodeKeywords(aux.Keywords)
+	keywords, err := EncodeKeywords(aux.Keywords)
 	if err != nil {
 		return err
 	}
