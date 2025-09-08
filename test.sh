@@ -2,7 +2,7 @@
 
 set -eo pipefail
 
-local_mode=true
+local_mode=false
 
 if [ "$local_mode" = true ]; then
     echo "### LOCAL MODE ###"
