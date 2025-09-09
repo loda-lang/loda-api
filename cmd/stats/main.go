@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -16,20 +17,35 @@ import (
 )
 
 type StatsServer struct {
-	dataDir        string
-	openApiSpec    []byte
-	submitters     []*shared.Submitter
-	influxDbClient *util.InfluxDbClient
-	cpuHours       int
-	mutex          sync.Mutex
+	dataDir            string
+	openApiSpec        []byte
+	summary            *Summary
+	submitters         []*shared.Submitter
+	influxDbClient     *util.InfluxDbClient
+	cpuHours           int
+	cpuHoursByPlatform map[string]map[string]int // platform -> version -> cpuHours
+	mutex              sync.Mutex
 }
 
 func NewStatsServer(influxDbClient *util.InfluxDbClient, openApiSpec []byte, dataDir string) *StatsServer {
 	return &StatsServer{
-		dataDir:        dataDir,
-		openApiSpec:    openApiSpec,
-		influxDbClient: influxDbClient,
-		cpuHours:       0,
+		dataDir:            dataDir,
+		openApiSpec:        openApiSpec,
+		influxDbClient:     influxDbClient,
+		cpuHours:           0,
+		cpuHoursByPlatform: make(map[string]map[string]int),
+	}
+}
+
+func (s *StatsServer) loadSummary() {
+	path := filepath.Join(s.dataDir, "stats", "summary.csv")
+	summary, err := LoadSummaryCSV(path)
+	if err != nil {
+		log.Printf("Failed to load summary: %v", err)
+		s.summary = nil
+	} else {
+		log.Printf("Loaded summary: %+v", summary)
+		s.summary = summary
 	}
 }
 
@@ -55,6 +71,36 @@ func newCpuHourHandler(s *StatsServer) http.Handler {
 		}
 		s.mutex.Lock()
 		defer s.mutex.Unlock()
+
+		// Try to parse JSON body
+		var payload struct {
+			Platform string `json:"platform"`
+			Version  string `json:"version"`
+			CPUHours int    `json:"cpuHours"`
+		}
+		decoder := json.NewDecoder(req.Body)
+		err := decoder.Decode(&payload)
+		if err == nil && (payload.Platform != "" || payload.Version != "" || payload.CPUHours > 0) {
+			plat := payload.Platform
+			ver := payload.Version
+			hours := payload.CPUHours
+			if hours <= 0 {
+				hours = 1
+			}
+			if plat == "" {
+				plat = "unknown"
+			}
+			if ver == "" {
+				ver = "unknown"
+			}
+			if s.cpuHoursByPlatform[plat] == nil {
+				s.cpuHoursByPlatform[plat] = make(map[string]int)
+			}
+			s.cpuHoursByPlatform[plat][ver] += hours
+			util.WriteHttpCreated(w, "Metric received (json)")
+			return
+		}
+		// Fallback: legacy increment
 		s.cpuHours += 1
 		util.WriteHttpCreated(w, "Metric received")
 	}
@@ -65,8 +111,21 @@ func (s *StatsServer) publishMetrics() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	labels := make(map[string]string)
-	s.influxDbClient.Write("cpuhours", labels, s.cpuHours)
-	s.cpuHours = 0
+	// Publish legacy/global cpuHours
+	if s.cpuHours > 0 {
+		s.influxDbClient.Write("cpuhours", labels, s.cpuHours)
+		s.cpuHours = 0
+	}
+	// Publish per-platform/version
+	for plat, vers := range s.cpuHoursByPlatform {
+		for ver, hours := range vers {
+			if hours > 0 {
+				labels := map[string]string{"platform": plat, "version": ver}
+				s.influxDbClient.Write("cpuhours", labels, hours)
+				s.cpuHoursByPlatform[plat][ver] = 0
+			}
+		}
+	}
 }
 
 func newOpenAPIHandler(s *StatsServer) http.Handler {
@@ -116,6 +175,21 @@ func newOpenAPIYAMLHandler(s *StatsServer) http.Handler {
 	})
 }
 
+// Handler for /v2/stats/summary
+func newSummaryHandler(s *StatsServer) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		if s.summary == nil {
+			util.WriteHttpInternalServerError(w)
+			return
+		}
+		util.WriteJsonResponse(w, s.summary)
+	})
+}
+
 // Handler for /v2/stats/submitters
 func newSubmittersHandler(s *StatsServer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -142,6 +216,7 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 func (s *StatsServer) Run(port int) {
 
 	// initial data load
+	s.loadSummary()
 	s.loadSubmitters()
 
 	// schedule background tasks
@@ -149,6 +224,7 @@ func (s *StatsServer) Run(port int) {
 	defer reloadTicker.Stop()
 	go func() {
 		for range reloadTicker.C {
+			s.loadSummary()
 			s.loadSubmitters()
 		}
 	}()
@@ -165,6 +241,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v1/cpuhours", newCpuHourHandler(s))
 	router.Handle("/v2/openapi", newOpenAPIHandler(s))
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
+	router.Handle("/v2/stats/summary", newSummaryHandler(s))
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)

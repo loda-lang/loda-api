@@ -126,6 +126,18 @@ paths:
           description: Program submitted successfully
         '400':
           description: Program validation error
+  /stats/summary:
+    get:
+      tags: [ Stats ]
+      summary: Get statistics summary
+      description: Returns a summary of the number of sequences, programs, and formulas in the database.
+      responses:
+        '200':
+          description: Statistics summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatsSummary'
   /stats/submitters:
     get:
       tags: [ Stats ]
@@ -271,3 +283,15 @@ components:
         numPrograms:
           type: integer
           description: Number of programs submitted by this user
+    StatsSummary:
+      type: object
+      properties:
+        numSequences:
+          type: integer
+          description: Number of integer sequences
+        numPrograms:
+          type: integer
+          description: Number of LODA programs
+        numFormulas:
+          type: integer
+          description: Number of formulas

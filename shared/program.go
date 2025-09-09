@@ -70,7 +70,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *Index) ([]Prog
 			return nil, err
 		}
 		if len(rec) != 6 {
-			continue
+			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
 		}
 		uid, err := util.NewUIDFromString(rec[0])
 		if err != nil {
@@ -172,19 +172,29 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 }
 
 func (p *Program) SetOffset(offset int) {
-	lines := []string{}
+	header := []string{}
+	rest := []string{}
 	found := false
+	isHeader := true
 	for _, line := range strings.Split(p.Code, "\n") {
-		if len(line) > 8 && line[:8] == "#offset " {
-			lines = append(lines, "#offset "+strconv.Itoa(offset))
+		line = strings.TrimSpace(line)
+		if len(line) > 0 && line[0] != ';' {
+			isHeader = false
+		}
+		if strings.HasPrefix(line, "#offset ") {
+			line = "#offset " + strconv.Itoa(offset)
 			found = true
+		}
+		if isHeader {
+			header = append(header, line)
 		} else {
-			lines = append(lines, line)
+			rest = append(rest, line)
 		}
 	}
 	if !found {
-		lines = append([]string{"#offset " + strconv.Itoa(offset)}, lines...)
+		header = append(header, "#offset "+strconv.Itoa(offset))
 	}
+	lines := append(header, rest...)
 	p.Code = strings.Join(lines, "\n")
 }
 

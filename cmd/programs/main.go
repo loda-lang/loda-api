@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -26,6 +27,7 @@ const (
 	NumSubmissionsPerUser = 100
 	MaxProgramLength      = 100000
 	MaxNumParallelEval    = 10
+	NumTermsCheck         = 8
 	CheckpointInterval    = 10 * time.Minute
 	UpdateInterval        = 24 * time.Hour
 	CheckSessionInterval  = 24 * time.Hour
@@ -88,67 +90,54 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter) {
+	// extract profile and submitter
+	profile := "unknown"
+	user := "unknown"
+	lines := strings.Split(program.Code, "\n")
+	for _, l := range lines {
+		if strings.HasPrefix(l, ProfilePrefix) {
+			profile = strings.TrimSpace(l[len(ProfilePrefix):])
+		}
+		if strings.HasPrefix(l, SubmittedByPrefix) {
+			user = strings.TrimSpace(l[len(SubmittedByPrefix):])
+		}
+	}
+	// main work
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
+	s.checkSession()
+	if len(s.submissions) > NumSubmissionsMax {
+		log.Print("Maximum number of submissions exceeded")
+		util.WriteHttpInternalServerError(w)
+		return
+	}
+	if s.submissionsPerUser[user] >= NumSubmissionsPerUser {
+		log.Printf("Rejected program from %s, profile %s", user, profile)
+		util.WriteHttpTooManyRequests(w)
+		return
+	}
+	s.submissionsPerUser[user]++
+	for _, p := range s.submissions {
+		if p == program.Code {
+			util.WriteHttpOK(w, "Duplicate submission")
+			return
+		}
+	}
+	s.submissions = append(s.submissions, program.Code)
+	s.submissionsPerProfile[profile]++
+	msg := fmt.Sprintf("Accepted submission from %s, profile %s", user, profile)
+	util.WriteHttpCreated(w, msg)
+	log.Print(msg)
+}
+
 func newPostHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
-		// check request
-		if req.Method != http.MethodPost {
-			util.WriteHttpMethodNotAllowed(w)
+		program, ok := readProgramFromBody(w, req)
+		if !ok {
 			return
 		}
-		if req.ContentLength <= 0 || req.ContentLength > MaxProgramLength {
-			util.WriteHttpBadRequest(w)
-			return
-		}
-		defer req.Body.Close()
-		body, err := io.ReadAll(req.Body)
-		if err != nil {
-			util.WriteHttpInternalServerError(w)
-			return
-		}
-		program := strings.TrimSpace(string(body))
-		if len(program) == 0 {
-			util.WriteHttpBadRequest(w)
-			return
-		}
-		program = strings.ReplaceAll(program, "\r\n", "\n") + "\n"
-		profile := "unknown"
-		user := "unknown"
-		lines := strings.Split(program, "\n")
-		for _, l := range lines {
-			if strings.HasPrefix(l, ProfilePrefix) {
-				profile = strings.TrimSpace(l[len(ProfilePrefix):])
-			}
-			if strings.HasPrefix(l, SubmittedByPrefix) {
-				user = strings.TrimSpace(l[len(SubmittedByPrefix):])
-			}
-		}
-
-		// main work
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
-		s.checkSession()
-		if len(s.submissions) > NumSubmissionsMax {
-			log.Print("Maximum number of submissions exceeded")
-			util.WriteHttpInternalServerError(w)
-			return
-		}
-		if s.submissionsPerUser[user] >= NumSubmissionsPerUser {
-			log.Printf("Rejected program from %s, profile %s", user, profile)
-			util.WriteHttpTooManyRequests(w)
-			return
-		}
-		s.submissionsPerUser[user]++
-		for _, p := range s.submissions {
-			if p == program {
-				util.WriteHttpOK(w, "Duplicate submission")
-				return
-			}
-		}
-		s.submissions = append(s.submissions, program)
-		s.submissionsPerProfile[profile]++
-		msg := fmt.Sprintf("Accepted submission from %s, profile %s", user, profile)
-		util.WriteHttpCreated(w, msg)
-		log.Print(msg)
+		s.doSubmit(program, w)
 	}
 	return http.HandlerFunc(f)
 }
@@ -259,25 +248,43 @@ func newProgramSearchHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func readProgramFromBody(w http.ResponseWriter, req *http.Request) (shared.Program, bool) {
+	var p shared.Program
+	if req.Method != http.MethodPost {
+		util.WriteHttpMethodNotAllowed(w)
+		return p, false
+	}
+	if req.ContentLength <= 0 || req.ContentLength > MaxProgramLength {
+		util.WriteHttpBadRequest(w)
+		return p, false
+	}
+	// Read program code from body
+	defer req.Body.Close()
+	content, err := io.ReadAll(req.Body)
+	if err != nil || len(content) == 0 {
+		util.WriteHttpBadRequest(w)
+		return p, false
+	}
+	code := strings.TrimSpace(string(content))
+	if len(code) == 0 {
+		util.WriteHttpBadRequest(w)
+		return p, false
+	}
+	code = strings.ReplaceAll(code, "\r\n", "\n") + "\n"
+	p, err = shared.NewProgramFromCode(code)
+	if err != nil || len(p.Operations) == 0 {
+		util.WriteHttpBadRequest(w)
+		return p, false
+	}
+	return p, true
+}
+
 func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodPost {
-			util.WriteHttpMethodNotAllowed(w)
+		p, ok := readProgramFromBody(w, req)
+		if !ok {
 			return
 		}
-		// Read program code from body
-		defer req.Body.Close()
-		code, err := io.ReadAll(req.Body)
-		if err != nil || len(code) == 0 {
-			util.WriteHttpBadRequest(w)
-			return
-		}
-		p, err := shared.NewProgramFromCode(string(code))
-		if err != nil || len(p.Operations) == 0 {
-			util.WriteHttpBadRequest(w)
-			return
-		}
-
 		// Parse query params
 		numTerms := 8
 		if t := req.URL.Query().Get("t"); t != "" {
@@ -303,6 +310,50 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		util.WriteJsonResponse(w, map[string]interface{}{"terms": terms})
+	}
+	return http.HandlerFunc(f)
+}
+
+func newSubmitHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		params := mux.Vars(req)
+		idStr := params["id"]
+		id, err := util.NewUIDFromString(idStr)
+		if err != nil || id.IsZero() {
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		program, ok := readProgramFromBody(w, req)
+		if !ok {
+			return
+		}
+		index, err := s.loadSequences()
+		if err != nil {
+			util.WriteHttpInternalServerError(w)
+			return
+		}
+		seq := index.FindById(id)
+		if seq == nil {
+			util.WriteHttpNotFound(w)
+			return
+		}
+		expectedTerms := seq.TermsList()
+		if len(expectedTerms) > NumTermsCheck {
+			expectedTerms = expectedTerms[:NumTermsCheck]
+		}
+		log.Printf("Checking program %v", program.Id)
+		evalTerms, err := s.lodaTool.Eval(program, NumTermsCheck)
+		if err != nil {
+			util.WriteHttpInternalServerError(w)
+			return
+		}
+		if !slices.Equal(expectedTerms, evalTerms) {
+			log.Printf("Program for %v produced incorrect terms; expected: %v, got: %v",
+				id.String(), expectedTerms, evalTerms)
+			util.WriteHttpBadRequest(w)
+			return
+		}
+		s.doSubmit(program, w)
 	}
 	return http.HandlerFunc(f)
 }
@@ -370,6 +421,18 @@ func (s *ProgramsServer) update() {
 	s.loadPrograms()
 }
 
+func (s *ProgramsServer) loadSequences() (*shared.Index, error) {
+	oeisDir := filepath.Join(s.dataDir, "seqs", "oeis")
+	index := shared.NewIndex()
+	err := index.Load(oeisDir)
+	if err != nil {
+		log.Printf("Error loading sequences: %v", err)
+	} else {
+		log.Printf("Loaded %d sequences", len(index.Sequences))
+	}
+	return index, err
+}
+
 // loadPrograms loads submitters and programs from the stats directory
 func (s *ProgramsServer) loadPrograms() {
 	statsDir := filepath.Join(s.dataDir, "stats")
@@ -381,9 +444,7 @@ func (s *ProgramsServer) loadPrograms() {
 		log.Printf("Failed to load submitters: %v", err)
 		return
 	}
-	oeisDir := filepath.Join(s.dataDir, "seqs", "oeis")
-	index := shared.NewIndex()
-	err = index.Load(oeisDir)
+	index, err := s.loadSequences()
 	if err != nil {
 		log.Printf("Failed to load sequences: %v", err)
 		return
@@ -461,6 +522,7 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v1/programs/", postHandler)
 	router.Handle("/v1/programs/{index:[0-9]+}", newGetHandler(s))
 	router.Handle("/v1/checkpoint", newCheckpointHandler(s))
+	router.Handle("/v2/programs/{id:[A-Z][0-9]+}/submit", newSubmitHandler(s))
 	router.Handle("/v2/programs/{id:[A-Z][0-9]+}", newProgramByIdHandler(s))
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
