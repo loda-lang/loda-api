@@ -90,17 +90,17 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter) {
+func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWriter) (string, string, bool) {
 	// extract profile and submitter
-	profile := "unknown"
 	user := "unknown"
+	profile := "unknown"
 	lines := strings.Split(program.Code, "\n")
 	for _, l := range lines {
-		if strings.HasPrefix(l, ProfilePrefix) {
-			profile = strings.TrimSpace(l[len(ProfilePrefix):])
-		}
 		if strings.HasPrefix(l, SubmittedByPrefix) {
 			user = strings.TrimSpace(l[len(SubmittedByPrefix):])
+		}
+		if strings.HasPrefix(l, ProfilePrefix) {
+			profile = strings.TrimSpace(l[len(ProfilePrefix):])
 		}
 	}
 	// main work
@@ -110,20 +110,26 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
 		util.WriteHttpInternalServerError(w)
-		return
+		return "", "", false
 	}
 	if s.submissionsPerUser[user] >= NumSubmissionsPerUser {
 		log.Printf("Rejected program from %s, profile %s", user, profile)
 		util.WriteHttpTooManyRequests(w)
-		return
+		return "", "", false
 	}
-	s.submissionsPerUser[user]++
 	for _, p := range s.submissions {
 		if p == program.Code {
 			util.WriteHttpOK(w, "Duplicate submission")
-			return
+			return "", "", false
 		}
 	}
+	return user, profile, true
+}
+
+func (s *ProgramsServer) doSubmit(program shared.Program, user, profile string, w http.ResponseWriter) {
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
+	s.submissionsPerUser[user]++
 	s.submissions = append(s.submissions, program.Code)
 	s.submissionsPerProfile[profile]++
 	msg := fmt.Sprintf("Accepted submission from %s, profile %s", user, profile)
@@ -137,7 +143,10 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		s.doSubmit(program, w)
+		user, profile, ok := s.checkSubmit(program, w)
+		if ok {
+			s.doSubmit(program, user, profile, w)
+		}
 	}
 	return http.HandlerFunc(f)
 }
@@ -303,7 +312,13 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 				return
 			}
 		}
-		log.Printf("Evaluating program %v", p.Id)
+		msg := "Evaluating program "
+		if !p.Id.IsZero() {
+			msg += p.Id.String()
+		} else {
+			msg += fmt.Sprintf("with %d operations", len(p.Operations))
+		}
+		log.Print(msg)
 		terms, err := s.lodaTool.Eval(p, numTerms)
 		if err != nil {
 			util.WriteHttpInternalServerError(w)
@@ -324,6 +339,10 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		program, ok := readProgramFromBody(w, req)
+		if !ok {
+			return
+		}
+		user, profile, ok := s.checkSubmit(program, w)
 		if !ok {
 			return
 		}
@@ -353,7 +372,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		s.doSubmit(program, w)
+		s.doSubmit(program, user, profile, w)
 	}
 	return http.HandlerFunc(f)
 }

@@ -63,5 +63,5 @@ func (u UID) IsGreaterThan(other UID) bool {
 }
 
 func (u UID) IsZero() bool {
-	return u.domain == 'A' && u.number == 0
+	return (u.domain == 0 || u.domain == 'A') && u.number == 0
 }

@@ -44,7 +44,8 @@ func (s *StatsServer) loadSummary() {
 		log.Printf("Failed to load summary: %v", err)
 		s.summary = nil
 	} else {
-		log.Printf("Loaded summary: %+v", summary)
+		log.Printf("Loaded summary: %d sequences, %d programs, %d formulas",
+			summary.NumSequences, summary.NumPrograms, summary.NumFormulas)
 		s.summary = summary
 	}
 }
