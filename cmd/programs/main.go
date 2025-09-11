@@ -123,8 +123,8 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 	profile := program.GetMinerProfile()
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
-	s.submissionsPerUser[submitter]++
 	s.submissions = append(s.submissions, program)
+	s.submissionsPerUser[submitter]++
 	s.submissionsPerProfile[profile]++
 	util.WriteHttpCreated(w, "Accepted submission")
 	msg := fmt.Sprintf("Accepted submission from %s (%d/%d)",
@@ -424,10 +424,13 @@ func (s *ProgramsServer) checkSession() {
 func (s *ProgramsServer) publishMetrics() {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
+	totalCount := 0
 	for profile, count := range s.submissionsPerProfile {
 		labels := map[string]string{"kind": "submitted", "profile": profile}
 		s.influxDbClient.Write("programs", labels, count)
+		totalCount += count
 	}
+	log.Printf("Published %d new submissions to InfluxDB", totalCount)
 	s.submissionsPerProfile = make(map[string]int)
 }
 
@@ -563,7 +566,7 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
 }
 
 func main() {

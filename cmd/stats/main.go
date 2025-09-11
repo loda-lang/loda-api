@@ -271,7 +271,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
 }
 
 func main() {
