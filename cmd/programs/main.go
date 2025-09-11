@@ -396,7 +396,7 @@ func (s *ProgramsServer) writeCheckpoint() error {
 	}
 	defer f.Close()
 	for _, p := range s.submissions {
-		_, err = f.WriteString(fmt.Sprintf("%s%s\n", p, ProgramSeparator))
+		_, err = f.WriteString(fmt.Sprintf("%s%s\n", p.Code, ProgramSeparator))
 		if err != nil {
 			return fmt.Errorf("cannot write to checkpoint file: %v", err)
 		}
