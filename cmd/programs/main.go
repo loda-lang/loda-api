@@ -242,15 +242,18 @@ func newProgramSearchHandler(s *ProgramsServer) http.Handler {
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
-		results := shared.Search(s.programs, q, limit, skip)
-		// Return only id and name for each program (per SearchResult schema)
+		results, total := shared.Search(s.programs, q, limit, skip)
 		type IDAndName struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 		}
-		var resp []IDAndName
+		var resp struct {
+			Total   int         `json:"total"`
+			Results []IDAndName `json:"results"`
+		}
+		resp.Total = total
 		for _, prog := range results {
-			resp = append(resp, IDAndName{Id: prog.Id.String(), Name: prog.Name})
+			resp.Results = append(resp.Results, IDAndName{Id: prog.Id.String(), Name: prog.Name})
 		}
 		util.WriteJsonResponse(w, resp)
 	}

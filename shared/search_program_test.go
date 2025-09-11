@@ -55,32 +55,41 @@ func TestFindById_Program(t *testing.T) {
 func TestSearchPrograms(t *testing.T) {
 	programs := makeTestPrograms()
 	// Search by name substring
-	results := Search(programs, "Kolakoski", 0, 0)
-	if len(results) != 1 || results[0].Name != "Kolakoski sequence" {
-		t.Errorf("Search by name failed")
+	results, total := Search(programs, "Kolakoski", 0, 0)
+	if total != 1 || len(results) != 1 || results[0].Name != "Kolakoski sequence" {
+		t.Errorf("Search by name failed: got total=%d, len=%d", total, len(results))
 	}
 	// Search by included keyword
-	results = Search(programs, "+core", 0, 0)
+	results, total = Search(programs, "+core", 0, 0)
+	if total != 3 {
+		t.Errorf("Search +core: got total=%d, want 3", total)
+	}
 	for _, p := range results {
 		if !ContainsAllKeywords(p.Keywords, mustKeywords([]string{"core"})) {
 			t.Errorf("Search +core: missing keyword")
 		}
 	}
 	// Search by excluded keyword
-	results = Search(programs, "-mult", 0, 0)
+	results, total = Search(programs, "-mult", 0, 0)
+	if total != 2 {
+		t.Errorf("Search -mult: got total=%d, want 2", total)
+	}
 	for _, p := range results {
 		if ContainsAllKeywords(p.Keywords, mustKeywords([]string{"mult"})) {
 			t.Errorf("Search -mult: should not contain 'mult'")
 		}
 	}
 	// Search with multiple tokens
-	results = Search(programs, "zero sequence", 0, 0)
-	if len(results) != 1 || results[0].Name != "The zero sequence." {
-		t.Errorf("Search with multiple tokens failed")
+	results, total = Search(programs, "zero sequence", 0, 0)
+	if total != 1 || len(results) != 1 || results[0].Name != "The zero sequence." {
+		t.Errorf("Search with multiple tokens failed: got total=%d, len=%d", total, len(results))
 	}
 	// Pagination
-	all := Search(programs, "", 0, 0)
-	paged := Search(programs, "", 2, 1)
+	all, allTotal := Search(programs, "", 0, 0)
+	if allTotal != 4 {
+		t.Errorf("All: got total=%d, want 4", allTotal)
+	}
+	paged, _ := Search(programs, "", 2, 1)
 	if len(paged) != 2 || paged[0].Id != all[1].Id || paged[1].Id != all[2].Id {
 		t.Errorf("Pagination failed")
 	}

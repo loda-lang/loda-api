@@ -194,8 +194,8 @@ func (idx *Index) FindById(id util.UID) *Sequence {
 	return nil
 }
 
-// Search finds sequences matching the query and applies pagination.
-func (idx *Index) Search(query string, limit, skip int) []Sequence {
+// Search returns paginated results and total count of all matches
+func (idx *Index) Search(query string, limit, skip int) ([]Sequence, int) {
 	// Split the query into lower-case tokens
 	var tokens []string
 	if query != "" {
@@ -221,15 +221,16 @@ func (idx *Index) Search(query string, limit, skip int) []Sequence {
 	}
 	included, err := EncodeKeywords(inc)
 	if err != nil {
-		return nil
+		return nil, 0
 	}
 	excluded, err := EncodeKeywords(exc)
 	if err != nil {
-		return nil
+		return nil, 0
 	}
 
 	count := 0
 	var results []Sequence
+	var total int
 	for _, seq := range idx.Sequences {
 		// Check included and excluded keywords
 		if !ContainsAllKeywords(seq.Keywords, included) {
@@ -252,15 +253,15 @@ func (idx *Index) Search(query string, limit, skip int) []Sequence {
 				continue
 			}
 		}
-		// Pagination: skip first 'skip' matches, then collect up to 'limit'
+		total++
 		if count < skip {
 			count++
 			continue
 		}
 		if limit > 0 && len(results) >= limit {
-			break
+			continue
 		}
 		results = append(results, seq)
 	}
-	return results
+	return results, total
 }

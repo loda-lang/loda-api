@@ -46,7 +46,8 @@ func FindById(programs []Program, id util.UID) *Program {
 }
 
 // Search finds programs matching the query and applies pagination.
-func Search(programs []Program, query string, limit, skip int) []Program {
+// Search returns paginated results and total count of all matches
+func Search(programs []Program, query string, limit, skip int) ([]Program, int) {
 	// Split the query into lower-case tokens
 	var tokens []string
 	if query != "" {
@@ -72,15 +73,16 @@ func Search(programs []Program, query string, limit, skip int) []Program {
 	}
 	included, err := EncodeKeywords(inc)
 	if err != nil {
-		return nil
+		return nil, 0
 	}
 	excluded, err := EncodeKeywords(exc)
 	if err != nil {
-		return nil
+		return nil, 0
 	}
 
 	count := 0
 	var results []Program
+	var total int
 	for _, seq := range programs {
 		// Check included and excluded keywords
 		if !ContainsAllKeywords(seq.Keywords, included) {
@@ -103,15 +105,15 @@ func Search(programs []Program, query string, limit, skip int) []Program {
 				continue
 			}
 		}
-		// Pagination: skip first 'skip' matches, then collect up to 'limit'
+		total++
 		if count < skip {
 			count++
 			continue
 		}
 		if limit > 0 && len(results) >= limit {
-			break
+			continue
 		}
 		results = append(results, seq)
 	}
-	return results
+	return results, total
 }

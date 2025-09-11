@@ -196,15 +196,18 @@ func (s *SeqServer) SequenceSearchHandler() http.Handler {
 		}
 		q := req.URL.Query().Get("q")
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
-		results := GetIndex(s).Search(q, limit, skip)
-		// Return only id and name for each sequence (per SearchResult schema)
+		results, total := GetIndex(s).Search(q, limit, skip)
 		type IDAndName struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
 		}
-		var resp []IDAndName
+		var resp struct {
+			Total   int         `json:"total"`
+			Results []IDAndName `json:"results"`
+		}
+		resp.Total = total
 		for _, seq := range results {
-			resp = append(resp, IDAndName{Id: seq.Id.String(), Name: seq.Name})
+			resp.Results = append(resp.Results, IDAndName{Id: seq.Id.String(), Name: seq.Name})
 		}
 		util.WriteJsonResponse(w, resp)
 	})

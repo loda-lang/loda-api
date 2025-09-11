@@ -119,15 +119,18 @@ func TestIndexSearch(t *testing.T) {
 	idx := loadTestIndex(t)
 
 	// Search by query string (name substring)
-	results := idx.Search("Kolakoski", 0, 0)
-	if len(results) != 1 {
-		t.Errorf("Search Kolakoski: got %d results, want 1", len(results))
+	results, total := idx.Search("Kolakoski", 0, 0)
+	if total != 1 || len(results) != 1 {
+		t.Errorf("Search Kolakoski: got %d results, want 1", total)
 	} else if !strings.Contains(results[0].Name, "Kolakoski") {
 		t.Errorf("Search Kolakoski: wrong sequence name %q", results[0].Name)
 	}
 
 	// Search by included keyword (as +core)
-	results = idx.Search("+core", 0, 0)
+	results, total = idx.Search("+core", 0, 0)
+	if total != 7 {
+		t.Errorf("Search +core: got total=%d, want 7", total)
+	}
 	for _, seq := range results {
 		gotKeywords := DecodeKeywords(seq.Keywords)
 		found := false
@@ -143,7 +146,10 @@ func TestIndexSearch(t *testing.T) {
 	}
 
 	// Search by excluded keyword (as -hard)
-	results = idx.Search("-hard", 0, 0)
+	results, total = idx.Search("-hard", 0, 0)
+	if total != 9 {
+		t.Errorf("Search -hard: got total=%d, want 9", total)
+	}
 	for _, seq := range results {
 		gotKeywords := DecodeKeywords(seq.Keywords)
 		for _, kw := range gotKeywords {
@@ -154,17 +160,17 @@ func TestIndexSearch(t *testing.T) {
 	}
 
 	// Search with query tokens (all must match)
-	results = idx.Search("groups order", 0, 0)
-	if len(results) != 1 || !strings.Contains(results[0].Name, "groups") || !strings.Contains(results[0].Name, "order") {
-		t.Errorf("Search groups order: got %d results, want 1 with correct name", len(results))
+	results, total = idx.Search("groups order", 0, 0)
+	if total != 1 || len(results) != 1 || !strings.Contains(results[0].Name, "groups") || !strings.Contains(results[0].Name, "order") {
+		t.Errorf("Search groups order: got %d results, want 1 with correct name", total)
 	}
 
 	// Pagination: skip and limit
-	allResults := idx.Search("", 0, 0)
-	if len(allResults) != 10 {
-		t.Fatalf("All results: got %d results, want 10", len(allResults))
+	allResults, allTotal := idx.Search("", 0, 0)
+	if allTotal != 10 || len(allResults) != 10 {
+		t.Fatalf("All results: got %d results, want 10", allTotal)
 	}
-	paged := idx.Search("", 2, 1)
+	paged, _ := idx.Search("", 2, 1)
 	if len(paged) != 2 {
 		t.Errorf("Pagination: got %d results, want 2", len(paged))
 	}

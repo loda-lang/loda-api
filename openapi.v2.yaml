@@ -253,9 +253,15 @@ components:
           description: Name of the integer sequence or LODA program
           example: Fibonacci numbers
     SearchResult:
-      type: array
-      items:
-        $ref: '#/components/schemas/IDAndName'
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of matching items
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/IDAndName'
     Terms:
       type: array
       items:
