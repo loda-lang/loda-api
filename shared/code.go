@@ -92,6 +92,10 @@ func updateIdAndName(code string, id util.UID, name string) string {
 			continue
 		}
 		if !strings.HasPrefix(line, ";") {
+			if !updated {
+				resultLines = append(resultLines, "; "+id.String()+": "+name)
+				updated = true
+			}
 			isHeader = false
 		}
 		if isHeader && !updated {

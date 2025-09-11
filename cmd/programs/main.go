@@ -126,7 +126,10 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 	s.submissionsPerUser[submitter]++
 	s.submissions = append(s.submissions, program.Code)
 	s.submissionsPerProfile[profile]++
-	msg := fmt.Sprintf("Accepted submission from %s, profile %s", submitter, profile)
+	msg := fmt.Sprintf("Accepted submission from %s (%d)", submitter, s.submissionsPerUser[submitter])
+	if len(profile) > 0 {
+		msg += fmt.Sprintf("; profile %s (%d)", profile, s.submissionsPerProfile[profile])
+	}
 	util.WriteHttpCreated(w, msg)
 	log.Print(msg)
 }
@@ -182,7 +185,9 @@ func newCheckpointHandler(s *ProgramsServer) http.Handler {
 			log.Print(err)
 			util.WriteHttpInternalServerError(w)
 		} else {
-			util.WriteHttpCreated(w, "Checkpoint created")
+			msg := "Checkpoint created"
+			util.WriteHttpCreated(w, msg)
+			log.Print(msg)
 		}
 	}
 	return http.HandlerFunc(f)
@@ -337,7 +342,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		if s := req.URL.Query().Get("submitter"); s != "" {
-			program.Submitter = &shared.Submitter{Name: s}
+			program.SetSubmitter(&shared.Submitter{Name: s})
 		}
 		ok = s.checkSubmit(program, w)
 		if !ok {
