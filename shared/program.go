@@ -215,6 +215,21 @@ func (p *Program) SetCode(code string) error {
 	return nil
 }
 
+func (p *Program) SetIdAndName(id util.UID, name string) {
+	p.Code = updateIdAndName(p.Code, id, name)
+	p.Id = id
+	p.Name = name
+}
+
+func (p *Program) SetSubmitter(submitter *Submitter) {
+	p.Code = updateSubmitter(p.Code, submitter)
+	p.Submitter = submitter
+}
+
+func (p *Program) GetMinerProfile() string {
+	return extractMinerProfile(p.Code)
+}
+
 func (p *Program) GetPath(programsDir string) (string, error) {
 	if p.Id.Domain() == 'A' {
 		idStr := p.Id.String()

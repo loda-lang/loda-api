@@ -113,6 +113,7 @@ paths:
       summary: Submit a new LODA program
       parameters:
       - $ref: '#/components/parameters/ID'
+      - $ref: '#/components/parameters/Submitter'
       description: Submit a LODA program in plain text format. The request body should contain the program code as text/plain.
       requestBody:
         required: true
@@ -216,6 +217,14 @@ components:
         type: integer
         minimum: 0
         default: 0
+    Submitter:
+      name: submitter
+      in: query
+      required: false
+      description: User who submitted the program
+      example: Alice
+      schema:
+        type: string
   schemas:
     IDAndName:
       type: object

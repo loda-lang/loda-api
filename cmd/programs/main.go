@@ -31,8 +31,6 @@ const (
 	CheckpointInterval    = 10 * time.Minute
 	UpdateInterval        = 24 * time.Hour
 	CheckSessionInterval  = 24 * time.Hour
-	ProfilePrefix         = "; Miner Profile:"
-	SubmittedByPrefix     = "; Submitted by "
 	CheckpointFile        = "checkpoint.txt"
 	ProgramSeparator      = "=============================="
 )
@@ -90,49 +88,45 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWriter) (string, string, bool) {
-	// extract profile and submitter
-	user := "unknown"
-	profile := "unknown"
-	lines := strings.Split(program.Code, "\n")
-	for _, l := range lines {
-		if strings.HasPrefix(l, SubmittedByPrefix) {
-			user = strings.TrimSpace(l[len(SubmittedByPrefix):])
-		}
-		if strings.HasPrefix(l, ProfilePrefix) {
-			profile = strings.TrimSpace(l[len(ProfilePrefix):])
-		}
+func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWriter) bool {
+	submitter := ""
+	if program.Submitter != nil {
+		submitter = program.Submitter.Name
 	}
-	// main work
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
 		util.WriteHttpInternalServerError(w)
-		return "", "", false
+		return false
 	}
-	if s.submissionsPerUser[user] >= NumSubmissionsPerUser {
-		log.Printf("Rejected program from %s, profile %s", user, profile)
+	if s.submissionsPerUser[submitter] >= NumSubmissionsPerUser {
+		log.Printf("Rejected program from %s", submitter)
 		util.WriteHttpTooManyRequests(w)
-		return "", "", false
+		return false
 	}
 	for _, p := range s.submissions {
 		if p == program.Code {
 			util.WriteHttpOK(w, "Duplicate submission")
-			return "", "", false
+			return false
 		}
 	}
-	return user, profile, true
+	return true
 }
 
-func (s *ProgramsServer) doSubmit(program shared.Program, user, profile string, w http.ResponseWriter) {
+func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter) {
+	submitter := ""
+	if program.Submitter != nil {
+		submitter = program.Submitter.Name
+	}
+	profile := program.GetMinerProfile()
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
-	s.submissionsPerUser[user]++
+	s.submissionsPerUser[submitter]++
 	s.submissions = append(s.submissions, program.Code)
 	s.submissionsPerProfile[profile]++
-	msg := fmt.Sprintf("Accepted submission from %s, profile %s", user, profile)
+	msg := fmt.Sprintf("Accepted submission from %s, profile %s", submitter, profile)
 	util.WriteHttpCreated(w, msg)
 	log.Print(msg)
 }
@@ -143,9 +137,9 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		user, profile, ok := s.checkSubmit(program, w)
+		ok = s.checkSubmit(program, w)
 		if ok {
-			s.doSubmit(program, user, profile, w)
+			s.doSubmit(program, w)
 		}
 	}
 	return http.HandlerFunc(f)
@@ -342,7 +336,10 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		user, profile, ok := s.checkSubmit(program, w)
+		if s := req.URL.Query().Get("submitter"); s != "" {
+			program.Submitter = &shared.Submitter{Name: s}
+		}
+		ok = s.checkSubmit(program, w)
 		if !ok {
 			return
 		}
@@ -356,6 +353,9 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpNotFound(w)
 			return
 		}
+		program.SetIdAndName(id, seq.Name)
+
+		// Check that the program produces the expected terms
 		expectedTerms := seq.TermsList()
 		if len(expectedTerms) > NumTermsCheck {
 			expectedTerms = expectedTerms[:NumTermsCheck]
@@ -372,7 +372,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		s.doSubmit(program, user, profile, w)
+		s.doSubmit(program, w)
 	}
 	return http.HandlerFunc(f)
 }
