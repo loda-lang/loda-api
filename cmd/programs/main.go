@@ -42,7 +42,7 @@ type ProgramsServer struct {
 	session               time.Time
 	programs              []shared.Program
 	submitters            []*shared.Submitter
-	submissions           []string
+	submissions           []shared.Program
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
 	dataMutex             sync.Mutex
@@ -55,7 +55,7 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 		influxDbClient:        influxDbClient,
 		lodaTool:              lodaTool,
 		session:               time.Now(),
-		submissions:           []string{},
+		submissions:           []shared.Program{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
 	}
@@ -107,7 +107,7 @@ func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWrit
 		return false
 	}
 	for _, p := range s.submissions {
-		if p == program.Code {
+		if slices.Equal(p.Operations, program.Operations) {
 			util.WriteHttpOK(w, "Duplicate submission")
 			return false
 		}
@@ -124,13 +124,14 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
 	s.submissionsPerUser[submitter]++
-	s.submissions = append(s.submissions, program.Code)
+	s.submissions = append(s.submissions, program)
 	s.submissionsPerProfile[profile]++
-	msg := fmt.Sprintf("Accepted submission from %s (%d)", submitter, s.submissionsPerUser[submitter])
+	util.WriteHttpCreated(w, "Accepted submission")
+	msg := fmt.Sprintf("Accepted submission from %s (%d/%d)",
+		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser)
 	if len(profile) > 0 {
 		msg += fmt.Sprintf("; profile %s (%d)", profile, s.submissionsPerProfile[profile])
 	}
-	util.WriteHttpCreated(w, msg)
 	log.Print(msg)
 }
 
@@ -166,7 +167,7 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpNotFound(w)
 			return
 		}
-		util.WriteHttpOK(w, s.submissions[index])
+		util.WriteHttpOK(w, s.submissions[index].Code)
 	}
 	return http.HandlerFunc(f)
 }
@@ -341,8 +342,9 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
+		submitter := program.Submitter
 		if s := req.URL.Query().Get("submitter"); s != "" {
-			program.SetSubmitter(&shared.Submitter{Name: s})
+			submitter = &shared.Submitter{Name: s}
 		}
 		ok = s.checkSubmit(program, w)
 		if !ok {
@@ -359,6 +361,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		program.SetIdAndName(id, seq.Name)
+		program.SetSubmitter(submitter)
 
 		// Check that the program produces the expected terms
 		expectedTerms := seq.TermsList()
@@ -494,14 +497,19 @@ func (s *ProgramsServer) loadCheckpoint() {
 		return
 	}
 	log.Printf("Loading checkpoint %s", checkpointPath)
-	s.submissions = []string{}
+	s.submissions = []shared.Program{}
 	scanner := bufio.NewScanner(file)
 	program := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == ProgramSeparator {
 			if len(program) > 0 {
-				s.submissions = append(s.submissions, program)
+				p, err := shared.NewProgramFromCode(program)
+				if err == nil && len(p.Operations) > 0 {
+					s.submissions = append(s.submissions, p)
+				} else {
+					log.Printf("Invalid program in checkpoint: %v", err)
+				}
 			}
 			program = ""
 		} else {
