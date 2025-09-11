@@ -66,8 +66,8 @@ func HandleNotFound(w http.ResponseWriter, r *http.Request) {
 func CORSHandler(h http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		if origin == "https://loda-lang.org/" {
-			w.Header().Set("Access-Control-Allow-Origin", "https://loda-lang.org/")
+		if origin == "https://loda-lang.org" {
+			w.Header().Set("Access-Control-Allow-Origin", "https://loda-lang.org")
 			w.Header().Set("Vary", "Origin")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")

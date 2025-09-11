@@ -282,6 +282,7 @@ func readProgramFromBody(w http.ResponseWriter, req *http.Request) (shared.Progr
 	code = strings.ReplaceAll(code, "\r\n", "\n") + "\n"
 	p, err = shared.NewProgramFromCode(code)
 	if err != nil || len(p.Operations) == 0 {
+		log.Printf("Invalid program: %v", err)
 		util.WriteHttpBadRequest(w)
 		return p, false
 	}
