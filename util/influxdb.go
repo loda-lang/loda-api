@@ -42,4 +42,5 @@ func (c *InfluxDbClient) Write(name string, labels map[string]string, value int)
 	} else {
 		res.Body.Close()
 	}
+	log.Printf("Wrote metric %s; status code %d", data, res.StatusCode)
 }
