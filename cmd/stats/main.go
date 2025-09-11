@@ -191,6 +191,30 @@ func newSummaryHandler(s *StatsServer) http.Handler {
 	})
 }
 
+// KeywordInfo represents a keyword and its description
+type KeywordInfo struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+}
+
+// Handler for /v2/stats/keywords
+func newKeywordsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		var result []KeywordInfo
+		for _, k := range shared.KeywordList {
+			result = append(result, KeywordInfo{
+				Name:        k,
+				Description: shared.GetKeywordDescription(k),
+			})
+		}
+		util.WriteJsonResponse(w, result)
+	})
+}
+
 // Handler for /v2/stats/submitters
 func newSubmittersHandler(s *StatsServer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -243,6 +267,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/openapi", newOpenAPIHandler(s))
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))
+	router.Handle("/v2/stats/keywords", newKeywordsHandler())
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)

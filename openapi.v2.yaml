@@ -148,6 +148,20 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StatsSummary'
+  /stats/keywords:
+    get:
+      tags: [ Stats ]
+      summary: List all keywords
+      description: Returns a list of all keywords with their descriptions.
+      responses:
+        '200':
+          description: List of keywords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Keyword'
   /stats/submitters:
     get:
       tags: [ Stats ]
@@ -292,6 +306,15 @@ components:
       properties:
         terms:
           $ref: '#/components/schemas/Terms'
+    Keyword:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Name of the keyword
+        description:
+          type: string
+          description: Description of the keyword
     Submitter:
       type: object
       properties:
