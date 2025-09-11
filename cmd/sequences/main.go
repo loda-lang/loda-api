@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -239,6 +240,30 @@ func (s *SeqServer) StopCrawler() {
 	}()
 }
 
+// filterValidKeywordsFields filters out unknown keywords from fields with key 'K'.
+func filterValidKeywordsFields(fields []Field) []Field {
+	filteredFields := make([]Field, 0, len(fields))
+	for _, field := range fields {
+		if field.Key == "K" {
+			var validKeywords []string
+			for _, kw := range strings.Split(field.Content, ",") {
+				kw = strings.TrimSpace(kw)
+				if shared.IsKeyword(kw) {
+					validKeywords = append(validKeywords, kw)
+				}
+			}
+			if len(validKeywords) > 0 {
+				field.Content = strings.Join(validKeywords, ",")
+				filteredFields = append(filteredFields, field)
+			}
+			// If no valid keywords, skip this field
+		} else {
+			filteredFields = append(filteredFields, field)
+		}
+	}
+	return filteredFields
+}
+
 func (s *SeqServer) StartCrawler() {
 	err := s.crawler.Init()
 	if err != nil {
@@ -298,8 +323,9 @@ func (s *SeqServer) StartCrawler() {
 					continue
 				}
 				// Update the lists with the new fields
+				filteredFields := filterValidKeywordsFields(fields)
 				for _, l := range s.lists {
-					l.Update(fields)
+					l.Update(filteredFields)
 				}
 			}
 		}
