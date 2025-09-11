@@ -63,6 +63,23 @@ func HandleNotFound(w http.ResponseWriter, r *http.Request) {
 	WriteHttpNotFound(w)
 }
 
+func CORSHandler(h http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if origin == "https://loda-lang.org/" {
+			w.Header().Set("Access-Control-Allow-Origin", "https://loda-lang.org/")
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		}
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		h.ServeHTTP(w, r)
+	})
+}
+
 func FetchFile(httpClient *http.Client, url string, localFile string) error {
 	os.Remove(localFile)
 	file, err := os.Create(localFile)

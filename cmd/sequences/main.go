@@ -223,7 +223,7 @@ func (s *SeqServer) Run(port int) {
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)
-	http.ListenAndServe(fmt.Sprintf(":%d", port), router)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
 }
 
 func (s *SeqServer) StopCrawler() {
