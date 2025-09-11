@@ -321,7 +321,8 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 		log.Print(msg)
 		terms, err := s.lodaTool.Eval(p, numTerms)
 		if err != nil {
-			util.WriteHttpInternalServerError(w)
+			log.Printf("Evaluation failed: %v", err)
+			util.WriteHttpBadRequest(w)
 			return
 		}
 		util.WriteJsonResponse(w, map[string]interface{}{"terms": terms})
@@ -371,7 +372,8 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		log.Printf("Checking program %v", program.Id)
 		evalTerms, err := s.lodaTool.Eval(program, NumTermsCheck)
 		if err != nil {
-			util.WriteHttpInternalServerError(w)
+			log.Printf("Evaluation failed: %v", err)
+			util.WriteHttpBadRequest(w)
 			return
 		}
 		if !slices.Equal(expectedTerms, evalTerms) {
