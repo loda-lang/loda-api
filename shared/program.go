@@ -44,7 +44,7 @@ var expectedHeader = []string{"id", "submitter", "length", "usages", "inc_eval",
 
 // LoadProgramsCSV parses the programs.csv file and returns a slice of Program structs.
 // It also takes a slice of sequences, and for each program, if a matching sequence is found by ID, sets the program's name and keywords accordingly.
-func LoadProgramsCSV(path string, submitters []*Submitter, index *SequenceIndex) ([]Program, error) {
+func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]Program, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -94,7 +94,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *SequenceIndex)
 		// Find matching sequence by ID
 		var name string
 		var keywords uint64
-		seq := index.FindById(uid)
+		seq := FindSequenceById(index, uid)
 		if seq != nil {
 			name = seq.Name
 			keywords = seq.Keywords

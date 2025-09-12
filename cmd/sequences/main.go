@@ -19,6 +19,7 @@ import (
 )
 
 type SequencesServer struct {
+	dataDir               string
 	oeisDir               string
 	bfileUpdateInterval   time.Duration
 	summaryUpdateInterval time.Duration
@@ -30,7 +31,7 @@ type SequencesServer struct {
 	crawlerIdsFetchRatio  float64
 	crawlerStopped        chan bool
 	crawler               *Crawler
-	seqIndex              *shared.SequenceIndex
+	dataIndex             *shared.DataIndex
 	httpClient            *http.Client
 	lists                 []*List
 }
@@ -50,7 +51,7 @@ var (
 	}
 )
 
-func NewSeqServer(oeisDir string, updateInterval time.Duration) *SequencesServer {
+func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Duration) *SequencesServer {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
@@ -67,6 +68,7 @@ func NewSeqServer(oeisDir string, updateInterval time.Duration) *SequencesServer
 		i++
 	}
 	return &SequencesServer{
+		dataDir:               dataDir,
 		oeisDir:               oeisDir,
 		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
@@ -78,23 +80,22 @@ func NewSeqServer(oeisDir string, updateInterval time.Duration) *SequencesServer
 		crawlerIdsFetchRatio:  0.5,
 		crawlerStopped:        make(chan bool),
 		crawler:               NewCrawler(httpClient),
-		seqIndex:              nil,
+		dataIndex:             nil,
 		httpClient:            httpClient,
 		lists:                 lists,
 	}
 }
 
-func GetIndex(s *SequencesServer) *shared.SequenceIndex {
-	if s.seqIndex == nil {
-		idx := shared.NewSequenceIndex()
-		err := idx.Load(s.oeisDir)
+func GetIndex(s *SequencesServer) *shared.DataIndex {
+	if s.dataIndex == nil {
+		idx := shared.NewDataIndex()
+		err := idx.Load(s.dataDir)
 		if err != nil {
-			log.Fatalf("Failed to load sequence index: %v", err)
+			log.Fatalf("Failed to load data index: %v", err)
 		}
-		log.Printf("Loaded %d sequences", len(idx.Sequences))
-		s.seqIndex = idx
+		s.dataIndex = idx
 	}
-	return s.seqIndex
+	return s.dataIndex
 }
 
 func newSummaryHandler(s *SequencesServer, filename string) http.Handler {
@@ -180,7 +181,7 @@ func (s *SequencesServer) SequenceHandler() http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		seq := GetIndex(s).FindById(uid)
+		seq := shared.FindSequenceById(GetIndex(s), uid)
 		if seq == nil {
 			w.WriteHeader(http.StatusNotFound)
 			return
@@ -197,7 +198,7 @@ func (s *SequencesServer) SequenceSearchHandler() http.Handler {
 		}
 		q := req.URL.Query().Get("q")
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
-		results, total := GetIndex(s).Search(q, limit, skip)
+		results, total := shared.SearchSequences(GetIndex(s), q, limit, skip)
 		type IDAndName struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
@@ -337,7 +338,7 @@ func main() {
 	util.MustDirExist(setup.DataDir)
 	oeisDir := filepath.Join(setup.DataDir, "seqs", "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
-	s := NewSeqServer(oeisDir, setup.UpdateInterval)
+	s := NewSequencesServer(setup.DataDir, oeisDir, setup.UpdateInterval)
 	s.StartCrawler()
 	s.Run(8080)
 }

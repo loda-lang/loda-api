@@ -355,12 +355,12 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		index, err := s.loadSequences()
+		index, err := s.loadIndex()
 		if err != nil {
 			util.WriteHttpInternalServerError(w)
 			return
 		}
-		seq := index.FindById(id)
+		seq := shared.FindSequenceById(index, id)
 		if seq == nil {
 			util.WriteHttpNotFound(w)
 			return
@@ -457,14 +457,11 @@ func (s *ProgramsServer) update() {
 	s.loadPrograms()
 }
 
-func (s *ProgramsServer) loadSequences() (*shared.SequenceIndex, error) {
-	oeisDir := filepath.Join(s.dataDir, "seqs", "oeis")
-	index := shared.NewSequenceIndex()
-	err := index.Load(oeisDir)
+func (s *ProgramsServer) loadIndex() (*shared.DataIndex, error) {
+	index := shared.NewDataIndex()
+	err := index.Load(s.dataDir)
 	if err != nil {
-		log.Printf("Error loading sequences: %v", err)
-	} else {
-		log.Printf("Loaded %d sequences", len(index.Sequences))
+		log.Fatalf("Error loading index: %v", err)
 	}
 	return index, err
 }
@@ -480,7 +477,7 @@ func (s *ProgramsServer) loadPrograms() {
 		log.Printf("Failed to load submitters: %v", err)
 		return
 	}
-	index, err := s.loadSequences()
+	index, err := s.loadIndex()
 	if err != nil {
 		log.Printf("Failed to load sequences: %v", err)
 		return
