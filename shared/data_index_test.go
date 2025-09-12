@@ -7,9 +7,9 @@ import (
 )
 
 func loadTestIndex(t *testing.T) *DataIndex {
-	idx := NewDataIndex()
 	testdataDir := filepath.Join("..", "testdata")
-	err := idx.Load(testdataDir)
+	idx := NewDataIndex(testdataDir)
+	err := idx.Load()
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}

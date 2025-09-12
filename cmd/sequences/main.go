@@ -51,6 +51,8 @@ var (
 	}
 )
 
+// TODO: update index every 24h
+
 func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Duration) *SequencesServer {
 	httpClient := &http.Client{
 		Transport: &http.Transport{
@@ -88,8 +90,8 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 
 func GetIndex(s *SequencesServer) *shared.DataIndex {
 	if s.dataIndex == nil {
-		idx := shared.NewDataIndex()
-		err := idx.Load(s.dataDir)
+		idx := shared.NewDataIndex(s.dataDir)
+		err := idx.Load()
 		if err != nil {
 			log.Fatalf("Failed to load data index: %v", err)
 		}

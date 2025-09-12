@@ -17,34 +17,47 @@ import (
 )
 
 type DataIndex struct {
+	DataDir    string
+	OeisDir    string
+	StatsDir   string
 	Programs   []Program
 	Sequences  []Sequence
 	Submitters []*Submitter
 }
 
-func NewDataIndex() *DataIndex {
-	return &DataIndex{}
+func NewDataIndex(dataDir string) *DataIndex {
+	oeisDir := filepath.Join(dataDir, "seqs", "oeis")
+	statsDir := filepath.Join(dataDir, "stats")
+	return &DataIndex{
+		DataDir:  dataDir,
+		StatsDir: statsDir,
+		OeisDir:  oeisDir,
+	}
 }
 
 // Load reads and parses the data files to populate the index.
-func (idx *DataIndex) Load(dataDir string) error {
-	oeisDir := filepath.Join(dataDir, "seqs", "oeis")
-	os.MkdirAll(oeisDir, os.ModePerm)
-	namesPath := filepath.Join(oeisDir, "names")
+func (idx *DataIndex) Load() error {
+	namesPath := filepath.Join(idx.OeisDir, "names")
 	nameMap, err := LoadNamesFile(namesPath)
 	if err != nil {
 		return err
 	}
-	keywordsPath := filepath.Join(oeisDir, "keywords")
+	keywordsPath := filepath.Join(idx.OeisDir, "keywords")
 	keywordsMap, err := LoadKeywordsFile(keywordsPath)
 	if err != nil {
 		return err
 	}
-	strippedPath := filepath.Join(oeisDir, "stripped")
+	strippedPath := filepath.Join(idx.OeisDir, "stripped")
 	sequences, err := LoadStrippedFile(strippedPath, nameMap)
 	if err != nil {
 		return err
 	}
+	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
+	submitters, err := LoadSubmittersCSV(submittersPath)
+	if err != nil {
+		return err
+	}
+
 	// Attach keywords to sequences
 	for i := range sequences {
 		id := sequences[i].Id.String()
@@ -60,8 +73,18 @@ func (idx *DataIndex) Load(dataDir string) error {
 	sort.Slice(sequences, func(i, j int) bool {
 		return sequences[i].Id.IsLessThan(sequences[j].Id)
 	})
+
+	programsPath := filepath.Join(idx.StatsDir, "programs.csv")
+	programs, err := LoadProgramsCSV(programsPath, submitters, idx)
+	if err != nil {
+		return err
+	}
+
+	idx.Submitters = submitters
+	idx.Programs = programs
 	idx.Sequences = sequences
-	log.Printf("Loaded %d sequences", len(idx.Sequences))
+	log.Printf("Loaded %d sequences, %d programs, %d submitters",
+		len(sequences), len(programs), len(submitters))
 	return nil
 }
 

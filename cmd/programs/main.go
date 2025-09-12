@@ -40,8 +40,7 @@ type ProgramsServer struct {
 	influxDbClient        *util.InfluxDbClient
 	lodaTool              *LODATool
 	session               time.Time
-	programs              []shared.Program
-	submitters            []*shared.Submitter
+	dataIndex             *shared.DataIndex
 	submissions           []shared.Program
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
@@ -209,7 +208,7 @@ func newProgramByIdHandler(s *ProgramsServer) http.Handler {
 		}
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
-		p := shared.FindById(s.programs, uid)
+		p := shared.FindProgramById(s.dataIndex.Programs, uid)
 		if p == nil {
 			log.Printf("Program ID not found: %v", uid.String())
 			w.WriteHeader(http.StatusNotFound)
@@ -242,7 +241,7 @@ func newProgramSearchHandler(s *ProgramsServer) http.Handler {
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
 		s.dataMutex.Lock()
 		defer s.dataMutex.Unlock()
-		results, total := shared.Search(s.programs, q, limit, skip)
+		results, total := shared.SearchPrograms(s.dataIndex.Programs, q, limit, skip)
 		type IDAndName struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
@@ -355,12 +354,12 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		index, err := s.loadIndex()
-		if err != nil {
-			util.WriteHttpInternalServerError(w)
-			return
+		var seq *shared.Sequence
+		{
+			s.dataMutex.Lock()
+			defer s.dataMutex.Unlock()
+			seq = shared.FindSequenceById(s.dataIndex, id)
 		}
-		seq := shared.FindSequenceById(index, id)
 		if seq == nil {
 			util.WriteHttpNotFound(w)
 			return
@@ -454,45 +453,18 @@ func (s *ProgramsServer) update() {
 			log.Printf("LODA tool update failed: %v", err)
 		}
 	}
-	s.loadPrograms()
-}
-
-func (s *ProgramsServer) loadIndex() (*shared.DataIndex, error) {
-	index := shared.NewDataIndex()
-	err := index.Load(s.dataDir)
-	if err != nil {
-		log.Fatalf("Error loading index: %v", err)
-	}
-	return index, err
+	s.loadIndex()
 }
 
 // loadPrograms loads submitters and programs from the stats directory
-func (s *ProgramsServer) loadPrograms() {
-	statsDir := filepath.Join(s.dataDir, "stats")
-	submittersPath := filepath.Join(statsDir, "submitters.csv")
-	programsPath := filepath.Join(statsDir, "programs.csv")
-
-	submitters, err := shared.LoadSubmittersCSV(submittersPath)
-	if err != nil {
-		log.Printf("Failed to load submitters: %v", err)
-		return
-	}
-	index, err := s.loadIndex()
-	if err != nil {
-		log.Printf("Failed to load sequences: %v", err)
-		return
-	}
-	programs, err := shared.LoadProgramsCSV(programsPath, submitters, index)
-	if err != nil {
-		log.Printf("Failed to load programs: %v", err)
-		return
-	}
-
+func (s *ProgramsServer) loadIndex() {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
-	s.submitters = submitters
-	s.programs = programs
-	log.Printf("Loaded %d submitters and %d programs", len(submitters), len(programs))
+	s.dataIndex = shared.NewDataIndex(s.dataDir)
+	err := s.dataIndex.Load()
+	if err != nil {
+		log.Fatalf("Error loading index: %v", err)
+	}
 }
 
 func (s *ProgramsServer) loadCheckpoint() {
@@ -526,8 +498,8 @@ func (s *ProgramsServer) loadCheckpoint() {
 }
 
 func (s *ProgramsServer) Run(port int) {
-	// load programs and checkpoint
-	s.loadPrograms()
+	// load index and checkpoint
+	s.loadIndex()
 	s.loadCheckpoint()
 
 	// schedule background tasks

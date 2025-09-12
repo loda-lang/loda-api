@@ -6,7 +6,7 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-func FindById(programs []Program, id util.UID) *Program {
+func FindProgramById(programs []Program, id util.UID) *Program {
 	d := id.Domain()
 	n := int64(id.Number())
 	if n >= 0 && n < int64(len(programs)) && programs[n].Id.Domain() == d {
@@ -45,9 +45,8 @@ func FindById(programs []Program, id util.UID) *Program {
 	return nil
 }
 
-// Search finds programs matching the query and applies pagination.
-// Search returns paginated results and total count of all matches
-func Search(programs []Program, query string, limit, skip int) ([]Program, int) {
+// SearchPrograms returns paginated results and total count of all matches
+func SearchPrograms(programs []Program, query string, limit, skip int) ([]Program, int) {
 	// Split the query into lower-case tokens
 	var tokens []string
 	if query != "" {

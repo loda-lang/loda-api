@@ -31,23 +31,23 @@ func mustKeywords(kw []string) uint64 {
 	return k
 }
 
-func TestFindById_Program(t *testing.T) {
+func TestFindProgramById(t *testing.T) {
 	programs := makeTestPrograms()
 	// Test existing
-	p := FindById(programs, mustUID("A000004"))
+	p := FindProgramById(programs, mustUID("A000004"))
 	if p == nil || p.Name != "The zero sequence." {
 		t.Errorf("FindById failed for A000004")
 	}
 	// Test non-existing
-	p = FindById(programs, mustUID("A999999"))
+	p = FindProgramById(programs, mustUID("A999999"))
 	if p != nil {
 		t.Errorf("FindById should return nil for non-existent ID")
 	}
 	// Test first and last
-	if FindById(programs, programs[0].Id) == nil {
+	if FindProgramById(programs, programs[0].Id) == nil {
 		t.Errorf("FindById failed for first program")
 	}
-	if FindById(programs, programs[len(programs)-1].Id) == nil {
+	if FindProgramById(programs, programs[len(programs)-1].Id) == nil {
 		t.Errorf("FindById failed for last program")
 	}
 }
@@ -55,12 +55,12 @@ func TestFindById_Program(t *testing.T) {
 func TestSearchPrograms(t *testing.T) {
 	programs := makeTestPrograms()
 	// Search by name substring
-	results, total := Search(programs, "Kolakoski", 0, 0)
+	results, total := SearchPrograms(programs, "Kolakoski", 0, 0)
 	if total != 1 || len(results) != 1 || results[0].Name != "Kolakoski sequence" {
 		t.Errorf("Search by name failed: got total=%d, len=%d", total, len(results))
 	}
 	// Search by included keyword
-	results, total = Search(programs, "+core", 0, 0)
+	results, total = SearchPrograms(programs, "+core", 0, 0)
 	if total != 3 {
 		t.Errorf("Search +core: got total=%d, want 3", total)
 	}
@@ -70,7 +70,7 @@ func TestSearchPrograms(t *testing.T) {
 		}
 	}
 	// Search by excluded keyword
-	results, total = Search(programs, "-mult", 0, 0)
+	results, total = SearchPrograms(programs, "-mult", 0, 0)
 	if total != 2 {
 		t.Errorf("Search -mult: got total=%d, want 2", total)
 	}
@@ -80,16 +80,16 @@ func TestSearchPrograms(t *testing.T) {
 		}
 	}
 	// Search with multiple tokens
-	results, total = Search(programs, "zero sequence", 0, 0)
+	results, total = SearchPrograms(programs, "zero sequence", 0, 0)
 	if total != 1 || len(results) != 1 || results[0].Name != "The zero sequence." {
 		t.Errorf("Search with multiple tokens failed: got total=%d, len=%d", total, len(results))
 	}
 	// Pagination
-	all, allTotal := Search(programs, "", 0, 0)
+	all, allTotal := SearchPrograms(programs, "", 0, 0)
 	if allTotal != 4 {
 		t.Errorf("All: got total=%d, want 4", allTotal)
 	}
-	paged, _ := Search(programs, "", 2, 1)
+	paged, _ := SearchPrograms(programs, "", 2, 1)
 	if len(paged) != 2 || paged[0].Id != all[1].Id || paged[1].Id != all[2].Id {
 		t.Errorf("Pagination failed")
 	}
