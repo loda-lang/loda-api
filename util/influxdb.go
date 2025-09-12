@@ -39,8 +39,11 @@ func (c *InfluxDbClient) Write(name string, labels map[string]string, value int)
 	res, err := c.httpClient.Do(req)
 	if err != nil {
 		log.Printf("Error writing to InfluxDB: %v", err)
-	} else {
-		res.Body.Close()
+		return
 	}
-	log.Printf("Wrote metric %s; status code %d", data, res.StatusCode)
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusNoContent {
+		log.Printf("Error writing to InfluxDB, data: %s, status code: %d", data, res.StatusCode)
+		return
+	}
 }

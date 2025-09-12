@@ -1,13 +1,9 @@
 package shared
 
 import (
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"path/filepath"
-	"slices"
 	"strconv"
 	"strings"
 
@@ -38,89 +34,6 @@ func NewProgramFromCode(code string) (Program, error) {
 		Submitter:  submitter,
 		Operations: operations,
 	}, nil
-}
-
-var expectedHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
-
-// LoadProgramsCSV parses the programs.csv file and returns a slice of Program structs.
-// It also takes a slice of sequences, and for each program, if a matching sequence is found by ID, sets the program's name and keywords accordingly.
-func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]Program, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	r := csv.NewReader(f)
-	header, err := r.Read()
-	if err != nil {
-		return nil, err
-	}
-	if !slices.Equal(header, expectedHeader) {
-		return nil, err
-	}
-	var programs []Program
-	for {
-		rec, err := r.Read()
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		if len(rec) != 6 {
-			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
-		}
-		uid, err := util.NewUIDFromString(rec[0])
-		if err != nil {
-			return nil, err
-		}
-		var submitter *Submitter = nil
-		if refId, err := strconv.Atoi(rec[1]); err == nil {
-			if refId >= 0 && refId < len(submitters) {
-				submitter = submitters[refId]
-			}
-		}
-		length, err := strconv.Atoi(rec[2])
-		if err != nil {
-			return nil, err
-		}
-		usages, err := strconv.Atoi(rec[3])
-		if err != nil {
-			return nil, err
-		}
-		incEval := rec[4] == "1"
-		logEval := rec[5] == "1"
-
-		// Find matching sequence by ID
-		var name string
-		var keywords uint64
-		seq := FindSequenceById(index, uid)
-		if seq != nil {
-			name = seq.Name
-			keywords = seq.Keywords
-		}
-		// Add loda-specific keywords
-		bit, _ := EncodeKeywords([]string{"loda"})
-		keywords |= bit
-		if incEval {
-			bit, _ = EncodeKeywords([]string{"loda-inceval"})
-			keywords |= bit
-		}
-		if logEval {
-			bit, _ = EncodeKeywords([]string{"loda-logeval"})
-			keywords |= bit
-		}
-		p := Program{
-			Id:        uid,
-			Name:      name,
-			Keywords:  keywords,
-			Submitter: submitter,
-			Length:    length,
-			Usages:    usages,
-		}
-		programs = append(programs, p)
-	}
-	return programs, nil
 }
 
 // MarshalJSON implements custom JSON serialization for Program according to the OpenAPI spec.

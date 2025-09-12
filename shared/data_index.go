@@ -2,18 +2,24 @@ package shared
 
 import (
 	"bufio"
+	"encoding/csv"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/loda-lang/loda-api/util"
 )
 
 type DataIndex struct {
-	Sequences []Sequence
+	Programs   []Program
+	Sequences  []Sequence
+	Submitters []*Submitter
 }
 
 func NewDataIndex() *DataIndex {
@@ -157,4 +163,140 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		return nil, fmt.Errorf("failed to read stripped file: %w", err)
 	}
 	return sequences, nil
+}
+
+var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
+
+func LoadSubmittersCSV(path string) ([]*Submitter, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+	header, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(header, expectedSubmitterHeader) {
+		return nil, fmt.Errorf("unexpected header in submitters.csv: %v", header)
+	}
+	var records [][]string
+	maxRefId := 0
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, rec)
+		refId, err := strconv.Atoi(rec[1])
+		if err != nil {
+			return nil, err
+		}
+		if refId > maxRefId {
+			maxRefId = refId
+		}
+	}
+	submitters := make([]*Submitter, maxRefId+1)
+	for _, rec := range records {
+		name := rec[0]
+		refId, err := strconv.Atoi(rec[1])
+		if err != nil {
+			return nil, err
+		}
+		numPrograms, err := strconv.Atoi(rec[2])
+		if err != nil {
+			return nil, err
+		}
+		submitters[refId] = &Submitter{
+			Name:        name,
+			RefId:       refId,
+			NumPrograms: numPrograms,
+		}
+	}
+	return submitters, nil
+}
+
+var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
+
+func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]Program, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+	header, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(header, expectedProgramsHeader) {
+		return nil, err
+	}
+	var programs []Program
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(rec) != 6 {
+			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
+		}
+		uid, err := util.NewUIDFromString(rec[0])
+		if err != nil {
+			return nil, err
+		}
+		var submitter *Submitter = nil
+		if refId, err := strconv.Atoi(rec[1]); err == nil {
+			if refId >= 0 && refId < len(submitters) {
+				submitter = submitters[refId]
+			}
+		}
+		length, err := strconv.Atoi(rec[2])
+		if err != nil {
+			return nil, err
+		}
+		usages, err := strconv.Atoi(rec[3])
+		if err != nil {
+			return nil, err
+		}
+		incEval := rec[4] == "1"
+		logEval := rec[5] == "1"
+
+		// Find matching sequence by ID
+		var name string
+		var keywords uint64
+		seq := FindSequenceById(index, uid)
+		if seq != nil {
+			name = seq.Name
+			keywords = seq.Keywords
+		}
+		// Add loda-specific keywords
+		bit, _ := EncodeKeywords([]string{"loda"})
+		keywords |= bit
+		if incEval {
+			bit, _ = EncodeKeywords([]string{"loda-inceval"})
+			keywords |= bit
+		}
+		if logEval {
+			bit, _ = EncodeKeywords([]string{"loda-logeval"})
+			keywords |= bit
+		}
+		p := Program{
+			Id:        uid,
+			Name:      name,
+			Keywords:  keywords,
+			Submitter: submitter,
+			Length:    length,
+			Usages:    usages,
+		}
+		programs = append(programs, p)
+	}
+	return programs, nil
 }
