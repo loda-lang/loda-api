@@ -201,17 +201,15 @@ func (s *SequencesServer) SequenceSearchHandler() http.Handler {
 		q := req.URL.Query().Get("q")
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
 		results, total := shared.SearchSequences(GetIndex(s), q, limit, skip)
-		type IDAndName struct {
-			Id   string `json:"id"`
-			Name string `json:"name"`
+		resp := shared.SearchResult{
+			Total: total,
 		}
-		var resp struct {
-			Total   int         `json:"total"`
-			Results []IDAndName `json:"results"`
-		}
-		resp.Total = total
 		for _, seq := range results {
-			resp.Results = append(resp.Results, IDAndName{Id: seq.Id.String(), Name: seq.Name})
+			resp.Results = append(resp.Results, shared.SearchItem{
+				Id:       seq.Id.String(),
+				Name:     seq.Name,
+				Keywords: shared.DecodeKeywords(seq.Keywords),
+			})
 		}
 		util.WriteJsonResponse(w, resp)
 	})

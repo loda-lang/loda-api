@@ -191,7 +191,10 @@ components:
       name: q
       in: query
       required: true
-      description: Search query (keywords, properties, etc.)
+      description: |
+        Search query supporting keywords, properties, submitters and advanced criteria.
+        You can specify keywords to include or exclude in the search results.
+        To require a keyword, simply include it in the query. To exclude a keyword, prefix it with a minus sign (e.g., `-keyword`).
       example: Fibonacci numbers
       schema:
         type: string
@@ -209,7 +212,12 @@ components:
       name: o
       in: query
       required: false
-      description: Offset used for evaluation requests. If provided, this overrides the default offset specified in the program (or 0 if not specified).
+      description: |
+        The starting index (offset) for evaluating the sequence program.
+        Integer sequences are typically defined starting from n = 0,
+        but some sequences may start from a different index (e.g., n = 1 or n = 2).
+        If set, this parameter overrides the `#offset` directive at the top 
+        of the program, or the default of 0 if not specified in the program. 
       schema:
         type: integer
     Limit:
@@ -240,7 +248,7 @@ components:
       schema:
         type: string
   schemas:
-    IDAndName:
+    SearchItem:
       type: object
       properties:
         id:
@@ -252,6 +260,12 @@ components:
           type: string
           description: Name of the integer sequence or LODA program
           example: Fibonacci numbers
+        keywords:
+          type: array
+          description: Keywords for this item
+          example: [ core, easy, loda, loda-logeval, nice, nonn ]
+          items:
+            type: string
     SearchResult:
       type: object
       properties:
@@ -261,7 +275,7 @@ components:
         results:
           type: array
           items:
-            $ref: '#/components/schemas/IDAndName'
+            $ref: '#/components/schemas/SearchItem'
     Terms:
       type: array
       items:
@@ -270,7 +284,7 @@ components:
         description: Sequence term encoded as a string to support arbitrary-sized integers
     SequenceDetails:
       allOf:
-      - $ref: '#/components/schemas/IDAndName'
+      - $ref: '#/components/schemas/SearchItem'
       - type: object
         properties:
           terms:
@@ -287,7 +301,7 @@ components:
             nullable: true
     ProgramDetails:
       allOf:
-      - $ref: '#/components/schemas/IDAndName'
+      - $ref: '#/components/schemas/SearchItem'
       - type: object
         properties:
           code:
