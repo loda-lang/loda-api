@@ -81,16 +81,18 @@ func (idx *DataIndex) Load() error {
 			if err != nil {
 				return err
 			}
-			sequences[si].Keywords = keywords
 			// If a program with the same ID exists, update it as well
 			for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
 				pi++
 			}
 			if pi < len(programs) && programs[pi].Id == id {
-				programs[pi].Keywords |= keywords
+				keywords |= programs[pi].Keywords
+				programs[pi].Keywords = keywords
 				programs[pi].Name = sequences[si].Name
 				pi++
 			}
+			// Update sequence keywords
+			sequences[si].Keywords = keywords
 		}
 		si++
 	}
