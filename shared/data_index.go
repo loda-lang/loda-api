@@ -52,6 +52,16 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
+	commentsPath := filepath.Join(idx.OeisDir, "comments")
+	comments, err := LoadOeisTextFile(commentsPath)
+	if err != nil {
+		return err
+	}
+	formulasPath := filepath.Join(idx.OeisDir, "formulas")
+	formulas, err := LoadOeisTextFile(formulasPath)
+	if err != nil {
+		return err
+	}
 	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
 	submitters, err := LoadSubmittersCSV(submittersPath)
 	if err != nil {
@@ -71,29 +81,63 @@ func (idx *DataIndex) Load() error {
 		return programs[i].Id.IsLessThan(programs[j].Id)
 	})
 
-	// Update sequences and programs with keywords and names
+	// Update sequences and programs with keywords and names, including extra keywords from comments/formulas
 	// Both lists are sorted by ID, so we can do a linear scan
 	si, pi := 0, 0
 	for si < len(sequences) {
 		id := sequences[si].Id
-		if keywordsStr, ok := keywordsMap[id.String()]; ok {
-			keywords, err := EncodeKeywords(keywordsStr)
+		idStr := id.String()
+		var keywords uint64
+		if keywordsStr, ok := keywordsMap[idStr]; ok {
+			k, err := EncodeKeywords(keywordsStr)
 			if err != nil {
 				return err
 			}
-			// If a program with the same ID exists, update it as well
-			for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
-				pi++
-			}
-			if pi < len(programs) && programs[pi].Id == id {
-				keywords |= programs[pi].Keywords
-				programs[pi].Keywords = keywords
-				programs[pi].Name = sequences[si].Name
-				pi++
-			}
-			// Update sequence keywords
-			sequences[si].Keywords = keywords
+			keywords = k
 		}
+
+		// --- Begin: extra keyword extraction logic ---
+		var extraKeywords []string
+		// Check for formulas
+		if f, ok := formulas[idStr]; ok && f != "" {
+			extraKeywords = append(extraKeywords, "formula")
+		}
+		// Combine name and comments for keyword extraction
+		desc := strings.ToLower(sequences[si].Name)
+		if c, ok := comments[idStr]; ok && c != "" {
+			desc += " " + strings.ToLower(c)
+		}
+		// Keyword heuristics
+		if strings.Contains(desc, "conjecture") || strings.Contains(desc, "it appears") || strings.Contains(desc, "empirical") {
+			extraKeywords = append(extraKeywords, "conjecture")
+		}
+		if strings.Contains(desc, "decimal expansion") {
+			extraKeywords = append(extraKeywords, "decimal-expansion")
+		}
+		if strings.Contains(desc, " e.g.f.") {
+			extraKeywords = append(extraKeywords, "egf-expansion")
+		}
+		if strings.Contains(desc, " g.f.") {
+			extraKeywords = append(extraKeywords, "gf-expansion")
+		}
+		if len(extraKeywords) > 0 {
+			bits, _ := EncodeKeywords(extraKeywords)
+			keywords |= bits
+		}
+		// --- End: extra keyword extraction logic ---
+
+		// If a program with the same ID exists, update it as well
+		for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
+			pi++
+		}
+		if pi < len(programs) && programs[pi].Id == id {
+			keywords |= programs[pi].Keywords
+			programs[pi].Keywords = keywords
+			programs[pi].Name = sequences[si].Name
+			pi++
+		}
+		// Update sequence keywords
+		sequences[si].Keywords = keywords
 		si++
 	}
 
@@ -105,6 +149,7 @@ func (idx *DataIndex) Load() error {
 	return nil
 }
 
+// LoadNamesFile reads the OEIS names file and returns a map from UID string to name.
 func LoadNamesFile(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -131,6 +176,7 @@ func LoadNamesFile(path string) (map[string]string, error) {
 	return nameMap, nil
 }
 
+// LoadKeywordsFile reads the OEIS keywords file and returns a map from UID string to list of keywords.
 func LoadKeywordsFile(path string) (map[string][]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -170,6 +216,8 @@ func LoadKeywordsFile(path string) (map[string][]string, error) {
 	return keywordsMap, nil
 }
 
+// LoadStrippedFile reads the OEIS stripped file and returns a list of sequences.
+// It uses the provided nameMap to set sequence names.
 func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error) {
 	file, err := os.Open(path)
 	if err != nil {
@@ -203,6 +251,38 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		return nil, fmt.Errorf("failed to read stripped file: %w", err)
 	}
 	return sequences, nil
+}
+
+// LoadOeisTextFile reads an OEIS-style text file (e.g., comments, formulas) and returns a map from UID string to concatenated lines.
+func LoadOeisTextFile(path string) (map[string]string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open OEIS text file: %w", err)
+	}
+	defer file.Close()
+	entryMap := make(map[string][]string)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) == 2 {
+			id := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			entryMap[id] = append(entryMap[id], value)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read OEIS text file: %w", err)
+	}
+	// Concatenate lines for each UID
+	result := make(map[string]string, len(entryMap))
+	for id, lines := range entryMap {
+		result[id] = strings.Join(lines, "\n")
+	}
+	return result, nil
 }
 
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}

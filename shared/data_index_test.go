@@ -2,7 +2,9 @@ package shared
 
 import (
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 	"testing"
 )
 
@@ -32,12 +34,12 @@ func TestIndexLoad(t *testing.T) {
 		"A000001": {
 			name:     "Number of groups of order n.",
 			terms:    ",0,1,1,1,2,1,2,1,5,2,2,1,5,1,2,1,14,1,5,1,5,2,2,1,15,2,2,5,4,1,4,1,51,1,2,1,14,1,2,2,14,1,6,1,4,2,2,1,52,2,5,1,5,1,15,2,13,2,2,1,13,1,2,4,267,1,4,1,5,1,4,1,50,1,2,3,4,1,6,1,52,15,2,1,15,1,2,1,12,1,10,1,4,2,",
-			keywords: []string{"nonn", "core", "nice", "hard"},
+			keywords: []string{"nonn", "core", "nice", "hard", "conjecture", "formula"},
 		},
 		"A000002": {
 			name:     "Kolakoski sequence: a(n) is length of n-th run; a(1) = 1; sequence consists just of 1's and 2's.",
 			terms:    ",1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,",
-			keywords: []string{"nonn", "core", "easy", "loda", "loda-inceval", "nice"},
+			keywords: []string{"nonn", "core", "easy", "loda", "loda-inceval", "nice", "conjecture", "formula"},
 		},
 	}
 	for _, seq := range idx.Sequences {
@@ -51,20 +53,39 @@ func TestIndexLoad(t *testing.T) {
 			gotKeywords := DecodeKeywords(seq.Keywords)
 			sort.Strings(gotKeywords)
 			sort.Strings(w.keywords)
-			if len(gotKeywords) != len(w.keywords) {
-				t.Errorf("Sequence %s: got %d keywords, want %d", seq.Id, len(gotKeywords), len(w.keywords))
-			} else {
-				for i := range w.keywords {
-					if gotKeywords[i] != w.keywords[i] {
-						t.Errorf("Sequence %s: keyword %d: got %q, want %q", seq.Id, i, gotKeywords[i], w.keywords[i])
-					}
-				}
+			if !slices.Equal(gotKeywords, w.keywords) {
+				t.Errorf("Sequence %s: got keywords %v, want %v", seq.Id, gotKeywords, w.keywords)
 			}
 			delete(want, seq.Id.String())
 		}
 	}
 	for id := range want {
 		t.Errorf("Sequence %s not found in loaded index", id)
+	}
+}
+
+func TestLoadCommentsFile(t *testing.T) {
+	commentsPath := filepath.Join("..", "testdata", "seqs", "oeis", "comments")
+	comments, err := LoadOeisTextFile(commentsPath)
+	if err != nil {
+		t.Fatalf("LoadCommentsFile failed: %v", err)
+	}
+	// Check that some known UIDs exist and have expected content
+	a1 := comments["A000001"]
+	if a1 == "" {
+		t.Errorf("A000001 comments missing")
+	} else if want := "Also, number of nonisomorphic primitives of the combinatorial species Lin[n-1]. - _Nicolae Boicu_, Apr 29 2011\nAlso, number of nonisomorphic subgroups of order n in symmetric group S_n. - _Lekraj Beedassy_, Dec 16 2004\nI conjecture that a(i) * a(j) <= a(i*j) for all nonnegative integers i and j. - _Jorge R. F. F. Lopes_, Apr 21 2024"; !strings.HasPrefix(a1, want[:60]) {
+		t.Errorf("A000001 comments do not start as expected: got %q", a1)
+	}
+	a2 := comments["A000002"]
+	if a2 == "" {
+		t.Errorf("A000002 comments missing")
+	} else if !strings.Contains(a2, "Kolakoski sequence") {
+		t.Errorf("A000002 comments missing expected content: got %q", a2)
+	}
+	// Check that multiple comments are concatenated with newlines
+	if strings.Count(a1, "\n") < 2 {
+		t.Errorf("A000001 should have multiple concatenated comments, got: %q", a1)
 	}
 }
 

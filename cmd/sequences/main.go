@@ -95,6 +95,8 @@ func GetIndex(s *SequencesServer) *shared.DataIndex {
 		if err != nil {
 			log.Fatalf("Failed to load data index: %v", err)
 		}
+		// Free unused memory
+		idx.Programs = nil
 		s.dataIndex = idx
 	}
 	return s.dataIndex
