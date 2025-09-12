@@ -98,12 +98,18 @@ func DecodeKeywords(bits uint64) []string {
 	return result
 }
 
-// ContainsAllKeywords returns true if all keywords in bits2 are present in bits1
-func ContainsAllKeywords(bits1, bits2 uint64) bool {
+// HasKeyword returns true if the given keyword is present in the bits
+func HasKeyword(bits1 uint64, keyword string) bool {
+	bits2, err := EncodeKeywords([]string{keyword})
+	return err == nil && HasAllKeywords(bits1, bits2)
+}
+
+// HasAllKeywords returns true if all keywords in bits2 are present in bits1
+func HasAllKeywords(bits1, bits2 uint64) bool {
 	return bits1&bits2 == bits2
 }
 
-// ContainsNoKeywords returns true if none of the keywords in bits2 are present in bits1
-func ContainsNoKeywords(bits1, bits2 uint64) bool {
+// HasNoKeywords returns true if none of the keywords in bits2 are present in bits1
+func HasNoKeywords(bits1, bits2 uint64) bool {
 	return bits1&bits2 == 0
 }

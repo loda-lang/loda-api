@@ -105,22 +105,33 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 	// Check a few known values
 	p := programs[0]
-	if p.Id.String() != "A000002" || p.Length != 10 || p.Usages != 20 || p.IncEval != true || p.LogEval != false {
+	if p.Id.String() != "A000002" || p.Length != 10 || p.Usages != 20 {
 		t.Errorf("unexpected program[0]: %+v", p)
+	}
+	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-inceval") || HasKeyword(p.Keywords, "loda-logeval") {
+		t.Errorf("unexpected keywords for program[0]: %v", DecodeKeywords(p.Keywords))
 	}
 	if p.Submitter == nil || p.Submitter.Name != "" {
 		t.Errorf("unexpected submitter for program[0]: %+v", p.Submitter)
 	}
+
 	p = programs[2]
-	if p.Id.String() != "A000006" || p.Length != 2 || p.Usages != 1 || p.IncEval != false || p.LogEval != true {
+	if p.Id.String() != "A000006" || p.Length != 2 || p.Usages != 1 {
 		t.Errorf("unexpected program[2]: %+v", p)
+	}
+	if !HasKeyword(p.Keywords, "loda") || HasKeyword(p.Keywords, "loda-inceval") || !HasKeyword(p.Keywords, "loda-logeval") {
+		t.Errorf("unexpected keywords for program[2]: %v", DecodeKeywords(p.Keywords))
 	}
 	if p.Submitter == nil || p.Submitter.Name != "Nova_Sky" {
 		t.Errorf("unexpected submitter for program[2]: %+v", p.Submitter)
 	}
+
 	p = programs[9]
 	if p.Id.String() != "A000016" || p.Length != 15 || p.Usages != 4 {
 		t.Errorf("unexpected program[9]: %+v", p)
+	}
+	if !HasKeyword(p.Keywords, "loda") {
+		t.Errorf("unexpected keywords for program[9]: %v", DecodeKeywords(p.Keywords))
 	}
 	if p.Submitter == nil || p.Submitter.Name != "@Pixel$Hero" {
 		t.Errorf("unexpected submitter for program[9]: %+v", p.Submitter)

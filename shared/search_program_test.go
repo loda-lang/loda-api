@@ -65,7 +65,7 @@ func TestSearchPrograms(t *testing.T) {
 		t.Errorf("Search +core: got total=%d, want 3", total)
 	}
 	for _, p := range results {
-		if !ContainsAllKeywords(p.Keywords, mustKeywords([]string{"core"})) {
+		if !HasKeyword(p.Keywords, "core") {
 			t.Errorf("Search +core: missing keyword")
 		}
 	}
@@ -75,7 +75,7 @@ func TestSearchPrograms(t *testing.T) {
 		t.Errorf("Search -mult: got total=%d, want 2", total)
 	}
 	for _, p := range results {
-		if ContainsAllKeywords(p.Keywords, mustKeywords([]string{"mult"})) {
+		if HasKeyword(p.Keywords, "mult") {
 			t.Errorf("Search -mult: should not contain 'mult'")
 		}
 	}

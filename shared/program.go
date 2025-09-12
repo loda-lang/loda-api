@@ -23,8 +23,6 @@ type Program struct {
 	Operations []string
 	Length     int
 	Usages     int
-	IncEval    bool
-	LogEval    bool
 }
 
 // ProgramFromText creates a Program instance from LODA code in plain text format.
@@ -101,7 +99,17 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *Index) ([]Prog
 			name = seq.Name
 			keywords = seq.Keywords
 		}
-
+		// Add loda-specific keywords
+		bit, _ := EncodeKeywords([]string{"loda"})
+		keywords |= bit
+		if incEval {
+			bit, _ = EncodeKeywords([]string{"loda-inceval"})
+			keywords |= bit
+		}
+		if logEval {
+			bit, _ = EncodeKeywords([]string{"loda-logeval"})
+			keywords |= bit
+		}
 		p := Program{
 			Id:        uid,
 			Name:      name,
@@ -109,8 +117,6 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *Index) ([]Prog
 			Submitter: submitter,
 			Length:    length,
 			Usages:    usages,
-			IncEval:   incEval,
-			LogEval:   logEval,
 		}
 		programs = append(programs, p)
 	}

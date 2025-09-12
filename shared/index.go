@@ -233,10 +233,10 @@ func (idx *Index) Search(query string, limit, skip int) ([]Sequence, int) {
 	var total int
 	for _, seq := range idx.Sequences {
 		// Check included and excluded keywords
-		if !ContainsAllKeywords(seq.Keywords, included) {
+		if !HasAllKeywords(seq.Keywords, included) {
 			continue
 		}
-		if !ContainsNoKeywords(seq.Keywords, excluded) {
+		if !HasNoKeywords(seq.Keywords, excluded) {
 			continue
 		}
 		match := true

@@ -85,10 +85,10 @@ func Search(programs []Program, query string, limit, skip int) ([]Program, int) 
 	var total int
 	for _, seq := range programs {
 		// Check included and excluded keywords
-		if !ContainsAllKeywords(seq.Keywords, included) {
+		if !HasAllKeywords(seq.Keywords, included) {
 			continue
 		}
-		if !ContainsNoKeywords(seq.Keywords, excluded) {
+		if !HasNoKeywords(seq.Keywords, excluded) {
 			continue
 		}
 		match := true

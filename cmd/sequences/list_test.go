@@ -30,7 +30,9 @@ func TestList_Flush(t *testing.T) {
 	err := l.Flush(false)
 	assert.Equal(t, nil, err, "Expected no error")
 	assert.Equal(t, 0, l.Len(), "Unexpected length")
+	assert.True(t, util.FileExists("test1"), "Expected file to exist")
 	assert.True(t, util.FileExists("test1.gz"), "Expected file to exist")
+	os.Remove("test1")
 	os.Remove("test1.gz")
 }
 
@@ -51,5 +53,6 @@ func TestList_FindMissingIds(t *testing.T) {
 	testFindMissingIds(t, l, 6, 4, 4, []int{1, 3, 4, 6})
 	testFindMissingIds(t, l, 6, 5, 4, []int{1, 3, 4, 6})
 	testFindMissingIds(t, l, 7, 5, 5, []int{1, 3, 4, 6, 7})
+	os.Remove("test2")
 	os.Remove("test2.gz")
 }

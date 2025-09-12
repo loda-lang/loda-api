@@ -38,42 +38,61 @@ func TestEncodeKeywordsUnknown(t *testing.T) {
 	}
 }
 
-func TestContainsAllKeywords(t *testing.T) {
+func TestHasAllKeywords(t *testing.T) {
 	a, _ := EncodeKeywords([]string{"base", "word"})
 	b, _ := EncodeKeywords([]string{"base", "word", "nice"})
 	c, _ := EncodeKeywords([]string{"base"})
 	d, _ := EncodeKeywords([]string{"nice"})
 
-	if !ContainsAllKeywords(b, a) {
+	if !HasAllKeywords(b, a) {
 		t.Error("expected a to be contained in b")
 	}
-	if !ContainsAllKeywords(a, c) {
+	if !HasAllKeywords(a, c) {
 		t.Error("expected c to be contained in a")
 	}
-	if ContainsAllKeywords(a, b) {
+	if HasAllKeywords(a, b) {
 		t.Error("expected a not to be contained in b")
 	}
-	if ContainsAllKeywords(a, d) {
+	if HasAllKeywords(a, d) {
 		t.Error("expected d not to be contained in a")
 	}
 }
 
-func TestContainsNoKeywords(t *testing.T) {
+func TestHasNoKeywords(t *testing.T) {
 	a, _ := EncodeKeywords([]string{"base", "word"})
 	b, _ := EncodeKeywords([]string{"nice", "hard"})
 	c, _ := EncodeKeywords([]string{"word"})
 	d, _ := EncodeKeywords([]string{})
 
-	if !ContainsNoKeywords(a, b) {
+	if !HasNoKeywords(a, b) {
 		t.Error("expected a and b to have no keywords in common")
 	}
-	if ContainsNoKeywords(a, c) {
+	if HasNoKeywords(a, c) {
 		t.Error("expected a and c to have at least one keyword in common")
 	}
-	if !ContainsNoKeywords(d, a) {
+	if !HasNoKeywords(d, a) {
 		t.Error("expected empty set to have no keywords in common with a")
 	}
-	if !ContainsNoKeywords(d, d) {
+	if !HasNoKeywords(d, d) {
 		t.Error("expected empty sets to have no keywords in common")
+	}
+}
+
+func TestHasKeyword(t *testing.T) {
+	bits, _ := EncodeKeywords([]string{"base", "word", "nice"})
+	if !HasKeyword(bits, "base") {
+		t.Error("expected HasKeyword to be true for 'base'")
+	}
+	if !HasKeyword(bits, "word") {
+		t.Error("expected HasKeyword to be true for 'word'")
+	}
+	if !HasKeyword(bits, "nice") {
+		t.Error("expected HasKeyword to be true for 'nice'")
+	}
+	if HasKeyword(bits, "hard") {
+		t.Error("expected HasKeyword to be false for 'hard'")
+	}
+	if HasKeyword(bits, "notakeyword") {
+		t.Error("expected HasKeyword to be false for unknown keyword")
 	}
 }
