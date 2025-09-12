@@ -113,3 +113,8 @@ func HasAllKeywords(bits1, bits2 uint64) bool {
 func HasNoKeywords(bits1, bits2 uint64) bool {
 	return bits1&bits2 == 0
 }
+
+// MergeKeywords merges two keyword bitmasks into one
+func MergeKeywords(bits1, bits2 uint64) uint64 {
+	return bits1 | bits2
+}

@@ -57,28 +57,37 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
-
-	// Attach keywords to sequences
-	for i := range sequences {
-		id := sequences[i].Id.String()
-		if keywords, ok := keywordsMap[id]; ok {
-			encoded, err := EncodeKeywords(keywords)
-			if err != nil {
-				return err
-			}
-			sequences[i].Keywords = encoded
-		}
-	}
-	// Sort sequences by ID
-	sort.Slice(sequences, func(i, j int) bool {
-		return sequences[i].Id.IsLessThan(sequences[j].Id)
-	})
-
 	programsPath := filepath.Join(idx.StatsDir, "programs.csv")
-	programs, err := LoadProgramsCSV(programsPath, submitters, idx)
+	programs, err := LoadProgramsCSV(programsPath, submitters)
 	if err != nil {
 		return err
 	}
+
+	// Merge keywords and attach them to sequences and programs
+	for i := range sequences {
+		id := sequences[i].Id
+		p := FindProgramById(programs, id)
+		if keywordsStr, ok := keywordsMap[id.String()]; ok {
+			keywords, err := EncodeKeywords(keywordsStr)
+			if err != nil {
+				return err
+			}
+			if p != nil {
+				keywords = MergeKeywords(keywords, p.Keywords)
+				p.Keywords = keywords
+				p.Name = sequences[i].Name // Update program name from sequence
+			}
+			sequences[i].Keywords = keywords
+		}
+	}
+
+	// Sort sequences and programs by ID
+	sort.Slice(sequences, func(i, j int) bool {
+		return sequences[i].Id.IsLessThan(sequences[j].Id)
+	})
+	sort.Slice(programs, func(i, j int) bool {
+		return programs[i].Id.IsLessThan(programs[j].Id)
+	})
 
 	idx.Submitters = submitters
 	idx.Programs = programs
@@ -245,7 +254,7 @@ func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 
 var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval"}
 
-func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]Program, error) {
+func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -292,17 +301,9 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]
 		incEval := rec[4] == "1"
 		logEval := rec[5] == "1"
 
-		// Find matching sequence by ID
-		var name string
-		var keywords uint64
-		seq := FindSequenceById(index, uid)
-		if seq != nil {
-			name = seq.Name
-			keywords = seq.Keywords
-		}
 		// Add loda-specific keywords
 		bit, _ := EncodeKeywords([]string{"loda"})
-		keywords |= bit
+		keywords := bit
 		if incEval {
 			bit, _ = EncodeKeywords([]string{"loda-inceval"})
 			keywords |= bit
@@ -313,7 +314,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter, index *DataIndex) ([]
 		}
 		p := Program{
 			Id:        uid,
-			Name:      name,
+			Name:      "", // Will be filled in later from sequence name
 			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
