@@ -71,23 +71,28 @@ func (idx *DataIndex) Load() error {
 		return programs[i].Id.IsLessThan(programs[j].Id)
 	})
 
-	// Merge keywords and attach them to sequences and programs
-	for i := range sequences {
-		id := sequences[i].Id
-		// TODO: must improve performance before enabling this
-		// p := FindProgramById(programs, id)
+	// Update sequences and programs with keywords and names
+	// Both lists are sorted by ID, so we can do a linear scan
+	si, pi := 0, 0
+	for si < len(sequences) {
+		id := sequences[si].Id
 		if keywordsStr, ok := keywordsMap[id.String()]; ok {
 			keywords, err := EncodeKeywords(keywordsStr)
 			if err != nil {
 				return err
 			}
-			// if p != nil {
-			//	keywords = MergeKeywords(keywords, p.Keywords)
-			//	p.Keywords = keywords
-			//	p.Name = sequences[i].Name // Update program name from sequence
-			// }
-			sequences[i].Keywords = keywords
+			sequences[si].Keywords = keywords
+			// If a program with the same ID exists, update it as well
+			for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
+				pi++
+			}
+			if pi < len(programs) && programs[pi].Id == id {
+				programs[pi].Keywords |= keywords
+				programs[pi].Name = sequences[si].Name
+				pi++
+			}
 		}
+		si++
 	}
 
 	idx.Submitters = submitters
