@@ -63,6 +63,14 @@ func (idx *DataIndex) Load() error {
 		return err
 	}
 
+	// Sort sequences and programs by ID
+	sort.Slice(sequences, func(i, j int) bool {
+		return sequences[i].Id.IsLessThan(sequences[j].Id)
+	})
+	sort.Slice(programs, func(i, j int) bool {
+		return programs[i].Id.IsLessThan(programs[j].Id)
+	})
+
 	// Merge keywords and attach them to sequences and programs
 	for i := range sequences {
 		id := sequences[i].Id
@@ -81,14 +89,6 @@ func (idx *DataIndex) Load() error {
 			sequences[i].Keywords = keywords
 		}
 	}
-
-	// Sort sequences and programs by ID
-	sort.Slice(sequences, func(i, j int) bool {
-		return sequences[i].Id.IsLessThan(sequences[j].Id)
-	})
-	sort.Slice(programs, func(i, j int) bool {
-		return programs[i].Id.IsLessThan(programs[j].Id)
-	})
 
 	idx.Submitters = submitters
 	idx.Programs = programs
