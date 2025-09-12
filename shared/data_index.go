@@ -66,17 +66,18 @@ func (idx *DataIndex) Load() error {
 	// Merge keywords and attach them to sequences and programs
 	for i := range sequences {
 		id := sequences[i].Id
-		p := FindProgramById(programs, id)
+		// TODO: must improve performance before enabling this
+		// p := FindProgramById(programs, id)
 		if keywordsStr, ok := keywordsMap[id.String()]; ok {
 			keywords, err := EncodeKeywords(keywordsStr)
 			if err != nil {
 				return err
 			}
-			if p != nil {
-				keywords = MergeKeywords(keywords, p.Keywords)
-				p.Keywords = keywords
-				p.Name = sequences[i].Name // Update program name from sequence
-			}
+			// if p != nil {
+			//	keywords = MergeKeywords(keywords, p.Keywords)
+			//	p.Keywords = keywords
+			//	p.Name = sequences[i].Name // Update program name from sequence
+			// }
 			sequences[i].Keywords = keywords
 		}
 	}
