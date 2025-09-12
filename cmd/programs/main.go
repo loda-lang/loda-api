@@ -457,9 +457,9 @@ func (s *ProgramsServer) update() {
 	s.loadPrograms()
 }
 
-func (s *ProgramsServer) loadSequences() (*shared.Index, error) {
+func (s *ProgramsServer) loadSequences() (*shared.SequenceIndex, error) {
 	oeisDir := filepath.Join(s.dataDir, "seqs", "oeis")
-	index := shared.NewIndex()
+	index := shared.NewSequenceIndex()
 	err := index.Load(oeisDir)
 	if err != nil {
 		log.Printf("Error loading sequences: %v", err)

@@ -9,8 +9,8 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-func loadTestIndex(t *testing.T) *Index {
-	idx := NewIndex()
+func loadTestIndex(t *testing.T) *SequenceIndex {
+	idx := NewSequenceIndex()
 	testdataDir := filepath.Join("..", "testdata")
 	err := idx.Load(testdataDir)
 	if err != nil {

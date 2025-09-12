@@ -11,16 +11,16 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-type Index struct {
+type SequenceIndex struct {
 	Sequences []Sequence
 }
 
-func NewIndex() *Index {
-	return &Index{}
+func NewSequenceIndex() *SequenceIndex {
+	return &SequenceIndex{}
 }
 
 // Load reads and parses the "names", "keywords" and "stripped" files to populate the Sequences index.
-func (idx *Index) Load(dataDir string) error {
+func (idx *SequenceIndex) Load(dataDir string) error {
 	namesPath := filepath.Join(dataDir, "names")
 	nameMap, err := LoadNamesFile(namesPath)
 	if err != nil {
@@ -155,7 +155,7 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 	return sequences, nil
 }
 
-func (idx *Index) FindById(id util.UID) *Sequence {
+func (idx *SequenceIndex) FindById(id util.UID) *Sequence {
 	d := id.Domain()
 	n := int64(id.Number())
 	if n >= 0 && n < int64(len(idx.Sequences)) && idx.Sequences[n].Id.Domain() == d {
@@ -195,7 +195,7 @@ func (idx *Index) FindById(id util.UID) *Sequence {
 }
 
 // Search returns paginated results and total count of all matches
-func (idx *Index) Search(query string, limit, skip int) ([]Sequence, int) {
+func (idx *SequenceIndex) Search(query string, limit, skip int) ([]Sequence, int) {
 	// Split the query into lower-case tokens
 	var tokens []string
 	if query != "" {
