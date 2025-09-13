@@ -4,6 +4,87 @@ import (
 	"fmt"
 )
 
+// Encoded keyword constants for efficient bitwise operations
+var (
+	KeywordBaseBits        uint64
+	KeywordBrefBits        uint64
+	KeywordCofrBits        uint64
+	KeywordConjectureBits  uint64
+	KeywordConsBits        uint64
+	KeywordCoreBits        uint64
+	KeywordDeadBits        uint64
+	KeywordDecimalExpBits  uint64
+	KeywordDumbBits        uint64
+	KeywordEasyBits        uint64
+	KeywordEGFExpBits      uint64
+	KeywordEigenBits       uint64
+	KeywordFiniBits        uint64
+	KeywordFormulaBits     uint64
+	KeywordFracBits        uint64
+	KeywordFullBits        uint64
+	KeywordGFExpBits       uint64
+	KeywordHardBits        uint64
+	KeywordLessBits        uint64
+	KeywordLodaBits        uint64
+	KeywordLodaFormulaBits uint64
+	KeywordLodaIncevalBits uint64
+	KeywordLodaLogevalBits uint64
+	KeywordLodaLoopBits    uint64
+	KeywordLookBits        uint64
+	KeywordMoreBits        uint64
+	KeywordMultBits        uint64
+	KeywordNiceBits        uint64
+	KeywordNonnBits        uint64
+	KeywordObscBits        uint64
+	KeywordPariBits        uint64
+	KeywordSignBits        uint64
+	KeywordTabfBits        uint64
+	KeywordTablBits        uint64
+	KeywordUnknBits        uint64
+	KeywordWalkBits        uint64
+	KeywordWordBits        uint64
+)
+
+func init() {
+	KeywordBaseBits = mustEncodeKeyword("base")
+	KeywordBrefBits = mustEncodeKeyword("bref")
+	KeywordCofrBits = mustEncodeKeyword("cofr")
+	KeywordConjectureBits = mustEncodeKeyword("conjecture")
+	KeywordConsBits = mustEncodeKeyword("cons")
+	KeywordCoreBits = mustEncodeKeyword("core")
+	KeywordDeadBits = mustEncodeKeyword("dead")
+	KeywordDecimalExpBits = mustEncodeKeyword("decimal-expansion")
+	KeywordDumbBits = mustEncodeKeyword("dumb")
+	KeywordEasyBits = mustEncodeKeyword("easy")
+	KeywordEGFExpBits = mustEncodeKeyword("egf-expansion")
+	KeywordEigenBits = mustEncodeKeyword("eigen")
+	KeywordFiniBits = mustEncodeKeyword("fini")
+	KeywordFormulaBits = mustEncodeKeyword("formula")
+	KeywordFracBits = mustEncodeKeyword("frac")
+	KeywordFullBits = mustEncodeKeyword("full")
+	KeywordGFExpBits = mustEncodeKeyword("gf-expansion")
+	KeywordHardBits = mustEncodeKeyword("hard")
+	KeywordLessBits = mustEncodeKeyword("less")
+	KeywordLodaBits = mustEncodeKeyword("loda")
+	KeywordLodaFormulaBits = mustEncodeKeyword("loda-formula")
+	KeywordLodaIncevalBits = mustEncodeKeyword("loda-inceval")
+	KeywordLodaLogevalBits = mustEncodeKeyword("loda-logeval")
+	KeywordLodaLoopBits = mustEncodeKeyword("loda-loop")
+	KeywordLookBits = mustEncodeKeyword("look")
+	KeywordMoreBits = mustEncodeKeyword("more")
+	KeywordMultBits = mustEncodeKeyword("mult")
+	KeywordNiceBits = mustEncodeKeyword("nice")
+	KeywordNonnBits = mustEncodeKeyword("nonn")
+	KeywordObscBits = mustEncodeKeyword("obsc")
+	KeywordPariBits = mustEncodeKeyword("pari")
+	KeywordSignBits = mustEncodeKeyword("sign")
+	KeywordTabfBits = mustEncodeKeyword("tabf")
+	KeywordTablBits = mustEncodeKeyword("tabl")
+	KeywordUnknBits = mustEncodeKeyword("unkn")
+	KeywordWalkBits = mustEncodeKeyword("walk")
+	KeywordWordBits = mustEncodeKeyword("word")
+}
+
 // List of all keywords
 var KeywordList = []string{
 	"base", "bref", "cofr", "conjecture", "cons", "core", "dead",
@@ -53,6 +134,15 @@ var KeywordDescriptions = map[string]string{
 	"unkn":              "Sequences whose definition is unknown",
 	"walk":              "Sequences that contain walks through a lattice",
 	"word":              "Numbers related to a given natural language",
+}
+
+// mustEncodeKeyword encodes a single keyword and panics if it is unknown.
+func mustEncodeKeyword(keyword string) uint64 {
+	bits, err := EncodeKeywords([]string{keyword})
+	if err != nil {
+		panic(err)
+	}
+	return bits
 }
 
 // GetKeywordDescription returns the description for a given keyword, or an empty string if not found

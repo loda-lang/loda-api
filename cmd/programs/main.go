@@ -430,7 +430,6 @@ func (s *ProgramsServer) publishMetrics() {
 		s.influxDbClient.Write("programs", labels, count)
 		totalCount += count
 	}
-	log.Printf("Published %d new submissions to InfluxDB", totalCount)
 	s.submissionsPerProfile = make(map[string]int)
 }
 

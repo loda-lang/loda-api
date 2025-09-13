@@ -16,29 +16,6 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-// Encoded keyword constants for efficient bitwise operations
-var (
-	KeywordFormulaBits     uint64
-	KeywordConjectureBits  uint64
-	KeywordDecimalExpBits  uint64
-	KeywordEGFExpBits      uint64
-	KeywordGFExpBits       uint64
-	KeywordLodaBits        uint64
-	KeywordLodaIncevalBits uint64
-	KeywordLodaLogevalBits uint64
-)
-
-func init() {
-	KeywordFormulaBits, _ = EncodeKeywords([]string{"formula"})
-	KeywordConjectureBits, _ = EncodeKeywords([]string{"conjecture"})
-	KeywordDecimalExpBits, _ = EncodeKeywords([]string{"decimal-expansion"})
-	KeywordEGFExpBits, _ = EncodeKeywords([]string{"egf-expansion"})
-	KeywordGFExpBits, _ = EncodeKeywords([]string{"gf-expansion"})
-	KeywordLodaBits, _ = EncodeKeywords([]string{"loda"})
-	KeywordLodaIncevalBits, _ = EncodeKeywords([]string{"loda-inceval"})
-	KeywordLodaLogevalBits, _ = EncodeKeywords([]string{"loda-logeval"})
-}
-
 type DataIndex struct {
 	DataDir    string
 	OeisDir    string
