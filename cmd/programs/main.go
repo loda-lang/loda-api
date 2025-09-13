@@ -120,17 +120,18 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 		submitter = program.Submitter.Name
 	}
 	profile := program.GetMinerProfile()
+	if len(profile) == 0 {
+		profile = "unknown"
+	}
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
 	s.submissions = append(s.submissions, program)
 	s.submissionsPerUser[submitter]++
 	s.submissionsPerProfile[profile]++
 	util.WriteHttpCreated(w, "Accepted submission")
-	msg := fmt.Sprintf("Accepted submission from %s (%d/%d)",
-		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser)
-	if len(profile) > 0 {
-		msg += fmt.Sprintf("; profile %s (%d)", profile, s.submissionsPerProfile[profile])
-	}
+	msg := fmt.Sprintf("Accepted submission from %s (%d/%d); profile %s (%d)",
+		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser,
+		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
 }
 
