@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -95,8 +96,10 @@ func GetIndex(s *SequencesServer) *shared.DataIndex {
 		if err != nil {
 			log.Fatalf("Failed to load data index: %v", err)
 		}
-		// Free unused memory
+		// We don't need the programs in memory for the sequences server
+		// Also run garbage collection to free memory
 		idx.Programs = nil
+		runtime.GC()
 		s.dataIndex = idx
 	}
 	return s.dataIndex

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"strings"
@@ -442,15 +443,13 @@ func (s *ProgramsServer) clearUserStats() {
 }
 
 func (s *ProgramsServer) update() {
-	{
-		s.updateMutex.Lock()
-		defer s.updateMutex.Unlock()
-		if err := s.lodaTool.Install(); err != nil {
-			log.Fatalf("LODA tool installation failed: %v", err)
-		}
-		if _, err := s.lodaTool.Exec(0, "update"); err != nil {
-			log.Printf("LODA tool update failed: %v", err)
-		}
+	s.updateMutex.Lock()
+	defer s.updateMutex.Unlock()
+	if err := s.lodaTool.Install(); err != nil {
+		log.Fatalf("LODA tool installation failed: %v", err)
+	}
+	if _, err := s.lodaTool.Exec(0, "update"); err != nil {
+		log.Printf("LODA tool update failed: %v", err)
 	}
 	s.loadIndex()
 }
@@ -464,6 +463,8 @@ func (s *ProgramsServer) loadIndex() {
 	if err != nil {
 		log.Fatalf("Error loading index: %v", err)
 	}
+	// Run garbage collection to free memory
+	runtime.GC()
 }
 
 func (s *ProgramsServer) loadCheckpoint() {
