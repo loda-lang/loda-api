@@ -459,7 +459,7 @@ func (s *ProgramsServer) loadIndex() {
 	s.dataMutex.Lock()
 	defer s.dataMutex.Unlock()
 	s.dataIndex = shared.NewDataIndex(s.dataDir)
-	err := s.dataIndex.Load()
+	err := s.dataIndex.Load(true)
 	if err != nil {
 		log.Fatalf("Error loading index: %v", err)
 	}

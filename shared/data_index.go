@@ -36,7 +36,7 @@ func NewDataIndex(dataDir string) *DataIndex {
 }
 
 // Load reads and parses the data files to populate the index.
-func (idx *DataIndex) Load() error {
+func (idx *DataIndex) Load(withPrograms bool) error {
 	namesPath := filepath.Join(idx.OeisDir, "names")
 	nameMap, err := LoadNamesFile(namesPath)
 	if err != nil {
@@ -62,24 +62,30 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
-	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
-	submitters, err := LoadSubmittersCSV(submittersPath)
-	if err != nil {
-		return err
-	}
-	programsPath := filepath.Join(idx.StatsDir, "programs.csv")
-	programs, err := LoadProgramsCSV(programsPath, submitters)
-	if err != nil {
-		return err
+	var submitters []*Submitter
+	var programs []Program
+	if withPrograms {
+		submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
+		submitters, err = LoadSubmittersCSV(submittersPath)
+		if err != nil {
+			return err
+		}
+		programsPath := filepath.Join(idx.StatsDir, "programs.csv")
+		programs, err = LoadProgramsCSV(programsPath, submitters)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Sort sequences and programs by ID
 	sort.Slice(sequences, func(i, j int) bool {
 		return sequences[i].Id.IsLessThan(sequences[j].Id)
 	})
-	sort.Slice(programs, func(i, j int) bool {
-		return programs[i].Id.IsLessThan(programs[j].Id)
-	})
+	if withPrograms {
+		sort.Slice(programs, func(i, j int) bool {
+			return programs[i].Id.IsLessThan(programs[j].Id)
+		})
+	}
 
 	// Update sequences and programs with keywords and names, including extra keywords from comments/formulas
 	// Both lists are sorted by ID, so we can do a linear scan
@@ -127,22 +133,29 @@ func (idx *DataIndex) Load() error {
 		// --- End: extra keyword extraction logic ---
 
 		// If a program with the same ID exists, update it as well
-		for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
-			pi++
-		}
-		if pi < len(programs) && programs[pi].Id == id {
-			keywords |= programs[pi].Keywords
-			programs[pi].Keywords = keywords
-			programs[pi].Name = sequences[si].Name
-			pi++
+		if withPrograms {
+			for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
+				pi++
+			}
+			if pi < len(programs) && programs[pi].Id == id {
+				keywords |= programs[pi].Keywords
+				programs[pi].Keywords = keywords
+				programs[pi].Name = sequences[si].Name
+				pi++
+			}
 		}
 		// Update sequence keywords
 		sequences[si].Keywords = keywords
 		si++
 	}
 
-	idx.Submitters = submitters
-	idx.Programs = programs
+	if withPrograms {
+		idx.Submitters = submitters
+		idx.Programs = programs
+	} else {
+		idx.Submitters = nil
+		idx.Programs = nil
+	}
 	idx.Sequences = sequences
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))
