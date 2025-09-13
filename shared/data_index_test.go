@@ -4,14 +4,13 @@ import (
 	"path/filepath"
 	"slices"
 	"sort"
-	"strings"
 	"testing"
 )
 
 func loadTestIndex(t *testing.T) *DataIndex {
 	testdataDir := filepath.Join("..", "testdata")
 	idx := NewDataIndex(testdataDir)
-	err := idx.Load(true)
+	err := idx.Load()
 	if err != nil {
 		t.Fatalf("Load failed: %v", err)
 	}
@@ -61,31 +60,6 @@ func TestIndexLoad(t *testing.T) {
 	}
 	for id := range want {
 		t.Errorf("Sequence %s not found in loaded index", id)
-	}
-}
-
-func TestLoadCommentsFile(t *testing.T) {
-	commentsPath := filepath.Join("..", "testdata", "seqs", "oeis", "comments")
-	comments, err := LoadOeisTextFile(commentsPath)
-	if err != nil {
-		t.Fatalf("LoadCommentsFile failed: %v", err)
-	}
-	// Check that some known UIDs exist and have expected content
-	a1 := comments["A000001"]
-	if a1 == "" {
-		t.Errorf("A000001 comments missing")
-	} else if want := "Also, number of nonisomorphic primitives of the combinatorial species Lin[n-1]. - _Nicolae Boicu_, Apr 29 2011\nAlso, number of nonisomorphic subgroups of order n in symmetric group S_n. - _Lekraj Beedassy_, Dec 16 2004\nI conjecture that a(i) * a(j) <= a(i*j) for all nonnegative integers i and j. - _Jorge R. F. F. Lopes_, Apr 21 2024"; !strings.HasPrefix(a1, want[:60]) {
-		t.Errorf("A000001 comments do not start as expected: got %q", a1)
-	}
-	a2 := comments["A000002"]
-	if a2 == "" {
-		t.Errorf("A000002 comments missing")
-	} else if !strings.Contains(a2, "Kolakoski sequence") {
-		t.Errorf("A000002 comments missing expected content: got %q", a2)
-	}
-	// Check that multiple comments are concatenated with newlines
-	if strings.Count(a1, "\n") < 2 {
-		t.Errorf("A000001 should have multiple concatenated comments, got: %q", a1)
 	}
 }
 

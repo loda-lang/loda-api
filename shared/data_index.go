@@ -16,6 +16,29 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
+// Encoded keyword constants for efficient bitwise operations
+var (
+	KeywordFormulaBits     uint64
+	KeywordConjectureBits  uint64
+	KeywordDecimalExpBits  uint64
+	KeywordEGFExpBits      uint64
+	KeywordGFExpBits       uint64
+	KeywordLodaBits        uint64
+	KeywordLodaIncevalBits uint64
+	KeywordLodaLogevalBits uint64
+)
+
+func init() {
+	KeywordFormulaBits, _ = EncodeKeywords([]string{"formula"})
+	KeywordConjectureBits, _ = EncodeKeywords([]string{"conjecture"})
+	KeywordDecimalExpBits, _ = EncodeKeywords([]string{"decimal-expansion"})
+	KeywordEGFExpBits, _ = EncodeKeywords([]string{"egf-expansion"})
+	KeywordGFExpBits, _ = EncodeKeywords([]string{"gf-expansion"})
+	KeywordLodaBits, _ = EncodeKeywords([]string{"loda"})
+	KeywordLodaIncevalBits, _ = EncodeKeywords([]string{"loda-inceval"})
+	KeywordLodaLogevalBits, _ = EncodeKeywords([]string{"loda-logeval"})
+}
+
 type DataIndex struct {
 	DataDir    string
 	OeisDir    string
@@ -36,9 +59,14 @@ func NewDataIndex(dataDir string) *DataIndex {
 }
 
 // Load reads and parses the data files to populate the index.
-func (idx *DataIndex) Load(withPrograms bool) error {
+func (idx *DataIndex) Load() error {
 	namesPath := filepath.Join(idx.OeisDir, "names")
 	nameMap, err := LoadNamesFile(namesPath)
+	if err != nil {
+		return err
+	}
+	// Extract extra keywords from names
+	nameKeywords, err := ExtractKeywordsFromFile(namesPath, " ")
 	if err != nil {
 		return err
 	}
@@ -53,42 +81,38 @@ func (idx *DataIndex) Load(withPrograms bool) error {
 		return err
 	}
 	commentsPath := filepath.Join(idx.OeisDir, "comments")
-	comments, err := LoadOeisTextFile(commentsPath)
+
+	// Efficiently extract extra keywords from comments, formulas, and names
+	commentKeywords, err := ExtractKeywordsFromFile(commentsPath, ":")
 	if err != nil {
 		return err
 	}
 	formulasPath := filepath.Join(idx.OeisDir, "formulas")
-	formulas, err := LoadOeisTextFile(formulasPath)
+	formulaKeywords, err := ExtractKeywordsFromFormulas(formulasPath)
 	if err != nil {
 		return err
 	}
-	var submitters []*Submitter
-	var programs []Program
-	if withPrograms {
-		submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
-		submitters, err = LoadSubmittersCSV(submittersPath)
-		if err != nil {
-			return err
-		}
-		programsPath := filepath.Join(idx.StatsDir, "programs.csv")
-		programs, err = LoadProgramsCSV(programsPath, submitters)
-		if err != nil {
-			return err
-		}
+
+	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
+	submitters, err := LoadSubmittersCSV(submittersPath)
+	if err != nil {
+		return err
+	}
+	programsPath := filepath.Join(idx.StatsDir, "programs.csv")
+	programs, err := LoadProgramsCSV(programsPath, submitters)
+	if err != nil {
+		return err
 	}
 
 	// Sort sequences and programs by ID
 	sort.Slice(sequences, func(i, j int) bool {
 		return sequences[i].Id.IsLessThan(sequences[j].Id)
 	})
-	if withPrograms {
-		sort.Slice(programs, func(i, j int) bool {
-			return programs[i].Id.IsLessThan(programs[j].Id)
-		})
-	}
+	sort.Slice(programs, func(i, j int) bool {
+		return programs[i].Id.IsLessThan(programs[j].Id)
+	})
 
 	// Update sequences and programs with keywords and names, including extra keywords from comments/formulas
-	// Both lists are sorted by ID, so we can do a linear scan
 	si, pi := 0, 0
 	for si < len(sequences) {
 		id := sequences[si].Id
@@ -101,61 +125,33 @@ func (idx *DataIndex) Load(withPrograms bool) error {
 			}
 			keywords = k
 		}
-
-		// --- Begin: extra keyword extraction logic ---
-		var extraKeywords []string
-		// Check for formulas
-		if f, ok := formulas[idStr]; ok && f != "" {
-			extraKeywords = append(extraKeywords, "formula")
-		}
-		// Combine name and comments for keyword extraction
-		desc := strings.ToLower(sequences[si].Name)
-		if c, ok := comments[idStr]; ok && c != "" {
-			desc += " " + strings.ToLower(c)
-		}
-		// Keyword heuristics
-		if strings.Contains(desc, "conjecture") || strings.Contains(desc, "it appears") || strings.Contains(desc, "empirical") {
-			extraKeywords = append(extraKeywords, "conjecture")
-		}
-		if strings.Contains(desc, "decimal expansion") {
-			extraKeywords = append(extraKeywords, "decimal-expansion")
-		}
-		if strings.Contains(desc, " e.g.f.") {
-			extraKeywords = append(extraKeywords, "egf-expansion")
-		}
-		if strings.Contains(desc, " g.f.") {
-			extraKeywords = append(extraKeywords, "gf-expansion")
-		}
-		if len(extraKeywords) > 0 {
-			bits, _ := EncodeKeywords(extraKeywords)
+		// Add extra keywords from formulas, comments, and names
+		if bits, ok := formulaKeywords[idStr]; ok {
 			keywords |= bits
 		}
-		// --- End: extra keyword extraction logic ---
-
+		if bits, ok := commentKeywords[idStr]; ok {
+			keywords |= bits
+		}
+		if bits, ok := nameKeywords[idStr]; ok {
+			keywords |= bits
+		}
 		// If a program with the same ID exists, update it as well
-		if withPrograms {
-			for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
-				pi++
-			}
-			if pi < len(programs) && programs[pi].Id == id {
-				keywords |= programs[pi].Keywords
-				programs[pi].Keywords = keywords
-				programs[pi].Name = sequences[si].Name
-				pi++
-			}
+		for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
+			pi++
+		}
+		if pi < len(programs) && programs[pi].Id == id {
+			keywords |= programs[pi].Keywords
+			programs[pi].Keywords = keywords
+			programs[pi].Name = sequences[si].Name
+			pi++
 		}
 		// Update sequence keywords
 		sequences[si].Keywords = keywords
 		si++
 	}
 
-	if withPrograms {
-		idx.Submitters = submitters
-		idx.Programs = programs
-	} else {
-		idx.Submitters = nil
-		idx.Programs = nil
-	}
+	idx.Submitters = submitters
+	idx.Programs = programs
 	idx.Sequences = sequences
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))
@@ -266,14 +262,64 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 	return sequences, nil
 }
 
-// LoadOeisTextFile reads an OEIS-style text file (e.g., comments, formulas) and returns a map from UID string to concatenated lines.
-func LoadOeisTextFile(path string) (map[string]string, error) {
+// extractKeywordBitsFromComment returns the encoded keyword bits for a single comment string.
+func extractKeywordBitsFromComment(comment string) uint64 {
+	var bits uint64
+	if strings.Contains(comment, "conjecture") || strings.Contains(comment, "it appears") || strings.Contains(comment, "empirical") {
+		bits |= KeywordConjectureBits
+	}
+	if strings.Contains(comment, "decimal expansion") {
+		bits |= KeywordDecimalExpBits
+	}
+	if strings.Contains(comment, " e.g.f.") {
+		bits |= KeywordEGFExpBits
+	}
+	if strings.Contains(comment, " g.f.") {
+		bits |= KeywordGFExpBits
+	}
+	return bits
+}
+
+// ExtractKeywordsFromFile parses a file (comments or names) and returns a map from UID to encoded extra keywords.
+// The separator argument should be ":" for comments and " " for names.
+func ExtractKeywordsFromFile(path string, separator string) (map[string]uint64, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open OEIS text file: %w", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer file.Close()
-	entryMap := make(map[string][]string)
+	encoded := make(map[string]uint64)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		parts := strings.SplitN(line, separator, 2)
+		if len(parts) == 2 {
+			id := strings.TrimSpace(parts[0])
+			text := strings.ToLower(strings.TrimSpace(parts[1]))
+			bits := extractKeywordBitsFromComment(text)
+			if bits != 0 {
+				encoded[id] |= bits
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read file: %w", err)
+	}
+	return encoded, nil
+}
+
+// ExtractKeywordsFromFormulas parses the formulas file once and returns a map from UID to encoded "formula" keyword.
+func ExtractKeywordsFromFormulas(path string) (map[string]uint64, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open formulas file: %w", err)
+	}
+	defer file.Close()
+	result := make(map[string]uint64)
+	formulaBits, _ := EncodeKeywords([]string{"formula"})
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -283,17 +329,12 @@ func LoadOeisTextFile(path string) (map[string]string, error) {
 		parts := strings.SplitN(line, ":", 2)
 		if len(parts) == 2 {
 			id := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			entryMap[id] = append(entryMap[id], value)
+			// If any entry exists, mark as having formula
+			result[id] = result[id] | formulaBits
 		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read OEIS text file: %w", err)
-	}
-	// Concatenate lines for each UID
-	result := make(map[string]string, len(entryMap))
-	for id, lines := range entryMap {
-		result[id] = strings.Join(lines, "\n")
+		return nil, fmt.Errorf("failed to read formulas file: %w", err)
 	}
 	return result, nil
 }

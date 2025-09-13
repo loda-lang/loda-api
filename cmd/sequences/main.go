@@ -91,7 +91,7 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 func GetIndex(s *SequencesServer) *shared.DataIndex {
 	if s.dataIndex == nil {
 		idx := shared.NewDataIndex(s.dataDir)
-		err := idx.Load(false)
+		err := idx.Load()
 		if err != nil {
 			log.Fatalf("Failed to load data index: %v", err)
 		}
