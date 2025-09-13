@@ -443,6 +443,13 @@ func (s *ProgramsServer) clearUserStats() {
 }
 
 func (s *ProgramsServer) update() {
+	// Check available system memory, skip update if less than 500 MB (Linux only)
+	const minMemBytes = 500 * 1024 * 1024 // 500 MB
+	memAvailable := util.GetFreeMemoryBytes()
+	if memAvailable > 0 && memAvailable < minMemBytes {
+		log.Printf("Skipping update: only %d MB memory available", memAvailable/1024/1024)
+		return
+	}
 	s.updateMutex.Lock()
 	defer s.updateMutex.Unlock()
 	if err := s.lodaTool.Install(); err != nil {
@@ -519,9 +526,6 @@ func (s *ProgramsServer) Run(port int) {
 			s.update()
 		}
 	}()
-
-	// perform update in background on startup
-	go s.update()
 
 	// start web server
 	router := mux.NewRouter()
