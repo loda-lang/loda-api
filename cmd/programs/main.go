@@ -331,6 +331,12 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func (s *ProgramsServer) FindSequence(id util.UID) *shared.Sequence {
+	s.dataMutex.Lock()
+	defer s.dataMutex.Unlock()
+	return shared.FindSequenceById(s.dataIndex, id)
+}
+
 func newSubmitHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -352,12 +358,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		var seq *shared.Sequence
-		{
-			s.dataMutex.Lock()
-			defer s.dataMutex.Unlock()
-			seq = shared.FindSequenceById(s.dataIndex, id)
-		}
+		seq := s.FindSequence(id)
 		if seq == nil {
 			util.WriteHttpNotFound(w)
 			return

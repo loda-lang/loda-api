@@ -94,10 +94,10 @@ paths:
               type: string
               description: LODA program code
             example: |
-              mov $1,10
+              mov $1,2
               pow $1,$0
               mov $0,$1
-              div $0,9
+              add $0,1
       responses:
         '200':
           description: Evaluation result
