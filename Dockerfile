@@ -37,6 +37,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
         git \
         htop \
         libfontconfig \
+        mc \
         nano \
         net-tools \
         python3-certbot-nginx \
