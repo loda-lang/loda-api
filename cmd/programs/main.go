@@ -388,6 +388,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		res := s.doSubmit(program)
+		res.Terms = result.Terms
 		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
