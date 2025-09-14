@@ -506,6 +506,11 @@ func (s *ProgramsServer) loadCheckpoint() {
 }
 
 func (s *ProgramsServer) Run(port int) {
+	// ensure that loda is installed
+	if err := s.lodaTool.Install(); err != nil {
+		log.Fatalf("LODA tool installation failed: %v", err)
+	}
+
 	// load index and checkpoint
 	s.loadIndex()
 	s.loadCheckpoint()
