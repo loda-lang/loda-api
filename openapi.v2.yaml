@@ -106,7 +106,7 @@ paths:
               add $0,1
       responses:
         '200':
-          description: Evaluation result
+          description: Evaluation result including computed status, message and computed terms
           content:
             application/json:
               schema:
@@ -120,7 +120,7 @@ paths:
       parameters:
       - $ref: '#/components/parameters/ID'
       - $ref: '#/components/parameters/Submitter'
-      description: Submit a LODA program in plain text format. The request body should contain the program code as text/plain.
+      description: Submit a LODA program in plain text format. The request body should contain the program code as text/plain. The response is a Result object, similar to the /programs/eval endpoint.
       requestBody:
         required: true
         content:
@@ -138,10 +138,14 @@ paths:
               mul $0,$2
               add $0,$1
       responses:
-        '201':
-          description: Program submitted successfully
+        '200':
+          description: Submission result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Result'
         '400':
-          description: Program validation error
+          description: Bad request, invalid program format
   /stats/summary:
     get:
       tags: [ Stats ]

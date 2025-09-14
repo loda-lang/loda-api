@@ -88,7 +88,8 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWriter) bool {
+// Returns (ok, Result)
+func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, Result) {
 	submitter := ""
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
@@ -98,24 +99,22 @@ func (s *ProgramsServer) checkSubmit(program shared.Program, w http.ResponseWrit
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
-		util.WriteHttpInternalServerError(w)
-		return false
+		return false, Result{Status: "error", Message: "Too many total submissions", Terms: nil}
 	}
 	if s.submissionsPerUser[submitter] >= NumSubmissionsPerUser {
 		log.Printf("Rejected program from %s", submitter)
-		util.WriteHttpTooManyRequests(w)
-		return false
+		return false, Result{Status: "error", Message: "Too many user submissions", Terms: nil}
 	}
 	for _, p := range s.submissions {
 		if slices.Equal(p.Operations, program.Operations) {
-			util.WriteHttpOK(w, "Duplicate submission")
-			return false
+			return false, Result{Status: "error", Message: "Duplicate submission", Terms: nil}
 		}
 	}
-	return true
+	return true, Result{}
 }
 
-func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter) {
+// Returns a Result object
+func (s *ProgramsServer) doSubmit(program shared.Program) Result {
 	submitter := ""
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
@@ -129,11 +128,11 @@ func (s *ProgramsServer) doSubmit(program shared.Program, w http.ResponseWriter)
 	s.submissions = append(s.submissions, program)
 	s.submissionsPerUser[submitter]++
 	s.submissionsPerProfile[profile]++
-	util.WriteHttpCreated(w, "Accepted submission")
 	msg := fmt.Sprintf("Accepted submission from %s (%d/%d); profile %s (%d)",
 		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser,
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
+	return Result{Status: "success", Message: "Accepted submission", Terms: nil}
 }
 
 func newPostHandler(s *ProgramsServer) http.Handler {
@@ -142,10 +141,12 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		ok = s.checkSubmit(program, w)
-		if ok {
-			s.doSubmit(program, w)
+		if ok, res := s.checkSubmit(program); !ok {
+			util.WriteJsonResponse(w, res)
+			return
 		}
+		res := s.doSubmit(program)
+		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
 }
@@ -345,24 +346,25 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		idStr := params["id"]
 		id, err := util.NewUIDFromString(idStr)
 		if err != nil || id.IsZero() {
-			util.WriteHttpBadRequest(w)
+			util.WriteJsonResponse(w, Result{Status: "error", Message: "Invalid program ID", Terms: nil})
 			return
 		}
 		program, ok := readProgramFromBody(w, req)
 		if !ok {
+			util.WriteJsonResponse(w, Result{Status: "error", Message: "Invalid program format", Terms: nil})
 			return
 		}
 		submitter := program.Submitter
-		if s := req.URL.Query().Get("submitter"); s != "" {
-			submitter = &shared.Submitter{Name: s}
+		if sname := req.URL.Query().Get("submitter"); sname != "" {
+			submitter = &shared.Submitter{Name: sname}
 		}
-		ok = s.checkSubmit(program, w)
-		if !ok {
+		if ok, res := s.checkSubmit(program); !ok {
+			util.WriteJsonResponse(w, res)
 			return
 		}
 		seq := s.FindSequence(id)
 		if seq == nil {
-			util.WriteHttpNotFound(w)
+			util.WriteJsonResponse(w, Result{Status: "error", Message: "Sequence not found", Terms: nil})
 			return
 		}
 		program.SetIdAndName(id, seq.Name)
@@ -374,20 +376,19 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			expectedTerms = expectedTerms[:NumTermsCheck]
 		}
 		log.Printf("Checking program %v", program.Id)
-		evalResult := s.lodaTool.Eval(program, NumTermsCheck)
-		evalTerms := evalResult.Terms
-		if evalResult.Status == "error" {
-			log.Printf("Evaluation failed: %v", evalResult.Message)
-			util.WriteHttpBadRequest(w)
+		result := s.lodaTool.Eval(program, NumTermsCheck)
+		if result.Status == "error" {
+			util.WriteJsonResponse(w, result)
 			return
 		}
-		if !slices.Equal(expectedTerms, evalTerms) {
-			log.Printf("Program for %v produced incorrect terms; expected: %v, got: %v",
-				id.String(), expectedTerms, evalTerms)
-			util.WriteHttpBadRequest(w)
+		if !slices.Equal(expectedTerms, result.Terms) {
+			log.Printf("Submission for %v produced incorrect terms; expected: %v, got: %v",
+				id.String(), expectedTerms, result.Terms)
+			util.WriteJsonResponse(w, Result{Status: "error", Message: "Terms don't match", Terms: result.Terms})
 			return
 		}
-		s.doSubmit(program, w)
+		res := s.doSubmit(program)
+		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
 }
