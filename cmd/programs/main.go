@@ -322,13 +322,13 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 			msg += fmt.Sprintf("with %d operations", len(p.Operations))
 		}
 		log.Print(msg)
-		terms, err := s.lodaTool.Eval(p, numTerms)
-		if err != nil {
-			log.Printf("Evaluation failed: %v", err)
-			util.WriteHttpBadRequest(w)
-			return
+
+		// Call LODA tool and get result object
+		result := s.lodaTool.Eval(p, numTerms)
+		if result.Status == "error" {
+			log.Printf("Evaluation failed: %v", result.Message)
 		}
-		util.WriteJsonResponse(w, map[string]interface{}{"terms": terms})
+		util.WriteJsonResponse(w, result)
 	}
 	return http.HandlerFunc(f)
 }
@@ -374,9 +374,10 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			expectedTerms = expectedTerms[:NumTermsCheck]
 		}
 		log.Printf("Checking program %v", program.Id)
-		evalTerms, err := s.lodaTool.Eval(program, NumTermsCheck)
-		if err != nil {
-			log.Printf("Evaluation failed: %v", err)
+		evalResult := s.lodaTool.Eval(program, NumTermsCheck)
+		evalTerms := evalResult.Terms
+		if evalResult.Status == "error" {
+			log.Printf("Evaluation failed: %v", evalResult.Message)
 			util.WriteHttpBadRequest(w)
 			return
 		}

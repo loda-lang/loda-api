@@ -18,6 +18,12 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
+type Result struct {
+	Status  string   `json:"status"`
+	Message string   `json:"message"`
+	Terms   []string `json:"terms"`
+}
+
 type LODATool struct {
 	dataDir string
 	evalSem chan struct{}
@@ -156,29 +162,56 @@ func (t *LODATool) Exec(timeout time.Duration, args ...string) (string, error) {
 	return outputBuilder.String(), err
 }
 
-// Eval evaluates a LODA program and returns the terms.
-// Handles maximum parallel evalustions, temp file creation and output parsing.
-func (t *LODATool) Eval(program shared.Program, numTerms int) ([]string, error) {
+// Eval evaluates a LODA program and returns a Result with status, message, and terms.
+func (t *LODATool) Eval(program shared.Program, numTerms int) Result {
 	t.evalSem <- struct{}{}
 	defer func() { <-t.evalSem }()
 	tmpfile, err := os.CreateTemp("", "loda_eval_*.asm")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create temp file: %w", err)
+		return Result{
+			Status:  "error",
+			Message: "failed to create temp file: " + err.Error(),
+			Terms:   nil,
+		}
 	}
 	defer os.Remove(tmpfile.Name())
 	if _, err := tmpfile.Write([]byte(program.Code)); err != nil {
-		return nil, fmt.Errorf("failed to write temp file: %w", err)
+		return Result{
+			Status:  "error",
+			Message: "failed to write temp file: " + err.Error(),
+			Terms:   nil,
+		}
 	}
 	tmpfile.Close()
 
 	args := []string{"eval", tmpfile.Name(), "-t", strconv.Itoa(numTerms)}
 	output, execErr := t.Exec(10*time.Second, args...)
+	var terms []string
+	status := "success"
+	message := ""
 	if execErr != nil {
-		return nil, fmt.Errorf("loda eval failed: %w", execErr)
+		// If error, check if output has two lines: terms and error message
+		lines := strings.SplitN(output, "\n", 3)
+		if len(lines) >= 2 {
+			terms = strings.Split(lines[0], ",")
+			for i := range terms {
+				terms[i] = strings.TrimSpace(terms[i])
+			}
+			message = strings.TrimSpace(lines[1])
+		} else {
+			message = execErr.Error()
+		}
+		status = "error"
+	} else {
+		// Success: output is terms (single line)
+		terms = strings.Split(strings.TrimSpace(output), ",")
+		for i := range terms {
+			terms[i] = strings.TrimSpace(terms[i])
+		}
 	}
-	terms := strings.Split(output, ",")
-	for i := range terms {
-		terms[i] = strings.TrimSpace(terms[i])
+	return Result{
+		Status:  status,
+		Message: message,
+		Terms:   terms,
 	}
-	return terms, nil
 }
