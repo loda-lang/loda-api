@@ -137,6 +137,8 @@ func (p *Program) SetCode(code string) error {
 	}
 	p.Code = code
 	p.Operations = extractOperations(code)
+	p.Formula = extractFormula(code)
+	p.Length = len(p.Operations)
 	return nil
 }
 
