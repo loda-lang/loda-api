@@ -69,6 +69,16 @@ func extractSubmitter(code string) *Submitter {
 	return nil
 }
 
+func extractFormula(code string) string {
+	header := extractHeaderComments(code)
+	for _, comment := range header {
+		if after, ok := strings.CutPrefix(comment, "Formula:"); ok {
+			return strings.TrimSpace(after)
+		}
+	}
+	return ""
+}
+
 func extractMinerProfile(code string) string {
 	// Miner profiles are not always in the header
 	lines := strings.Split(code, "\n")

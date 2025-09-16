@@ -17,6 +17,7 @@ type Program struct {
 	Submitter  *Submitter
 	Keywords   uint64 // Bitmask of keywords
 	Operations []string
+	Formula    string
 	Length     int
 	Usages     int
 }
@@ -27,12 +28,15 @@ func NewProgramFromCode(code string) (Program, error) {
 	id, name := extractIdAndName(code)
 	submitter := extractSubmitter(code)
 	operations := extractOperations(code)
+	formula := extractFormula(code)
 	return Program{
 		Id:         id,
 		Name:       name,
 		Code:       code,
 		Submitter:  submitter,
 		Operations: operations,
+		Formula:    formula,
+		Length:     len(operations),
 	}, nil
 }
 
@@ -49,6 +53,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Submitter  string   `json:"submitter,omitempty"`
 		Keywords   []string `json:"keywords"`
 		Operations []string `json:"operations"`
+		Formula    string   `json:"formula,omitempty"`
 	}{
 		Id:         p.Id.String(),
 		Name:       p.Name,
@@ -56,6 +61,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Submitter:  submitter,
 		Keywords:   DecodeKeywords(p.Keywords),
 		Operations: p.Operations,
+		Formula:    p.Formula,
 	})
 }
 

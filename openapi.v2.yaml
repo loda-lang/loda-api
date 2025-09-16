@@ -331,6 +331,10 @@ components:
             description: Operations of the LODA program as an array of strings
             items:
               type: string
+          formula:
+            type: string
+            description: Mathematical formula representing the sequence
+            nullable: true
     Result:
       type: object
       properties:
