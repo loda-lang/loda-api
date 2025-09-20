@@ -19,15 +19,10 @@ type (
 	VarExpr struct {
 		Name string
 	}
-	// Indexed variable, e.g. a(n-1), b(n+2)
-	IndexedVarExpr struct {
-		Name  string
-		Index Expr
-	}
-	// Function call, e.g. binomial(x, y), floor(x)
+	// Function call or indexed variable, e.g. binomial(x, y), floor(x), a(n-1), b(n+2)
 	FuncCallExpr struct {
 		FuncName string
-		Args     []Expr
+		Args     []Expr // for indexed variable, Args has one element (the index)
 	}
 	// Binary operation, e.g. x + y, x * y
 	BinaryExpr struct {
@@ -63,14 +58,46 @@ type (
 // This is a stub; full parsing logic should be implemented as needed.
 func ParseExpr(expr string) Expr {
 	expr = strings.TrimSpace(expr)
-	// For now, just return as ConstExpr or VarExpr if simple, else as raw string ConstExpr
+	// Function call or indexed variable: e.g. binomial(x, y), floor(x), a(n-1), b(n+2)
+	funcCallRe := regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$`)
+	if m := funcCallRe.FindStringSubmatch(expr); m != nil {
+		funcName := m[1]
+		argsStr := m[2]
+		// Split argsStr by commas, but handle nested parentheses
+		var args []Expr
+		var cur strings.Builder
+		depth := 0
+		for i := 0; i < len(argsStr); i++ {
+			c := argsStr[i]
+			if c == '(' {
+				depth++
+			} else if c == ')' {
+				depth--
+			} else if c == ',' && depth == 0 {
+				arg := strings.TrimSpace(cur.String())
+				if arg != "" {
+					args = append(args, ParseExpr(arg))
+				}
+				cur.Reset()
+				continue
+			}
+			cur.WriteByte(c)
+		}
+		arg := strings.TrimSpace(cur.String())
+		if arg != "" {
+			args = append(args, ParseExpr(arg))
+		}
+		return FuncCallExpr{FuncName: funcName, Args: args}
+	}
+	// Variable
 	if expr == "n" || regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`).MatchString(expr) {
 		return VarExpr{Name: expr}
 	}
+	// Constant integer
 	if regexp.MustCompile(`^-?\d+$`).MatchString(expr) {
 		return ConstExpr{Value: expr}
 	}
-	// TODO: Implement full parser for arithmetic, function calls, etc.
+	// TODO: Implement full parser for arithmetic, indexed vars, etc.
 	return ConstExpr{Value: expr}
 }
 
@@ -81,8 +108,6 @@ func ExprToString(e Expr) string {
 		return v.Value
 	case VarExpr:
 		return v.Name
-	case IndexedVarExpr:
-		return fmt.Sprintf("%s(%s)", v.Name, ExprToString(v.Index))
 	case FuncCallExpr:
 		var args []string
 		for _, arg := range v.Args {
