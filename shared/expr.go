@@ -58,6 +58,15 @@ type (
 // This is a stub; full parsing logic should be implemented as needed.
 func ParseExpr(expr string) Expr {
 	expr = strings.TrimSpace(expr)
+	// Parse unary minus (and other unary ops if needed)
+	if strings.HasPrefix(expr, "-") && len(expr) > 1 {
+		// Check if it's a negative number (e.g., -3), not a unary minus
+		if !regexp.MustCompile(`^-\d+$`).MatchString(expr) {
+			// Find the operand, skipping whitespace after '-'
+			operand := strings.TrimSpace(expr[1:])
+			return UnaryExpr{Op: "-", Expr: ParseExpr(operand)}
+		}
+	}
 	// Function call or indexed variable: e.g. binomial(x, y), floor(x), a(n-1), b(n+2)
 	funcCallRe := regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$`)
 	if m := funcCallRe.FindStringSubmatch(expr); m != nil {
