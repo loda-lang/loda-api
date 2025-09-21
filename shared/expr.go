@@ -2,7 +2,6 @@ package shared
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -32,7 +31,7 @@ type (
 	}
 	// Unary operation, e.g. -x
 	UnaryExpr struct {
-		Op   string // '-', 'abs', etc.
+		Op   string // '-', etc.
 		Expr Expr
 	}
 	// Assignment, e.g. a(n) = ...
@@ -54,62 +53,6 @@ type (
 	}
 )
 
-// ParseExpr parses a formula expression string into an AST (Expr).
-// This is a stub; full parsing logic should be implemented as needed.
-func ParseExpr(expr string) Expr {
-	expr = strings.TrimSpace(expr)
-	// Parse unary minus (and other unary ops if needed)
-	if strings.HasPrefix(expr, "-") && len(expr) > 1 {
-		// Check if it's a negative number (e.g., -3), not a unary minus
-		if !regexp.MustCompile(`^-\d+$`).MatchString(expr) {
-			// Find the operand, skipping whitespace after '-'
-			operand := strings.TrimSpace(expr[1:])
-			return UnaryExpr{Op: "-", Expr: ParseExpr(operand)}
-		}
-	}
-	// Function call or indexed variable: e.g. binomial(x, y), floor(x), a(n-1), b(n+2)
-	funcCallRe := regexp.MustCompile(`^([a-zA-Z_][a-zA-Z0-9_]*)\((.*)\)$`)
-	if m := funcCallRe.FindStringSubmatch(expr); m != nil {
-		funcName := m[1]
-		argsStr := m[2]
-		// Split argsStr by commas, but handle nested parentheses
-		var args []Expr
-		var cur strings.Builder
-		depth := 0
-		for i := 0; i < len(argsStr); i++ {
-			c := argsStr[i]
-			if c == '(' {
-				depth++
-			} else if c == ')' {
-				depth--
-			} else if c == ',' && depth == 0 {
-				arg := strings.TrimSpace(cur.String())
-				if arg != "" {
-					args = append(args, ParseExpr(arg))
-				}
-				cur.Reset()
-				continue
-			}
-			cur.WriteByte(c)
-		}
-		arg := strings.TrimSpace(cur.String())
-		if arg != "" {
-			args = append(args, ParseExpr(arg))
-		}
-		return FuncCallExpr{FuncName: funcName, Args: args}
-	}
-	// Variable
-	if expr == "n" || regexp.MustCompile(`^[a-zA-Z_][a-zA-Z0-9_]*$`).MatchString(expr) {
-		return VarExpr{Name: expr}
-	}
-	// Constant integer
-	if regexp.MustCompile(`^-?\d+$`).MatchString(expr) {
-		return ConstExpr{Value: expr}
-	}
-	// TODO: Implement full parser for arithmetic, indexed vars, etc.
-	return ConstExpr{Value: expr}
-}
-
 // ExprToString converts an Expr AST node back to a string representation.
 func ExprToString(e Expr) string {
 	switch v := e.(type) {
@@ -118,24 +61,73 @@ func ExprToString(e Expr) string {
 	case VarExpr:
 		return v.Name
 	case FuncCallExpr:
+		// If single-letter name and one arg, treat as indexed variable: a(n)
+		if len(v.FuncName) == 1 && len(v.Args) == 1 {
+			return fmt.Sprintf("%s(%s)", v.FuncName, ExprToString(v.Args[0]))
+		}
 		var args []string
 		for _, arg := range v.Args {
 			args = append(args, ExprToString(arg))
 		}
 		return fmt.Sprintf("%s(%s)", v.FuncName, strings.Join(args, ","))
 	case BinaryExpr:
-		// Add parentheses for clarity
-		return fmt.Sprintf("(%s%s%s)", ExprToString(v.Left), v.Op, ExprToString(v.Right))
-	case UnaryExpr:
-		return fmt.Sprintf("%s%s", v.Op, ExprToString(v.Expr))
-	case AssignExpr:
-		return fmt.Sprintf("%s = %s", ExprToString(v.LHS), ExprToString(v.RHS))
-	case CompareExpr:
-		return fmt.Sprintf("(%s%s%s)", ExprToString(v.Left), v.Op, ExprToString(v.Right))
-	case IfExpr:
-		return fmt.Sprintf("if %s then %s else %s", ExprToString(v.Cond), ExprToString(v.Then), ExprToString(v.Else))
+		left := ExprToString(v.Left)
+		right := ExprToString(v.Right)
+		if needsParensLeft(v.Op, v.Left) {
+			left = "(" + left + ")"
+		}
+		if needsParensRight(v.Op, v.Right) {
+			right = "(" + right + ")"
+		}
+		return fmt.Sprintf("%s%s%s", left, v.Op, right)
+		// ...existing code...
+	}
+	return ""
+}
+
+func opPrec(op string) int {
+	switch op {
+	case "=":
+		return 1
+	case "==", "!=", "<", "<=", ">", ">=":
+		return 2
+	case "+", "-":
+		return 3
+	case "*", "/", "%":
+		return 4
+	case "^":
+		return 5
 	default:
-		// fallback for unknown or nil
-		return "?"
+		return 0
+	}
+}
+
+func needsParensLeft(parentOp string, left Expr) bool {
+	be, ok := left.(BinaryExpr)
+	if !ok {
+		return needsParens(left)
+	}
+	return opPrec(be.Op) < opPrec(parentOp)
+}
+
+func needsParensRight(parentOp string, right Expr) bool {
+	be, ok := right.(BinaryExpr)
+	if !ok {
+		return needsParens(right)
+	}
+	// For right-associative operators like '^', use <=
+	if parentOp == "^" {
+		return opPrec(be.Op) <= opPrec(parentOp)
+	}
+	return opPrec(be.Op) < opPrec(parentOp)
+}
+
+// needsParens returns true if the expr should be parenthesized when used as a subexpression
+func needsParens(e Expr) bool {
+	switch e.(type) {
+	case BinaryExpr, CompareExpr, AssignExpr, UnaryExpr:
+		return true
+	default:
+		return false
 	}
 }
