@@ -75,6 +75,23 @@ func parseUnary(t *Tokenizer) Expr {
 	return parsePrimary(t)
 }
 
+func parseFuncCallExpr(t *Tokenizer, name string) Expr {
+	t.Next() // consume '('
+	var args []Expr
+	if t.Peek().Type != TokenParen || t.Peek().Value != ")" {
+		for {
+			args = append(args, parsePrimary(t))
+			if t.Peek().Type == TokenComma {
+				t.Next()
+			} else {
+				break
+			}
+		}
+	}
+	t.Expect(TokenParen) // consume ')'
+	return FuncCallExpr{FuncName: name, Args: args}
+}
+
 // primary = number | ident ( '(' args ')' )? | '(' expr ')'
 func parsePrimary(t *Tokenizer) Expr {
 	tok := t.Peek()
@@ -84,22 +101,9 @@ func parsePrimary(t *Tokenizer) Expr {
 		return ConstExpr{Value: tok.Value}
 	case TokenIdent:
 		name := t.Next().Value
-		// Function call or indexed variable
+		// Function call or variable
 		if t.Peek().Type == TokenParen && t.Peek().Value == "(" {
-			t.Next() // consume '('
-			var args []Expr
-			if t.Peek().Type != TokenParen || t.Peek().Value != ")" {
-				for {
-					args = append(args, parseAssignment(t))
-					if t.Peek().Type == TokenComma {
-						t.Next()
-					} else {
-						break
-					}
-				}
-			}
-			t.Expect(TokenParen) // consume ')'
-			return FuncCallExpr{FuncName: name, Args: args}
+			return parseFuncCallExpr(t, name)
 		}
 		return VarExpr{Name: name}
 	case TokenParen:
