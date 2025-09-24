@@ -7,18 +7,7 @@ import (
 // ParseExpr parses a formula expression string into an AST (Expr).
 func ParseExpr(expr string) Expr {
 	tokenizer := NewTokenizer(strings.TrimSpace(expr))
-	return parseAssignment(tokenizer)
-}
-
-// assignment = compare ( '=' assignment )?
-func parseAssignment(t *Tokenizer) Expr {
-	lhs := parseCompare(t)
-	if t.Peek().Type == TokenOperator && t.Peek().Value == "=" {
-		t.Next()
-		rhs := parseAssignment(t)
-		return AssignExpr{LHS: lhs, RHS: rhs}
-	}
-	return lhs
+	return parseCompare(tokenizer)
 }
 
 // compare = add ( ('=='|'!='|'<'|'<='|'>'|'>=') add )*
@@ -80,7 +69,7 @@ func parseFuncCallExpr(t *Tokenizer, name string) Expr {
 	var args []Expr
 	if t.Peek().Type != TokenParen || t.Peek().Value != ")" {
 		for {
-			args = append(args, parsePrimary(t))
+			args = append(args, parseCompare(t))
 			if t.Peek().Type == TokenComma {
 				t.Next()
 			} else {
@@ -109,7 +98,7 @@ func parsePrimary(t *Tokenizer) Expr {
 	case TokenParen:
 		if tok.Value == "(" {
 			t.Next()
-			expr := parseAssignment(t)
+			expr := parseCompare(t)
 			t.Expect(TokenParen) // consume ')'
 			return expr
 		}

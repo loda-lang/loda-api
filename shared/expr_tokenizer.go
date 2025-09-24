@@ -41,10 +41,10 @@ func (t *Tokenizer) next() {
 	}
 	ch := t.input[t.pos]
 	// Numbers (integer, negative, float)
-	if unicode.IsDigit(rune(ch)) || (ch == '-' && t.pos+1 < len(t.input) && unicode.IsDigit(rune(t.input[t.pos+1]))) {
+	if unicode.IsDigit(rune(ch)) {
 		start := t.pos
-		t.pos++ // skip first digit or '-'
-		for t.pos < len(t.input) && (unicode.IsDigit(rune(t.input[t.pos])) || t.input[t.pos] == '.') {
+		t.pos++ // skip first digit
+		for t.pos < len(t.input) && unicode.IsDigit(rune(t.input[t.pos])) {
 			t.pos++
 		}
 		t.curr = Token{Type: TokenNumber, Value: t.input[start:t.pos]}

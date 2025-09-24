@@ -18,12 +18,12 @@ type (
 	VarExpr struct {
 		Name string
 	}
-	// Function call or indexed variable, e.g. binomial(x, y), floor(x), a(n-1), b(n+2)
+	// Function call, e.g. a(n), b(n-2), floor(x), binomial(x, y)
 	FuncCallExpr struct {
 		FuncName string
-		Args     []Expr // for indexed variable, Args has one element (the index)
+		Args     []Expr
 	}
-	// Binary operation, e.g. x + y, x * y
+	// Binary operation, e.g. x+y, x*y
 	BinaryExpr struct {
 		Op    string // '+', '-', '*', '/', '%', '^', etc.
 		Left  Expr
@@ -34,22 +34,11 @@ type (
 		Op   string // '-', etc.
 		Expr Expr
 	}
-	// Assignment, e.g. a(n) = ...
-	AssignExpr struct {
-		LHS Expr // usually IndexedVarExpr
-		RHS Expr
-	}
-	// Comparison, e.g. x == y, x <= y
+	// Comparison, e.g. x==y, x<=y
 	CompareExpr struct {
 		Op    string // '==', '!=', '<', '<=', '>', '>='
 		Left  Expr
 		Right Expr
-	}
-	// Conditional, e.g. if cond then x else y (rare in these formulas)
-	IfExpr struct {
-		Cond Expr
-		Then Expr
-		Else Expr
 	}
 )
 
@@ -80,7 +69,22 @@ func ExprToString(e Expr) string {
 			right = "(" + right + ")"
 		}
 		return fmt.Sprintf("%s%s%s", left, v.Op, right)
-		// ...existing code...
+	case UnaryExpr:
+		expr := ExprToString(v.Expr)
+		if needsParens(v.Expr) {
+			expr = "(" + expr + ")"
+		}
+		return fmt.Sprintf("%s%s", v.Op, expr)
+	case CompareExpr:
+		left := ExprToString(v.Left)
+		right := ExprToString(v.Right)
+		if needsParensLeft(v.Op, v.Left) {
+			left = "(" + left + ")"
+		}
+		if needsParensRight(v.Op, v.Right) {
+			right = "(" + right + ")"
+		}
+		return fmt.Sprintf("%s%s%s", left, v.Op, right)
 	}
 	return ""
 }
@@ -103,6 +107,10 @@ func opPrec(op string) int {
 }
 
 func needsParensLeft(parentOp string, left Expr) bool {
+	// Do not parenthesize left UnaryExpr for +, -, *, /
+	if _, ok := left.(UnaryExpr); ok && (parentOp == "+" || parentOp == "-" || parentOp == "*" || parentOp == "/") {
+		return false
+	}
 	be, ok := left.(BinaryExpr)
 	if !ok {
 		return needsParens(left)
@@ -125,7 +133,7 @@ func needsParensRight(parentOp string, right Expr) bool {
 // needsParens returns true if the expr should be parenthesized when used as a subexpression
 func needsParens(e Expr) bool {
 	switch e.(type) {
-	case BinaryExpr, CompareExpr, AssignExpr, UnaryExpr:
+	case BinaryExpr, CompareExpr, UnaryExpr:
 		return true
 	default:
 		return false
