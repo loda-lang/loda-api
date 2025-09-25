@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"time"
 
@@ -24,6 +25,8 @@ type StatsServer struct {
 	influxDbClient     *util.InfluxDbClient
 	cpuHours           int
 	cpuHoursByPlatform map[string]map[string]int // platform -> version -> cpuHours
+	numProgsPerKeyword map[uint64]int
+	numSeqsPerKeyword  map[uint64]int
 	mutex              sync.Mutex
 }
 
@@ -34,6 +37,8 @@ func NewStatsServer(influxDbClient *util.InfluxDbClient, openApiSpec []byte, dat
 		influxDbClient:     influxDbClient,
 		cpuHours:           0,
 		cpuHoursByPlatform: make(map[string]map[string]int),
+		numProgsPerKeyword: make(map[uint64]int),
+		numSeqsPerKeyword:  make(map[uint64]int),
 	}
 }
 
@@ -62,6 +67,25 @@ func (s *StatsServer) loadSubmitters() {
 		log.Printf("Loaded %d submitters", len(submitters))
 		s.submitters = submitters
 	}
+}
+
+func (s *StatsServer) loadNumSeqsPerKeywords() {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+	idx := shared.NewDataIndex(s.dataDir)
+	err := idx.Load()
+	if err != nil {
+		log.Fatalf("Failed to load data index: %v", err)
+	}
+	for _, p := range idx.Programs {
+		shared.CountKeywordsInBits(p.Keywords, &s.numProgsPerKeyword)
+	}
+	for _, seq := range idx.Sequences {
+		shared.CountKeywordsInBits(seq.Keywords, &s.numSeqsPerKeyword)
+	}
+	// Try freeing unused memory immediately
+	idx = nil
+	runtime.GC()
 }
 
 func newCpuHourHandler(s *StatsServer) http.Handler {
@@ -191,14 +215,15 @@ func newSummaryHandler(s *StatsServer) http.Handler {
 	})
 }
 
-// KeywordInfo represents a keyword and its description
 type KeywordInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
+	Name         string `json:"name"`
+	Description  string `json:"description"`
+	NumPrograms  int    `json:"numPrograms"`
+	NumSequences int    `json:"numSequences"`
 }
 
 // Handler for /v2/stats/keywords
-func newKeywordsHandler() http.Handler {
+func newKeywordsHandler(s *StatsServer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			util.WriteHttpMethodNotAllowed(w)
@@ -206,9 +231,12 @@ func newKeywordsHandler() http.Handler {
 		}
 		var result []KeywordInfo
 		for _, k := range shared.KeywordList {
+			e := shared.MustEncodeKeyword(k)
 			result = append(result, KeywordInfo{
-				Name:        k,
-				Description: shared.GetKeywordDescription(k),
+				Name:         k,
+				Description:  shared.GetKeywordDescription(k),
+				NumPrograms:  s.numProgsPerKeyword[e],
+				NumSequences: s.numSeqsPerKeyword[e],
 			})
 		}
 		util.WriteJsonResponse(w, result)
@@ -243,6 +271,7 @@ func (s *StatsServer) Run(port int) {
 	// initial data load
 	s.loadSummary()
 	s.loadSubmitters()
+	s.loadNumSeqsPerKeywords()
 
 	// schedule background tasks
 	reloadTicker := time.NewTicker(24 * time.Hour)
@@ -251,6 +280,7 @@ func (s *StatsServer) Run(port int) {
 		for range reloadTicker.C {
 			s.loadSummary()
 			s.loadSubmitters()
+			s.loadNumSeqsPerKeywords()
 		}
 	}()
 	metricsTicker := time.NewTicker(10 * time.Minute)
@@ -267,7 +297,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/openapi", newOpenAPIHandler(s))
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))
-	router.Handle("/v2/stats/keywords", newKeywordsHandler())
+	router.Handle("/v2/stats/keywords", newKeywordsHandler(s))
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)

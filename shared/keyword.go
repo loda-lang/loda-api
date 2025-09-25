@@ -46,43 +46,43 @@ var (
 )
 
 func init() {
-	KeywordBaseBits = mustEncodeKeyword("base")
-	KeywordBrefBits = mustEncodeKeyword("bref")
-	KeywordCofrBits = mustEncodeKeyword("cofr")
-	KeywordConjectureBits = mustEncodeKeyword("conjecture")
-	KeywordConsBits = mustEncodeKeyword("cons")
-	KeywordCoreBits = mustEncodeKeyword("core")
-	KeywordDeadBits = mustEncodeKeyword("dead")
-	KeywordDecimalExpBits = mustEncodeKeyword("decimal-expansion")
-	KeywordDumbBits = mustEncodeKeyword("dumb")
-	KeywordEasyBits = mustEncodeKeyword("easy")
-	KeywordEGFExpBits = mustEncodeKeyword("egf-expansion")
-	KeywordEigenBits = mustEncodeKeyword("eigen")
-	KeywordFiniBits = mustEncodeKeyword("fini")
-	KeywordFormulaBits = mustEncodeKeyword("formula")
-	KeywordFracBits = mustEncodeKeyword("frac")
-	KeywordFullBits = mustEncodeKeyword("full")
-	KeywordGFExpBits = mustEncodeKeyword("gf-expansion")
-	KeywordHardBits = mustEncodeKeyword("hard")
-	KeywordLessBits = mustEncodeKeyword("less")
-	KeywordLodaBits = mustEncodeKeyword("loda")
-	KeywordLodaFormulaBits = mustEncodeKeyword("loda-formula")
-	KeywordLodaIncevalBits = mustEncodeKeyword("loda-inceval")
-	KeywordLodaLogevalBits = mustEncodeKeyword("loda-logeval")
-	KeywordLodaLoopBits = mustEncodeKeyword("loda-loop")
-	KeywordLookBits = mustEncodeKeyword("look")
-	KeywordMoreBits = mustEncodeKeyword("more")
-	KeywordMultBits = mustEncodeKeyword("mult")
-	KeywordNiceBits = mustEncodeKeyword("nice")
-	KeywordNonnBits = mustEncodeKeyword("nonn")
-	KeywordObscBits = mustEncodeKeyword("obsc")
-	KeywordPariBits = mustEncodeKeyword("pari")
-	KeywordSignBits = mustEncodeKeyword("sign")
-	KeywordTabfBits = mustEncodeKeyword("tabf")
-	KeywordTablBits = mustEncodeKeyword("tabl")
-	KeywordUnknBits = mustEncodeKeyword("unkn")
-	KeywordWalkBits = mustEncodeKeyword("walk")
-	KeywordWordBits = mustEncodeKeyword("word")
+	KeywordBaseBits = MustEncodeKeyword("base")
+	KeywordBrefBits = MustEncodeKeyword("bref")
+	KeywordCofrBits = MustEncodeKeyword("cofr")
+	KeywordConjectureBits = MustEncodeKeyword("conjecture")
+	KeywordConsBits = MustEncodeKeyword("cons")
+	KeywordCoreBits = MustEncodeKeyword("core")
+	KeywordDeadBits = MustEncodeKeyword("dead")
+	KeywordDecimalExpBits = MustEncodeKeyword("decimal-expansion")
+	KeywordDumbBits = MustEncodeKeyword("dumb")
+	KeywordEasyBits = MustEncodeKeyword("easy")
+	KeywordEGFExpBits = MustEncodeKeyword("egf-expansion")
+	KeywordEigenBits = MustEncodeKeyword("eigen")
+	KeywordFiniBits = MustEncodeKeyword("fini")
+	KeywordFormulaBits = MustEncodeKeyword("formula")
+	KeywordFracBits = MustEncodeKeyword("frac")
+	KeywordFullBits = MustEncodeKeyword("full")
+	KeywordGFExpBits = MustEncodeKeyword("gf-expansion")
+	KeywordHardBits = MustEncodeKeyword("hard")
+	KeywordLessBits = MustEncodeKeyword("less")
+	KeywordLodaBits = MustEncodeKeyword("loda")
+	KeywordLodaFormulaBits = MustEncodeKeyword("loda-formula")
+	KeywordLodaIncevalBits = MustEncodeKeyword("loda-inceval")
+	KeywordLodaLogevalBits = MustEncodeKeyword("loda-logeval")
+	KeywordLodaLoopBits = MustEncodeKeyword("loda-loop")
+	KeywordLookBits = MustEncodeKeyword("look")
+	KeywordMoreBits = MustEncodeKeyword("more")
+	KeywordMultBits = MustEncodeKeyword("mult")
+	KeywordNiceBits = MustEncodeKeyword("nice")
+	KeywordNonnBits = MustEncodeKeyword("nonn")
+	KeywordObscBits = MustEncodeKeyword("obsc")
+	KeywordPariBits = MustEncodeKeyword("pari")
+	KeywordSignBits = MustEncodeKeyword("sign")
+	KeywordTabfBits = MustEncodeKeyword("tabf")
+	KeywordTablBits = MustEncodeKeyword("tabl")
+	KeywordUnknBits = MustEncodeKeyword("unkn")
+	KeywordWalkBits = MustEncodeKeyword("walk")
+	KeywordWordBits = MustEncodeKeyword("word")
 }
 
 // List of all keywords
@@ -136,8 +136,8 @@ var KeywordDescriptions = map[string]string{
 	"word":              "Numbers related to a given natural language",
 }
 
-// mustEncodeKeyword encodes a single keyword and panics if it is unknown.
-func mustEncodeKeyword(keyword string) uint64 {
+// MustEncodeKeyword encodes a single keyword and panics if it is unknown.
+func MustEncodeKeyword(keyword string) uint64 {
 	bits, err := EncodeKeywords([]string{keyword})
 	if err != nil {
 		panic(err)
@@ -207,4 +207,15 @@ func HasNoKeywords(bits1, bits2 uint64) bool {
 // MergeKeywords merges two keyword bitmasks into one
 func MergeKeywords(bits1, bits2 uint64) uint64 {
 	return bits1 | bits2
+}
+
+// CountKeywordsInBits increments the count for each keyword present in bits.
+// The map should have keys of type uint64 (bitmask for each keyword) and int values.
+func CountKeywordsInBits(bits uint64, counts *map[uint64]int) {
+	for i := range KeywordList {
+		mask := uint64(1) << uint(i)
+		if bits&mask != 0 {
+			(*counts)[mask]++
+		}
+	}
 }
