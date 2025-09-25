@@ -356,6 +356,12 @@ components:
         description:
           type: string
           description: Description of the keyword
+        numPrograms:
+          type: integer
+          description: Number of programs associated with this keyword
+        numSequences:
+          type: integer
+          description: Number of sequences associated with this keyword
     Submitter:
       type: object
       properties:
