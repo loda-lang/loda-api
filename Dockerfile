@@ -45,8 +45,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
         wget \
         gnupg \
         nginx \
+        procps \
+        lsof \
     && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
-    && apt-get install -y nodejs \
+    && apt-get install -y nodejs npm \
     && mkdir -p /var/log/supervisor \
     && curl -fsSLO https://dl.influxdata.com/influxdb/releases/influxdb_${INFLUXDB_VERSION}_${ARCH}.deb \
     && dpkg -i influxdb_${INFLUXDB_VERSION}_${ARCH}.deb \
@@ -77,6 +79,9 @@ COPY util /root/go/src/github.com/loda-lang/loda-api/util
 COPY go.mod go.sum /root/go/src/github.com/loda-lang/loda-api/
 RUN chmod +x /root/go-build.sh
 RUN /root/go-build.sh
+
+RUN mkdir -p /root/git && git clone https://github.com/loda-lang/loda-mcp.git /root/git/loda-mcp
+RUN cd /root/git/loda-mcp/ && npm build
 
 RUN mkdir -p /var/log/loda
 RUN rm /etc/grafana/provisioning/dashboards/sample.yaml
