@@ -38,7 +38,7 @@ func TestIndexLoad(t *testing.T) {
 		"A000002": {
 			name:     "Kolakoski sequence: a(n) is length of n-th run; a(1) = 1; sequence consists just of 1's and 2's.",
 			terms:    ",1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,",
-			keywords: []string{"nonn", "core", "easy", "loda", "loda-inceval", "loda-loop", "loda-formula", "nice", "conjecture", "formula"},
+			keywords: []string{"nonn", "core", "easy", "loda", "loda-inceval", "loda-loop", "loda-formula", "nice", "conjecture", "formula", "pari"},
 		},
 	}
 	for _, seq := range idx.Sequences {

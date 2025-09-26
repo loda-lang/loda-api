@@ -69,6 +69,11 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
+	oeisProgramsPath := filepath.Join(idx.OeisDir, "programs")
+	idsWithPari, err := ExtractPariSeqs(oeisProgramsPath)
+	if err != nil {
+		return err
+	}
 
 	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
 	submitters, err := LoadSubmittersCSV(submittersPath)
@@ -111,6 +116,9 @@ func (idx *DataIndex) Load() error {
 		}
 		if bits, ok := nameKeywords[idStr]; ok {
 			keywords |= bits
+		}
+		if _, ok := idsWithPari[idStr]; ok {
+			keywords |= KeywordPariBits
 		}
 		// If a program with the same ID exists, update it as well
 		for pi < len(programs) && programs[pi].Id.IsLessThan(id) {
@@ -237,6 +245,34 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		return nil, fmt.Errorf("failed to read stripped file: %w", err)
 	}
 	return sequences, nil
+}
+
+// ExtractPariSeqs parses the OEIS programs file and returns a set of IDs with (PARI)
+func ExtractPariSeqs(path string) (map[string]struct{}, error) {
+	idsWithPari := make(map[string]struct{})
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		if strings.Contains(line, "(PARI)") {
+			parts := strings.SplitN(line, ":", 2)
+			if len(parts) == 2 {
+				id := strings.TrimSpace(parts[0])
+				idsWithPari[id] = struct{}{}
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return idsWithPari, nil
 }
 
 // extractKeywordBitsFromComment returns the encoded keyword bits for a single comment string.
