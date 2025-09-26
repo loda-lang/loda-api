@@ -26,8 +26,8 @@ docker exec loda-api /root/go-build.sh
 
 echo
 echo "### NPM BUILD ###"
-docker exec loda-api -w /root/git/loda-mcp git pull
-docker exec loda-api -w /root/git/loda-mcp npm run build
+docker exec -w /root/git/loda-mcp loda-api git pull
+docker exec -w /root/git/loda-mcp loda-api npm run build
 
 echo
 echo "### CREATE CHECKPOINT ###"
@@ -36,6 +36,8 @@ docker exec loda-api curl -sX POST localhost/miner/v1/checkpoint
 echo
 echo "### RESTART LODA SERVICES ###"
 docker exec loda-api /usr/bin/supervisorctl restart programs sequences stats mcp
+sleep 1
+docker exec loda-api /usr/bin/supervisorctl status
 
 echo
 echo "### FINISHED ###"
