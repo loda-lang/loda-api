@@ -29,6 +29,7 @@ var (
 	KeywordLodaFormulaBits uint64
 	KeywordLodaIncevalBits uint64
 	KeywordLodaLogevalBits uint64
+	KeywordLodaVirevalBits uint64
 	KeywordLodaLoopBits    uint64
 	KeywordLookBits        uint64
 	KeywordMoreBits        uint64
@@ -69,6 +70,7 @@ func init() {
 	KeywordLodaFormulaBits = MustEncodeKeyword("loda-formula")
 	KeywordLodaIncevalBits = MustEncodeKeyword("loda-inceval")
 	KeywordLodaLogevalBits = MustEncodeKeyword("loda-logeval")
+	KeywordLodaVirevalBits = MustEncodeKeyword("loda-vireval")
 	KeywordLodaLoopBits = MustEncodeKeyword("loda-loop")
 	KeywordLookBits = MustEncodeKeyword("look")
 	KeywordMoreBits = MustEncodeKeyword("more")
@@ -90,7 +92,7 @@ var KeywordList = []string{
 	"base", "bref", "cofr", "conjecture", "cons", "core", "dead",
 	"decimal-expansion", "dumb", "easy", "egf-expansion", "eigen",
 	"fini", "formula", "frac", "full", "gf-expansion", "hard", "less",
-	"loda", "loda-formula", "loda-inceval", "loda-logeval", "loda-loop",
+	"loda", "loda-formula", "loda-inceval", "loda-logeval", "loda-vireval", "loda-loop",
 	"look", "more", "mult", "nice", "nonn", "obsc", "pari", "sign",
 	"tabf", "tabl", "unkn", "walk", "word",
 }
@@ -120,6 +122,7 @@ var KeywordDescriptions = map[string]string{
 	"loda-formula":      "Formulas generated from a LODA programs exist for these sequences",
 	"loda-inceval":      "LODA programs that can be computed incrementally exist for these sequences",
 	"loda-logeval":      "LODA programs with logarithmic complexity exist for these sequences",
+	"loda-vireval":      "LODA programs that support virtual evaluation exist for these sequences",
 	"loda-loop":         "LODA programs with loop exist for these sequences",
 	"look":              "Pin or scatter plots reveal interesting information",
 	"more":              "Sequences that need more terms",

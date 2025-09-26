@@ -371,7 +371,7 @@ func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 	return submitters, nil
 }
 
-var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "loop", "formula"}
+var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula"}
 
 func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 	f, err := os.Open(path)
@@ -396,7 +396,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(rec) != 8 {
+		if len(rec) != 9 {
 			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
 		}
 		uid, err := util.NewUIDFromString(rec[0])
@@ -419,27 +419,26 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		}
 		incEval := rec[4] == "1"
 		logEval := rec[5] == "1"
-		loopFlag := rec[6] == "1"
-		formulaFlag := rec[7] == "1"
+		virevalFlag := rec[6] == "1"
+		loopFlag := rec[7] == "1"
+		formulaFlag := rec[8] == "1"
 
-		// Add loda-specific keywords
-		bit, _ := EncodeKeywords([]string{"loda"})
-		keywords := bit
+		// Add loda-specific keywords using constants
+		keywords := KeywordLodaBits
 		if incEval {
-			bit, _ = EncodeKeywords([]string{"loda-inceval"})
-			keywords |= bit
+			keywords |= KeywordLodaIncevalBits
 		}
 		if logEval {
-			bit, _ = EncodeKeywords([]string{"loda-logeval"})
-			keywords |= bit
+			keywords |= KeywordLodaLogevalBits
+		}
+		if virevalFlag {
+			keywords |= KeywordLodaVirevalBits
 		}
 		if loopFlag {
-			bit, _ = EncodeKeywords([]string{"loda-loop"})
-			keywords |= bit
+			keywords |= KeywordLodaLoopBits
 		}
 		if formulaFlag {
-			bit, _ = EncodeKeywords([]string{"loda-formula"})
-			keywords |= bit
+			keywords |= KeywordLodaFormulaBits
 		}
 		p := Program{
 			Id:        uid,
