@@ -81,7 +81,7 @@ RUN chmod +x /root/go-build.sh
 RUN /root/go-build.sh
 
 RUN mkdir -p /root/git && git clone https://github.com/loda-lang/loda-mcp.git /root/git/loda-mcp
-RUN cd /root/git/loda-mcp/ && npm build
+RUN cd /root/git/loda-mcp/ && npm install && npm run build
 
 RUN mkdir -p /var/log/loda
 RUN rm /etc/grafana/provisioning/dashboards/sample.yaml
