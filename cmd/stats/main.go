@@ -27,6 +27,7 @@ type StatsServer struct {
 	cpuHoursByPlatform map[string]map[string]int // platform -> version -> cpuHours
 	numProgsPerKeyword map[uint64]int
 	numSeqsPerKeyword  map[uint64]int
+	numUsages          map[string]int
 	mutex              sync.Mutex
 }
 
@@ -69,7 +70,7 @@ func (s *StatsServer) loadSubmitters() {
 	}
 }
 
-func (s *StatsServer) loadNumSeqsPerKeywords() {
+func (s *StatsServer) loadStatsFromIndex() {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
 	idx := shared.NewDataIndex(s.dataDir)
@@ -83,6 +84,7 @@ func (s *StatsServer) loadNumSeqsPerKeywords() {
 	for _, seq := range idx.Sequences {
 		shared.CountKeywordsInBits(seq.Keywords, &s.numSeqsPerKeyword)
 	}
+	s.numUsages = idx.NumUsages
 	// Try freeing unused memory immediately
 	idx = nil
 	runtime.GC()
@@ -243,6 +245,26 @@ func newKeywordsHandler(s *StatsServer) http.Handler {
 	})
 }
 
+// Handler for /v2/stats/program/numUsages
+func newProgramNumUsagesHandler(s *StatsServer) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		var result []map[string]interface{}
+		for id, numUsages := range s.numUsages {
+			if numUsages > 0 {
+				result = append(result, map[string]interface{}{
+					"id":        id,
+					"numUsages": numUsages,
+				})
+			}
+		}
+		util.WriteJsonResponse(w, result)
+	})
+}
+
 // Handler for /v2/stats/submitters
 func newSubmittersHandler(s *StatsServer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -271,7 +293,7 @@ func (s *StatsServer) Run(port int) {
 	// initial data load
 	s.loadSummary()
 	s.loadSubmitters()
-	s.loadNumSeqsPerKeywords()
+	s.loadStatsFromIndex()
 
 	// schedule background tasks
 	reloadTicker := time.NewTicker(24 * time.Hour)
@@ -280,7 +302,7 @@ func (s *StatsServer) Run(port int) {
 		for range reloadTicker.C {
 			s.loadSummary()
 			s.loadSubmitters()
-			s.loadNumSeqsPerKeywords()
+			s.loadStatsFromIndex()
 		}
 	}()
 	metricsTicker := time.NewTicker(10 * time.Minute)
@@ -298,6 +320,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))
 	router.Handle("/v2/stats/keywords", newKeywordsHandler(s))
+	router.Handle("/v2/stats/program/numUsages", newProgramNumUsagesHandler(s))
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
