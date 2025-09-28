@@ -246,7 +246,7 @@ func newKeywordsHandler(s *StatsServer) http.Handler {
 }
 
 // Handler for /v2/stats/program/numUsages
-func newProgramNumUsagesHandler(s *StatsServer) http.Handler {
+func newProgramsNumUsagesHandler(s *StatsServer) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
 			util.WriteHttpMethodNotAllowed(w)
@@ -320,7 +320,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))
 	router.Handle("/v2/stats/keywords", newKeywordsHandler(s))
-	router.Handle("/v2/stats/program/numUsages", newProgramNumUsagesHandler(s))
+	router.Handle("/v2/stats/programs/numUsages", newProgramsNumUsagesHandler(s))
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)

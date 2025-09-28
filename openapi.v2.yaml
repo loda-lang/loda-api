@@ -186,7 +186,7 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Submitter'
-  /stats/program/numUsages:
+  /stats/programs/numUsages:
     get:
       tags: [ Stats ]
       summary: List number of usages for each program
