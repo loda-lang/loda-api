@@ -23,6 +23,7 @@ type DataIndex struct {
 	Programs   []Program
 	Sequences  []Sequence
 	Submitters []*Submitter
+	NumUsages  map[string]int
 }
 
 func NewDataIndex(dataDir string) *DataIndex {
@@ -85,6 +86,11 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
+	callGraphPath := filepath.Join(idx.StatsDir, "call_graph.csv")
+	numUsages, err := extractNumUsages(callGraphPath)
+	if err != nil {
+		return err
+	}
 
 	// Sort sequences and programs by ID
 	sort.Slice(sequences, func(i, j int) bool {
@@ -138,8 +144,10 @@ func (idx *DataIndex) Load() error {
 	idx.Submitters = submitters
 	idx.Programs = programs
 	idx.Sequences = sequences
-	log.Printf("Loaded %d sequences, %d programs, %d submitters",
-		len(sequences), len(programs), len(submitters))
+	idx.NumUsages = numUsages
+
+	log.Printf("Loaded %d sequences, %d programs, %d submitters, %d usages",
+		len(sequences), len(programs), len(submitters), len(numUsages))
 	return nil
 }
 
@@ -352,6 +360,43 @@ func ExtractKeywordsFromFormulas(path string) (map[string]uint64, error) {
 	return result, nil
 }
 
+// extractNumUsages parses a call_graph.csv file and returns a map from callee IDs to their usage count.
+func extractNumUsages(path string) (map[string]int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open call_graph.csv: %w", err)
+	}
+	defer file.Close()
+	numUsages := make(map[string]int)
+	r := csv.NewReader(file)
+	// Read and check header
+	header, err := r.Read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read header: %w", err)
+	}
+	expectedHeader := []string{"caller", "callee"}
+	if !slices.Equal(header, expectedHeader) {
+		return nil, fmt.Errorf("unexpected header in call_graph file: %v", header)
+	}
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read record: %w", err)
+		}
+		if len(rec) != 2 {
+			continue
+		}
+		callee := strings.TrimSpace(rec[1])
+		if callee != "" {
+			numUsages[callee]++
+		}
+	}
+	return numUsages, nil
+}
+
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
 
 func LoadSubmittersCSV(path string) ([]*Submitter, error) {
@@ -482,7 +527,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
-			Usages:    usages,
+			NumUsages: usages,
 		}
 		programs = append(programs, p)
 	}

@@ -19,7 +19,7 @@ type Program struct {
 	Operations []string
 	Formula    string
 	Length     int
-	Usages     int
+	NumUsages  int
 }
 
 // ProgramFromText creates a Program instance from LODA code in plain text format.
@@ -54,6 +54,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Keywords   []string `json:"keywords"`
 		Operations []string `json:"operations"`
 		Formula    string   `json:"formula,omitempty"`
+		NumUsages  int      `json:"numUsages"`
 	}{
 		Id:         p.Id.String(),
 		Name:       p.Name,
@@ -62,6 +63,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Keywords:   DecodeKeywords(p.Keywords),
 		Operations: p.Operations,
 		Formula:    p.Formula,
+		NumUsages:  p.NumUsages,
 	})
 }
 
@@ -74,6 +76,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 		Submitter  string   `json:"submitter"`
 		Keywords   []string `json:"keywords"`
 		Operations []string `json:"operations"`
+		NumUsages  int      `json:"numUsages"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -93,6 +96,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	p.Submitter = submitter
 	p.Keywords = keywords
 	p.Operations = aux.Operations
+	p.NumUsages = aux.NumUsages
 	return nil
 }
 

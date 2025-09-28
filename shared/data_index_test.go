@@ -61,6 +61,19 @@ func TestIndexLoad(t *testing.T) {
 	for id := range want {
 		t.Errorf("Sequence %s not found in loaded index", id)
 	}
+
+	// Check usages loaded from testdata/stats/call_graph.csv
+	wantUsages := map[string]int{
+		"A000005": 3,
+		"A000001": 1,
+		"A000003": 2,
+	}
+	for id, want := range wantUsages {
+		got := idx.NumUsages[id]
+		if got != want {
+			t.Errorf("Usages[%s]: got %d, want %d", id, got, want)
+		}
+	}
 }
 
 func TestLoadProgramsCSV(t *testing.T) {
@@ -79,7 +92,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 	// Check a few known values (based on the new CSV and submitter mapping)
 	p := programs[0]
-	if p.Id.String() != "A000002" || p.Length != 10 || p.Usages != 20 {
+	if p.Id.String() != "A000002" || p.Length != 10 || p.NumUsages != 20 {
 		t.Errorf("unexpected program[0]: %+v", p)
 	}
 	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-inceval") || !HasKeyword(p.Keywords, "loda-loop") || !HasKeyword(p.Keywords, "loda-formula") || HasKeyword(p.Keywords, "loda-logeval") {
@@ -90,7 +103,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 
 	p = programs[2]
-	if p.Id.String() != "A000005" || p.Length != 22 || p.Usages != 1728 {
+	if p.Id.String() != "A000005" || p.Length != 22 || p.NumUsages != 1728 {
 		t.Errorf("unexpected program[2]: %+v", p)
 	}
 	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-loop") || HasKeyword(p.Keywords, "loda-inceval") || HasKeyword(p.Keywords, "loda-logeval") || HasKeyword(p.Keywords, "loda-formula") {
@@ -101,7 +114,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 
 	p = programs[9]
-	if p.Id.String() != "A000012" || p.Length != 1 || p.Usages != 0 {
+	if p.Id.String() != "A000012" || p.Length != 1 || p.NumUsages != 0 {
 		t.Errorf("unexpected program[9]: %+v", p)
 	}
 	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-formula") || HasKeyword(p.Keywords, "loda-inceval") || HasKeyword(p.Keywords, "loda-logeval") || HasKeyword(p.Keywords, "loda-loop") {
@@ -112,7 +125,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 
 	p = programs[12]
-	if p.Id.String() != "A000016" || p.Length != 15 || p.Usages != 4 {
+	if p.Id.String() != "A000016" || p.Length != 15 || p.NumUsages != 4 {
 		t.Errorf("unexpected program[12]: %+v", p)
 	}
 	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-loop") || HasKeyword(p.Keywords, "loda-inceval") || HasKeyword(p.Keywords, "loda-logeval") || HasKeyword(p.Keywords, "loda-formula") {

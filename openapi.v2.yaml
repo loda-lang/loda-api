@@ -333,8 +333,11 @@ components:
               type: string
           formula:
             type: string
-            description: Mathematical formula representing the sequence
+            description: Formula representing the sequence and generated from the LODA program
             nullable: true
+          numUsages:
+            type: integer
+            description: Number of other programs that use this program
     Result:
       type: object
       properties:
