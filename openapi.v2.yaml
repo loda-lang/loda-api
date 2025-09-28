@@ -324,7 +324,17 @@ components:
             description: Reference to the OEIS entry (if applicable)
             example: https://oeis.org/A000045
             nullable: true
-    ProgramDetails:
+    ProgramUsages:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Program ID
+          example: A000045
+        numUsages:
+          type: integer
+          description: Number of other programs that use this program by calling it using `seq`
+      ProgramDetails:
       allOf:
       - $ref: '#/components/schemas/SearchItem'
       - type: object
@@ -352,7 +362,7 @@ components:
             nullable: true
           numUsages:
             type: integer
-            description: Number of other programs that use this program
+            description: Number of other programs that use this program by calling it using `seq`
     Result:
       type: object
       properties:
@@ -401,13 +411,3 @@ components:
         numFormulas:
           type: integer
           description: Number of formulas
-    ProgramUsages:
-      type: object
-      properties:
-        id:
-          type: string
-          description: Program ID
-          example: A000045
-        numUsages:
-          type: integer
-          description: Number of other programs that use this program by calling it using `seq`
