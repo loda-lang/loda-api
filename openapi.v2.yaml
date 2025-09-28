@@ -334,7 +334,7 @@ components:
         numUsages:
           type: integer
           description: Number of other programs that use this program by calling it using `seq`
-      ProgramDetails:
+    ProgramDetails:
       allOf:
       - $ref: '#/components/schemas/SearchItem'
       - type: object
