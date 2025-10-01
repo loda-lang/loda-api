@@ -1266,17 +1266,52 @@
               },
               {
                 "color": "#EAB839",
-                "value": 100
+                "value": 200000
               },
               {
                 "color": "red",
-                "value": 200
+                "value": 400000
               }
             ]
           },
           "unit": "deckbytes"
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName"
+            },
+            "properties": []
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "free"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "#EAB839",
+                      "value": 500000
+                    },
+                    {
+                      "color": "green",
+                      "value": 1000000
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 6,
@@ -1302,6 +1337,7 @@
       "pluginVersion": "7.2.0",
       "targets": [
         {
+          "alias": "free",
           "groupBy": [
             {
               "params": [
@@ -1339,6 +1375,7 @@
           "tags": []
         },
         {
+          "alias": "$tag_process",
           "groupBy": [
             {
               "params": [
