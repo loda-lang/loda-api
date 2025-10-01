@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// GetFreeMemoryBytes returns available system memory in KB (Linux only). Returns 0 on error or non-Linux systems.
+// GetFreeMemoryBytes returns free system memory in KB (Linux only). Returns 0 on error or non-Linux systems.
 func GetFreeMemoryKB() int {
 	f, err := os.Open("/proc/meminfo")
 	if err != nil {
@@ -18,7 +18,7 @@ func GetFreeMemoryKB() int {
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(line, "MemAvailable:") {
+		if strings.HasPrefix(line, "MemFree:") {
 			fields := strings.Fields(line)
 			if len(fields) >= 2 {
 				if kb, err := strconv.ParseUint(fields[1], 10, 64); err == nil {
