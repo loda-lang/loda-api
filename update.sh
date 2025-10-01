@@ -11,6 +11,7 @@ fi
 
 echo
 echo "### COPY SOURCES ###"
+cp image/home.json $HOME/grafana/dashboards/home.json
 GOROOT=/root/go/src/github.com/loda-lang/loda-api/
 for f in cmd shared util go.mod go.sum; do
   docker exec loda-api rm -rf $GOROOT/$f
@@ -18,7 +19,6 @@ for f in cmd shared util go.mod go.sum; do
 done
 docker cp image/go-build.sh loda-api:/root/
 docker cp openapi.v2.yaml loda-api:/data/
-docker cp image/home.json $HOME/grafana/dashboards/home.json
 docker exec loda-api chmod u+x /root/go-build.sh
 
 echo
