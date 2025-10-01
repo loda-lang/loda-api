@@ -320,7 +320,7 @@ func (s *StatsServer) Run(port int) {
 			s.loadStatsFromIndex()
 		}
 	}()
-	metricsTicker := time.NewTicker(10 * time.Minute)
+	metricsTicker := time.NewTicker(5 * time.Minute)
 	defer metricsTicker.Stop()
 	go func() {
 		for range metricsTicker.C {
