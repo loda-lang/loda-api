@@ -18,6 +18,7 @@ for f in cmd shared util go.mod go.sum; do
 done
 docker cp image/go-build.sh loda-api:/root/
 docker cp openapi.v2.yaml loda-api:/data/
+docker cp image/home.json $HOME/grafana/dashboards/home.json
 docker exec loda-api chmod u+x /root/go-build.sh
 
 echo
@@ -34,8 +35,8 @@ echo "### CREATE CHECKPOINT ###"
 docker exec loda-api curl -sX POST localhost/miner/v1/checkpoint
 
 echo
-echo "### RESTART LODA SERVICES ###"
-docker exec loda-api /usr/bin/supervisorctl restart programs sequences stats mcp
+echo "### RESTART SERVICES ###"
+docker exec loda-api /usr/bin/supervisorctl restart grafana programs sequences stats mcp
 sleep 1
 docker exec loda-api /usr/bin/supervisorctl status
 

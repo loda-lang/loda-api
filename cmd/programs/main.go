@@ -452,10 +452,10 @@ func (s *ProgramsServer) clearUserStats() {
 
 func (s *ProgramsServer) update() {
 	// Check available system memory, skip update if less than 500 MB (Linux only)
-	const minMemBytes = 500 * 1024 * 1024 // 500 MB
-	memAvailable := util.GetFreeMemoryBytes()
-	if memAvailable > 0 && memAvailable < minMemBytes {
-		log.Printf("Skipping update: only %d MB memory available", memAvailable/1024/1024)
+	const minMemKB = 500 * 1024 // 500 MB
+	freeMemKB := util.GetFreeMemoryKB()
+	if freeMemKB > 0 && freeMemKB < minMemKB {
+		log.Printf("Skipping update: only %d MB memory available", freeMemKB/1024)
 		return
 	}
 	s.updateMutex.Lock()

@@ -153,6 +153,21 @@ func (s *StatsServer) publishMetrics() {
 			}
 		}
 	}
+
+	// --- Memory metrics ---
+	// Free memory (Linux only)
+	freeMem := int(util.GetFreeMemoryKB())
+	if freeMem > 0 {
+		s.influxDbClient.Write("free_mem_kb", nil, freeMem)
+	}
+	// Used memory by processes
+	procNames := []string{"programs", "sequences", "stats", "npm", "node", "nginx", "grafana", "influx", "loda"}
+	memUsage, err := util.GetProcessesMemoryUsageKB(procNames)
+	if err == nil {
+		for name, usedKB := range memUsage {
+			s.influxDbClient.Write("used_mem_kb", map[string]string{"process": name}, usedKB)
+		}
+	}
 }
 
 func newOpenAPIHandler(s *StatsServer) http.Handler {
