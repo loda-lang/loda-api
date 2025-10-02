@@ -103,7 +103,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 
 	p = programs[2]
-	if p.Id.String() != "A000005" || p.Length != 22 || p.NumUsages != 1728 {
+	if p.Id.String() != "A000005" || p.Length != 22 || p.NumUsages != 1741 {
 		t.Errorf("unexpected program[2]: %+v", p)
 	}
 	if !HasKeyword(p.Keywords, "loda") || !HasKeyword(p.Keywords, "loda-loop") || HasKeyword(p.Keywords, "loda-inceval") || HasKeyword(p.Keywords, "loda-logeval") || HasKeyword(p.Keywords, "loda-formula") {
