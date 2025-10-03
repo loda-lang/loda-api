@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -35,6 +36,7 @@ type SequencesServer struct {
 	dataIndex             *shared.DataIndex
 	httpClient            *http.Client
 	lists                 []*List
+	dataIndexMutex        sync.Mutex
 }
 
 const (
@@ -51,8 +53,6 @@ var (
 		"o": "programs",
 	}
 )
-
-// TODO: update index every 24h
 
 func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Duration) *SequencesServer {
 	httpClient := &http.Client{
@@ -84,12 +84,15 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 		crawlerStopped:        make(chan bool),
 		crawler:               NewCrawler(httpClient),
 		dataIndex:             nil,
+		dataIndexMutex:        sync.Mutex{},
 		httpClient:            httpClient,
 		lists:                 lists,
 	}
 }
 
 func GetIndex(s *SequencesServer) *shared.DataIndex {
+	s.dataIndexMutex.Lock()
+	defer s.dataIndexMutex.Unlock()
 	if s.dataIndex == nil {
 		idx := shared.NewDataIndex(s.dataDir)
 		err := idx.Load()
@@ -231,6 +234,20 @@ func (s *SequencesServer) Run(port int) {
 	router.Handle("/v2/sequences/search", s.SequenceSearchHandler())
 	router.Handle("/v2/sequences/{id:[A-Z][0-9]+}", s.SequenceHandler())
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
+
+	// Start goroutine to reset dataIndex to nil at summaryUpdateInterval
+	go func() {
+		resetTicker := time.NewTicker(s.summaryUpdateInterval)
+		defer resetTicker.Stop()
+		for {
+			<-resetTicker.C
+			s.dataIndexMutex.Lock()
+			s.dataIndex = nil
+			s.dataIndexMutex.Unlock()
+			log.Printf("Reset data index")
+		}
+	}()
+
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
@@ -284,58 +301,63 @@ func (s *SequencesServer) StartCrawler() {
 			case <-s.crawlerStopped:
 				return
 			case <-fetchTicker.C:
-				if s.crawler.numFetched > 0 {
-					// Regularly flush the lists
-					if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
-						for _, l := range s.lists {
-							deduplicate := l.name == "offsets"
-							err := l.Flush(deduplicate)
-							if err != nil {
-								log.Printf("Error flushing list %s: %v", l.name, err)
-								s.StopCrawler()
-								continue
-							}
-						}
-					}
-					// Regularly re-initialize the crawler
-					if s.crawler.numFetched%s.crawlerReinitInterval == 0 {
-						err = s.crawler.Init()
-						if err != nil {
-							log.Printf("Error re-initializing crawler: %v", err)
-							s.StopCrawler()
-							continue
-						}
-					}
-				}
-				if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
-					// Find the missing ids
-					for _, l := range s.lists {
-						if l.name == "offsets" {
-							ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
-							if err != nil {
-								s.StopCrawler()
-								continue
-							}
-							s.crawler.missingIds = ids
-							break
-						}
-					}
-				}
-				// Fetch the next sequence
-				fields, _, err := s.crawler.FetchNext()
-				if err != nil {
-					log.Printf("Error fetching fields: %v", err)
-					s.StopCrawler()
-					continue
-				}
-				// Update the lists with the new fields
-				filteredFields := filterValidKeywordsFields(fields)
-				for _, l := range s.lists {
-					l.Update(filteredFields)
-				}
+				s.handleCrawlerTick()
 			}
 		}
 	}()
+}
+
+// handleCrawlerTick contains the logic for each fetchTicker tick in StartCrawler
+func (s *SequencesServer) handleCrawlerTick() {
+	if s.crawler.numFetched > 0 {
+		// Regularly flush the lists
+		if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
+			for _, l := range s.lists {
+				deduplicate := l.name == "offsets"
+				err := l.Flush(deduplicate)
+				if err != nil {
+					log.Printf("Error flushing list %s: %v", l.name, err)
+					s.StopCrawler()
+					continue
+				}
+			}
+		}
+		// Regularly re-initialize the crawler
+		if s.crawler.numFetched%s.crawlerReinitInterval == 0 {
+			err := s.crawler.Init()
+			if err != nil {
+				log.Printf("Error re-initializing crawler: %v", err)
+				s.StopCrawler()
+				return
+			}
+		}
+	}
+	if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
+		// Find the missing ids
+		for _, l := range s.lists {
+			if l.name == "offsets" {
+				ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
+				if err != nil {
+					s.StopCrawler()
+					return
+				}
+				s.crawler.missingIds = ids
+				break
+			}
+		}
+	}
+	// Fetch the next sequence
+	fields, _, err := s.crawler.FetchNext()
+	if err != nil {
+		log.Printf("Error fetching fields: %v", err)
+		s.StopCrawler()
+		return
+	}
+	// Update the lists with the new fields
+	filteredFields := filterValidKeywordsFields(fields)
+	for _, l := range s.lists {
+		l.Update(filteredFields)
+	}
 }
 
 func main() {
