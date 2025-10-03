@@ -87,9 +87,19 @@ func (idx *DataIndex) Load() error {
 		return err
 	}
 	callGraphPath := filepath.Join(idx.StatsDir, "call_graph.csv")
-	numUsages, err := extractNumUsages(callGraphPath)
+	programUsages, err := extractProgramUsages(callGraphPath)
 	if err != nil {
 		return err
+	}
+
+	// Compute program usage counts
+	numUsages := make(map[string]int)
+	for callee, callers := range programUsages {
+		if callers == "" {
+			numUsages[callee] = 0
+		} else {
+			numUsages[callee] = len(strings.Fields(callers))
+		}
 	}
 
 	// Sort sequences and programs by ID
@@ -100,7 +110,7 @@ func (idx *DataIndex) Load() error {
 		return programs[i].Id.IsLessThan(programs[j].Id)
 	})
 
-	// Update sequences and programs with keywords and names, including extra keywords from comments/formulas
+	// Update sequences and programs with keywords, names, and used program IDs
 	si, pi := 0, 0
 	for si < len(sequences) {
 		id := sequences[si].Id
@@ -134,6 +144,11 @@ func (idx *DataIndex) Load() error {
 			keywords |= programs[pi].Keywords
 			programs[pi].Keywords = keywords
 			programs[pi].Name = sequences[si].Name
+			if usages, ok := programUsages[idStr]; ok {
+				programs[pi].Usages = usages
+			} else {
+				programs[pi].Usages = ""
+			}
 			pi++
 		}
 		// Update sequence keywords
@@ -146,8 +161,8 @@ func (idx *DataIndex) Load() error {
 	idx.Sequences = sequences
 	idx.NumUsages = numUsages
 
-	log.Printf("Loaded %d sequences, %d programs, %d submitters, %d usages",
-		len(sequences), len(programs), len(submitters), len(numUsages))
+	log.Printf("Loaded %d sequences, %d programs, %d submitters",
+		len(sequences), len(programs), len(submitters))
 	return nil
 }
 
@@ -360,14 +375,14 @@ func ExtractKeywordsFromFormulas(path string) (map[string]uint64, error) {
 	return result, nil
 }
 
-// extractNumUsages parses a call_graph.csv file and returns a map from callee IDs to their usage count.
-func extractNumUsages(path string) (map[string]int, error) {
+// extractNumUsages parses a call_graph.csv file and returns a map from callee-to-caller IDs.
+func extractProgramUsages(path string) (map[string]string, error) {
 	file, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open call_graph.csv: %w", err)
 	}
 	defer file.Close()
-	numUsages := make(map[string]int)
+	usages := make(map[string][]string)
 	r := csv.NewReader(file)
 	// Read and check header
 	header, err := r.Read()
@@ -389,12 +404,18 @@ func extractNumUsages(path string) (map[string]int, error) {
 		if len(rec) != 2 {
 			continue
 		}
+		caller := strings.TrimSpace(rec[0])
 		callee := strings.TrimSpace(rec[1])
-		if callee != "" {
-			numUsages[callee]++
+		if callee != "" && caller != "" {
+			usages[callee] = append(usages[callee], caller)
 		}
 	}
-	return numUsages, nil
+	// Convert to space-separated string
+	result := make(map[string]string)
+	for callee, callers := range usages {
+		result[callee] = strings.Join(callers, " ")
+	}
+	return result, nil
 }
 
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
@@ -494,10 +515,10 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		usages, err := strconv.Atoi(rec[3])
-		if err != nil {
-			return nil, err
-		}
+		// usages, err := strconv.Atoi(rec[3])
+		// if err != nil {
+		//	return nil, err
+		// }
 		incEval := rec[4] == "1"
 		logEval := rec[5] == "1"
 		virevalFlag := rec[6] == "1"
@@ -527,7 +548,6 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
-			NumUsages: usages,
 		}
 		programs = append(programs, p)
 	}

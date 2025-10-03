@@ -350,9 +350,11 @@ components:
             type: string
             description: Formula representing the sequence and generated from the LODA program
             nullable: true
-          numUsages:
-            type: integer
-            description: Number of other programs that use this program by calling it using `seq`
+          usages:
+            type: array
+            items:
+              type: string
+            description: List of program IDs that use this program by calling it using `seq`
     ProgramUsages:
       type: object
       properties:

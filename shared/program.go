@@ -15,11 +15,11 @@ type Program struct {
 	Name       string
 	Code       string
 	Submitter  *Submitter
-	Keywords   uint64 // Bitmask of keywords
+	Keywords   uint64 // bitmask of keywords
 	Operations []string
 	Formula    string
 	Length     int
-	NumUsages  int
+	Usages     string // space-separated program IDs
 }
 
 // ProgramFromText creates a Program instance from LODA code in plain text format.
@@ -46,6 +46,10 @@ func (p Program) MarshalJSON() ([]byte, error) {
 	if p.Submitter != nil {
 		submitter = p.Submitter.Name
 	}
+	usages := []string{}
+	if strings.TrimSpace(p.Usages) != "" {
+		usages = strings.Fields(p.Usages)
+	}
 	return json.Marshal(struct {
 		Id         string   `json:"id"`
 		Name       string   `json:"name"`
@@ -54,7 +58,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Keywords   []string `json:"keywords"`
 		Operations []string `json:"operations"`
 		Formula    string   `json:"formula,omitempty"`
-		NumUsages  int      `json:"numUsages"`
+		Usages     []string `json:"usages"`
 	}{
 		Id:         p.Id.String(),
 		Name:       p.Name,
@@ -63,7 +67,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Keywords:   DecodeKeywords(p.Keywords),
 		Operations: p.Operations,
 		Formula:    p.Formula,
-		NumUsages:  p.NumUsages,
+		Usages:     usages,
 	})
 }
 
@@ -76,7 +80,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 		Submitter  string   `json:"submitter"`
 		Keywords   []string `json:"keywords"`
 		Operations []string `json:"operations"`
-		NumUsages  int      `json:"numUsages"`
+		Usages     []string `json:"usages"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -96,7 +100,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	p.Submitter = submitter
 	p.Keywords = keywords
 	p.Operations = aux.Operations
-	p.NumUsages = aux.NumUsages
+	p.Usages = strings.Join(aux.Usages, " ")
 	return nil
 }
 
