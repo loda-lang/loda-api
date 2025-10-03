@@ -35,6 +35,9 @@ func GetFreeMemoryKB() int {
 // Only works on Linux.
 func GetProcessesMemoryUsageKB(processNames []string) (map[string]int, error) {
 	result := make(map[string]int)
+	for _, name := range processNames {
+		result[name] = 0
+	}
 	procEntries, err := os.ReadDir("/proc")
 	if err != nil {
 		return nil, err

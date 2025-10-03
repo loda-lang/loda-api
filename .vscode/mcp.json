@@ -1,0 +1,9 @@
+{
+	"servers": {
+		"loda-mcp-server-253068e0": {
+			"url": "https://api.loda-lang.org/v2/mcp/",
+			"type": "http"
+		}
+	},
+	"inputs": []
+}
