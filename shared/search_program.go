@@ -47,58 +47,27 @@ func FindProgramById(programs []Program, id util.UID) *Program {
 
 // SearchPrograms returns paginated results and total count of all matches
 func SearchPrograms(programs []Program, query string, limit, skip int) ([]Program, int) {
-	// Split the query into lower-case tokens
-	var tokens []string
-	if query != "" {
-		tokens = strings.Fields(query)
-		for i, t := range tokens {
-			tokens[i] = strings.ToLower(t)
-		}
-	}
-
-	// Extract included/excluded keywords and remove them from tokens
-	var inc, exc []string
-	filteredTokens := tokens[:0] // reuse underlying array
-	for _, t := range tokens {
-		if IsKeyword(t) {
-			inc = append(inc, t)
-		} else if len(t) > 1 && t[0] == '+' && IsKeyword(t[1:]) {
-			inc = append(inc, t[1:])
-		} else if len(t) > 1 && (t[0] == '-' || t[0] == '!') && IsKeyword(t[1:]) {
-			exc = append(exc, t[1:])
-		} else {
-			filteredTokens = append(filteredTokens, t)
-		}
-	}
-	included, err := EncodeKeywords(inc)
-	if err != nil {
-		return nil, 0
-	}
-	excluded, err := EncodeKeywords(exc)
-	if err != nil {
-		return nil, 0
-	}
-
+	sq := ParseSearchQuery(query)
 	count := 0
 	var results []Program
 	var total int
 	for _, prog := range programs {
 		// Check included and excluded keywords
-		if !HasAllKeywords(prog.Keywords, included) {
+		if !HasAllKeywords(prog.Keywords, sq.IncludedKeywords) {
 			continue
 		}
-		if !HasNoKeywords(prog.Keywords, excluded) {
+		if !HasNoKeywords(prog.Keywords, sq.ExcludedKeywords) {
 			continue
 		}
 		match := true
 		// Query string filtering (case-insensitive, all tokens must be present in name or submitter)
-		if len(filteredTokens) > 0 {
+		if len(sq.FilteredTokens) > 0 {
 			nameLower := strings.ToLower(prog.Name)
 			submitterLower := ""
 			if prog.Submitter != nil {
 				submitterLower = strings.ToLower(prog.Submitter.Name)
 			}
-			for _, t := range filteredTokens {
+			for _, t := range sq.FilteredTokens {
 				if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
 					match = false
 					break
