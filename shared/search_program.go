@@ -60,17 +60,27 @@ func SearchPrograms(programs []Program, query string, limit, skip int) ([]Progra
 			continue
 		}
 		match := true
-		// Query string filtering (case-insensitive, all tokens must be present in name or submitter)
-		if len(sq.FilteredTokens) > 0 {
+		// Query string filtering (case-insensitive, all tokens must be present in name, submitter, or ID)
+		if len(sq.FilteredTokens) > 0 || len(sq.UIDTokens) > 0 {
 			nameLower := strings.ToLower(prog.Name)
 			submitterLower := ""
 			if prog.Submitter != nil {
 				submitterLower = strings.ToLower(prog.Submitter.Name)
 			}
-			for _, t := range sq.FilteredTokens {
-				if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
+			// Check UID tokens: match if the program ID equals the UID or the UID string is contained in the name
+			for _, uid := range sq.UIDTokens {
+				if !prog.Id.Equals(uid) && !strings.Contains(prog.Name, uid.String()) {
 					match = false
 					break
+				}
+			}
+			// Check string tokens
+			if match && len(sq.FilteredTokens) > 0 {
+				for _, t := range sq.FilteredTokens {
+					if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
+						match = false
+						break
+					}
 				}
 			}
 			if !match {
