@@ -114,3 +114,20 @@ func TestSearchSequences(t *testing.T) {
 		t.Errorf("Pagination: unexpected sequence IDs")
 	}
 }
+
+func checkSearchByID(t *testing.T, idx *DataIndex, query string, expectedID string) {
+	results, total := SearchSequences(idx, query, 0, 0)
+	if total != 1 || len(results) != 1 {
+		t.Errorf("SearchSequences by ID (%s): got %d results, want 1", query, total)
+	} else if results[0].Id.String() != expectedID {
+		t.Errorf("SearchSequences by ID (%s): got %q, want %q", query, results[0].Id.String(), expectedID)
+	}
+}
+
+func TestSearchSequencesByID(t *testing.T) {
+	idx := loadTestIndex(t)
+	checkSearchByID(t, idx, "A000001", "A000001")
+	checkSearchByID(t, idx, "A1", "A000001")
+	checkSearchByID(t, idx, "A000002", "A000002")
+	checkSearchByID(t, idx, "A2", "A000002")
+}

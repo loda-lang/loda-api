@@ -49,9 +49,11 @@ func FindSequenceById(idx *DataIndex, id util.UID) *Sequence {
 func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence, int) {
 	// Split the query into lower-case tokens
 	var tokens []string
+	var rawTokens []string
 	if query != "" {
-		tokens = strings.Fields(query)
-		for i, t := range tokens {
+		rawTokens = strings.Fields(query)
+		tokens = make([]string, len(rawTokens))
+		for i, t := range rawTokens {
 			tokens[i] = strings.ToLower(t)
 		}
 	}
@@ -59,7 +61,12 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 	// Extract included/excluded keywords and remove them from tokens
 	var inc, exc []string
 	filteredTokens := tokens[:0] // reuse underlying array
-	for _, t := range tokens {
+	var uidTokens []util.UID
+	for i, t := range tokens {
+		raw := t
+		if len(rawTokens) > i {
+			raw = rawTokens[i]
+		}
 		if IsKeyword(t) {
 			inc = append(inc, t)
 		} else if len(t) > 1 && t[0] == '+' && IsKeyword(t[1:]) {
@@ -67,7 +74,11 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 		} else if len(t) > 1 && (t[0] == '-' || t[0] == '!') && IsKeyword(t[1:]) {
 			exc = append(exc, t[1:])
 		} else {
-			filteredTokens = append(filteredTokens, t)
+			if uid, err := util.NewUIDFromString(raw); err == nil {
+				uidTokens = append(uidTokens, uid)
+			} else {
+				filteredTokens = append(filteredTokens, t)
+			}
 		}
 	}
 	included, err := EncodeKeywords(inc)
@@ -91,17 +102,27 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 			continue
 		}
 		match := true
-		// Query string filtering (case-insensitive, all tokens must be present in name or submitter)
-		if len(filteredTokens) > 0 {
+		// Query string filtering (case-insensitive, all tokens must be present in name, submitter, or ID)
+		if len(filteredTokens) > 0 || len(uidTokens) > 0 {
 			nameLower := strings.ToLower(seq.Name)
 			submitterLower := ""
 			if seq.Submitter != nil {
 				submitterLower = strings.ToLower(seq.Submitter.Name)
 			}
-			for _, t := range filteredTokens {
-				if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
+			// Check UID tokens: match if the sequence ID equals the UID or the UID string is contained in the name
+			for _, uid := range uidTokens {
+				if !seq.Id.Equals(uid) && !strings.Contains(seq.Name, uid.String()) {
 					match = false
 					break
+				}
+			}
+			// Check string tokens
+			if match && len(filteredTokens) > 0 {
+				for _, t := range filteredTokens {
+					if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
+						match = false
+						break
+					}
 				}
 			}
 			if !match {
