@@ -82,20 +82,24 @@ func SearchPrograms(programs []Program, query string, limit, skip int) ([]Progra
 	count := 0
 	var results []Program
 	var total int
-	for _, seq := range programs {
+	for _, prog := range programs {
 		// Check included and excluded keywords
-		if !HasAllKeywords(seq.Keywords, included) {
+		if !HasAllKeywords(prog.Keywords, included) {
 			continue
 		}
-		if !HasNoKeywords(seq.Keywords, excluded) {
+		if !HasNoKeywords(prog.Keywords, excluded) {
 			continue
 		}
 		match := true
-		// Query string filtering (case-insensitive, all tokens must be present in name)
+		// Query string filtering (case-insensitive, all tokens must be present in name or submitter)
 		if len(filteredTokens) > 0 {
-			nameLower := strings.ToLower(seq.Name)
+			nameLower := strings.ToLower(prog.Name)
+			submitterLower := ""
+			if prog.Submitter != nil {
+				submitterLower = strings.ToLower(prog.Submitter.Name)
+			}
 			for _, t := range filteredTokens {
-				if !strings.Contains(nameLower, t) {
+				if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
 					match = false
 					break
 				}
@@ -112,7 +116,7 @@ func SearchPrograms(programs []Program, query string, limit, skip int) ([]Progra
 		if limit > 0 && len(results) >= limit {
 			continue
 		}
-		results = append(results, seq)
+		results = append(results, prog)
 	}
 	return results, total
 }
