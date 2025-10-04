@@ -8,10 +8,11 @@ import (
 )
 
 type Sequence struct {
-	Id       util.UID
-	Name     string
-	Keywords uint64 // Bitmask of keywords
-	Terms    string
+	Id        util.UID
+	Name      string
+	Keywords  uint64 // bitmask of keywords
+	Terms     string
+	Submitter *Submitter
 }
 
 func (s *Sequence) TermsList() []string {

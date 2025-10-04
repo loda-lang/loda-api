@@ -34,7 +34,21 @@ paths:
     get:
       tags: [ Sequences ]
       summary: Search integer sequences
-      description: Search for integer sequences by name, ID, keywords and other criteria. Supports pagination.
+      description: |
+        Search for integer sequences using flexible criteria. Supports pagination.
+      
+        Supported search criteria:
+        - **Name**: Matches tokens in the sequence name (case-insensitive).
+        - **ID**: Matches tokens in the sequence ID (e.g., A000045).
+        - **Keywords**: Include keywords by specifying them in the query (e.g., `core easy`). Exclude keywords by prefixing with a minus sign (e.g., `-hard`).
+        - **Submitter**: Matches tokens in the submitter's name of the corresponding LODA program (case-insensitive).
+        - **Advanced**: All tokens in the query must be present in either the sequence name or submitter name. Keywords are handled as described above.
+      
+        Example queries:
+        - `Fibonacci core` (sequences with "Fibonacci" in the name and the "core" keyword)
+        - `Alice` (sequences with programs submitted by Alice)
+        - `-hard` (exclude sequences with the "hard" keyword)
+        - `A000045` (sequence with ID A000045)
       parameters:
       - $ref: '#/components/parameters/Query'
       - $ref: '#/components/parameters/Limit'

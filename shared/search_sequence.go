@@ -91,11 +91,15 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 			continue
 		}
 		match := true
-		// Query string filtering (case-insensitive, all tokens must be present in name)
+		// Query string filtering (case-insensitive, all tokens must be present in name or submitter)
 		if len(filteredTokens) > 0 {
 			nameLower := strings.ToLower(seq.Name)
+			submitterLower := ""
+			if seq.Submitter != nil {
+				submitterLower = strings.ToLower(seq.Submitter.Name)
+			}
 			for _, t := range filteredTokens {
-				if !strings.Contains(nameLower, t) {
+				if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
 					match = false
 					break
 				}

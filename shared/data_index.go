@@ -110,12 +110,13 @@ func (idx *DataIndex) Load() error {
 		return programs[i].Id.IsLessThan(programs[j].Id)
 	})
 
-	// Update sequences and programs with keywords, names, and used program IDs
+	// Update sequences and programs with keywords, names, used program IDs, and submitter
 	si, pi := 0, 0
 	for si < len(sequences) {
 		id := sequences[si].Id
 		idStr := id.String()
 		var keywords uint64
+		var submitter *Submitter = nil
 		if keywordsStr, ok := keywordsMap[idStr]; ok {
 			k, err := EncodeKeywords(keywordsStr)
 			if err != nil {
@@ -149,10 +150,12 @@ func (idx *DataIndex) Load() error {
 			} else {
 				programs[pi].Usages = ""
 			}
+			submitter = programs[pi].Submitter
 			pi++
 		}
-		// Update sequence keywords
+		// Update sequence keywords and submitter
 		sequences[si].Keywords = keywords
+		sequences[si].Submitter = submitter
 		si++
 	}
 
