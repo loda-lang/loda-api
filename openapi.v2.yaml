@@ -347,6 +347,11 @@ components:
             description: Keywords for this sequence
             items:
               type: string
+          authors:
+            type: array
+            description: List of author names for this sequence
+            items:
+              type: string
           oeisRef:
             type: string
             description: Reference to the OEIS entry (if applicable)

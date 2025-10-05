@@ -28,16 +28,22 @@ func (s *Sequence) TermsList() []string {
 }
 
 func (s Sequence) MarshalJSON() ([]byte, error) {
+	var authorNames []string
+	for _, a := range s.Authors {
+		authorNames = append(authorNames, a.Name)
+	}
 	return json.Marshal(struct {
 		Id       string   `json:"id"`
 		Name     string   `json:"name"`
 		Keywords []string `json:"keywords"`
 		Terms    []string `json:"terms"`
+		Authors  []string `json:"authors"`
 	}{
 		Id:       s.Id.String(),
 		Name:     s.Name,
 		Keywords: DecodeKeywords(s.Keywords),
 		Terms:    s.TermsList(),
+		Authors:  authorNames,
 	})
 }
 
@@ -47,6 +53,7 @@ func (s *Sequence) UnmarshalJSON(data []byte) error {
 		Name     string   `json:"name"`
 		Keywords []string `json:"keywords"`
 		Terms    []string `json:"terms"`
+		Authors  []string `json:"authors"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -65,6 +72,11 @@ func (s *Sequence) UnmarshalJSON(data []byte) error {
 	s.Terms = strings.Join(aux.Terms, ",")
 	if len(s.Terms) > 0 {
 		s.Terms = "," + s.Terms + ","
+	}
+	// Authors: only set names, not Author pointers
+	s.Authors = nil
+	for _, name := range aux.Authors {
+		s.Authors = append(s.Authors, &Author{Name: name})
 	}
 	return nil
 }
