@@ -23,6 +23,7 @@ type DataIndex struct {
 	Programs   []Program
 	Sequences  []Sequence
 	Submitters []*Submitter
+	Authors    []*Author
 	NumUsages  map[string]int
 }
 
@@ -58,9 +59,14 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
-	commentsPath := filepath.Join(idx.OeisDir, "comments")
+	authorsPath := filepath.Join(idx.OeisDir, "authors")
+	authorSeqCount, err := LoadAuthorsFile(authorsPath)
+	if err != nil {
+		return err
+	}
 
 	// Efficiently extract extra keywords from comments, formulas, and names
+	commentsPath := filepath.Join(idx.OeisDir, "comments")
 	commentKeywords, err := ExtractKeywordsFromFile(commentsPath, ":")
 	if err != nil {
 		return err
@@ -91,6 +97,19 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
+
+	// Compute authors list
+	var authors []*Author
+	for name, count := range authorSeqCount {
+		authors = append(authors, &Author{
+			Name:         name,
+			NumSequences: count,
+		})
+	}
+	// Sort authors by name for consistency
+	sort.Slice(authors, func(i, j int) bool {
+		return authors[i].Name < authors[j].Name
+	})
 
 	// Compute program usage counts
 	numUsages := make(map[string]int)
@@ -163,6 +182,7 @@ func (idx *DataIndex) Load() error {
 	idx.Programs = programs
 	idx.Sequences = sequences
 	idx.NumUsages = numUsages
+	idx.Authors = authors
 
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))
@@ -271,6 +291,55 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 		return nil, fmt.Errorf("failed to read stripped file: %w", err)
 	}
 	return sequences, nil
+}
+
+// LoadAuthorsFile parses the authors file and returns a map of author name to number of sequences authored.
+func LoadAuthorsFile(path string) (map[string]int, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open authors file: %w", err)
+	}
+	defer file.Close()
+	authorCount := make(map[string]int)
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if len(line) == 0 || line[0] == '#' {
+			continue
+		}
+		parts := strings.SplitN(line, ":", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		// The right part contains authors, possibly separated by commas
+		rawAuthors := parts[1]
+		// Split by comma, then clean up underscores and whitespace
+		// Parse author names by extracting text between underscores
+		inAuthor := false
+		var authorBuilder strings.Builder
+		for _, r := range rawAuthors {
+			if r == '_' {
+				if inAuthor {
+					// End of author name
+					name := strings.TrimSpace(authorBuilder.String())
+					if name != "" {
+						authorCount[name]++
+					}
+					authorBuilder.Reset()
+					inAuthor = false
+				} else {
+					// Start of author name
+					inAuthor = true
+				}
+			} else if inAuthor {
+				authorBuilder.WriteRune(r)
+			}
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("failed to read authors file: %w", err)
+	}
+	return authorCount, nil
 }
 
 // ExtractPariSeqs parses the OEIS programs file and returns a set of IDs with (PARI)

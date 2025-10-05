@@ -172,3 +172,49 @@ func TestLoadSubmittersCSV(t *testing.T) {
 		t.Errorf("unexpected submitter[10]: %+v", submitters[10])
 	}
 }
+
+func TestAuthorsLoaded(t *testing.T) {
+	idx := loadTestIndex(t)
+
+	// Expected authors and their sequence counts from testdata/seqs/oeis/authors
+	want := map[string]int{
+		"N. J. A. Sloane":  6, // appears in A000001, A000002, A000003, A000006, A000007, A000008
+		"Simon Plouffe":    1, // A000002
+		"Clark Kimberling": 1, // A000004
+		"Thomas L. York":   2, // A000005, A000006
+		"R. K. Guy":        2, // A000007, A000008
+		"Philippe Deléham": 1, // A000009
+		"R. H. Hardin":     1, // A000010
+	}
+
+	got := make(map[string]int)
+	for _, a := range idx.Authors {
+		got[a.Name] = a.NumSequences
+	}
+
+	// Check all expected authors are present with correct counts
+	for name, count := range want {
+		if gotCount, ok := got[name]; !ok {
+			t.Errorf("Author %q missing from index", name)
+		} else if gotCount != count {
+			t.Errorf("Author %q: got %d sequences, want %d", name, gotCount, count)
+		}
+	}
+
+	// Check no unexpected authors
+	for name := range got {
+		if _, ok := want[name]; !ok {
+			t.Errorf("Unexpected author %q found in index", name)
+		}
+	}
+
+	// Check author names are cleaned (no underscores, trimmed)
+	for name := range got {
+		if strings.Contains(name, "_") {
+			t.Errorf("Author name %q contains underscore", name)
+		}
+		if strings.TrimSpace(name) != name {
+			t.Errorf("Author name %q is not trimmed", name)
+		}
+	}
+}

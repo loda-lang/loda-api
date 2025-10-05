@@ -5,3 +5,8 @@ type Submitter struct {
 	RefId       int    `json:"-"`
 	NumPrograms int    `json:"numPrograms"`
 }
+
+type Author struct {
+	Name         string `json:"name"`
+	NumSequences int    `json:"numSequences"`
+}
