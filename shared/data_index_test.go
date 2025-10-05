@@ -30,16 +30,19 @@ func TestIndexLoad(t *testing.T) {
 		name     string
 		terms    string
 		keywords []string
+		authors  []string
 	}{
 		"A000001": {
 			name:     "Number of groups of order n.",
 			terms:    ",0,1,1,1,2,1,2,1,5,2,2,1,5,1,2,1,14,1,5,1,5,2,2,1,15,2,2,5,4,1,4,1,51,1,2,1,14,1,2,2,14,1,6,1,4,2,2,1,52,2,5,1,5,1,15,2,13,2,2,1,13,1,2,4,267,1,4,1,5,1,4,1,50,1,2,3,4,1,6,1,52,15,2,1,15,1,2,1,12,1,10,1,4,2,",
 			keywords: []string{"nonn", "core", "nice", "hard", "conjecture", "formula"},
+			authors:  []string{"N. J. A. Sloane"},
 		},
 		"A000002": {
 			name:     "Kolakoski sequence: a(n) is length of n-th run; a(1) = 1; sequence consists just of 1's and 2's.",
 			terms:    ",1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,2,1,1,2,1,2,2,1,2,1,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,1,2,2,1,2,1,1,2,2,1,2,2,1,1,2,1,2,2,1,2,2,1,1,2,1,1,2,2,1,2,1,1,2,1,2,2,",
 			keywords: []string{"nonn", "core", "easy", "loda", "loda-inceval", "loda-loop", "loda-formula", "nice", "conjecture", "formula", "pari"},
+			authors:  []string{"N. J. A. Sloane", "Simon Plouffe"},
 		},
 	}
 	for _, seq := range idx.Sequences {
@@ -55,6 +58,16 @@ func TestIndexLoad(t *testing.T) {
 			sort.Strings(w.keywords)
 			if !slices.Equal(gotKeywords, w.keywords) {
 				t.Errorf("Sequence %s: got keywords %v, want %v", seq.Id, gotKeywords, w.keywords)
+			}
+			// Check authors
+			var gotAuthors []string
+			for _, a := range seq.Authors {
+				gotAuthors = append(gotAuthors, a.Name)
+			}
+			sort.Strings(gotAuthors)
+			sort.Strings(w.authors)
+			if !slices.Equal(gotAuthors, w.authors) {
+				t.Errorf("Sequence %s: got authors %v, want %v", seq.Id, gotAuthors, w.authors)
 			}
 			delete(want, seq.Id.String())
 		}

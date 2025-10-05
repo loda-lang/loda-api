@@ -13,6 +13,7 @@ type Sequence struct {
 	Keywords  uint64 // bitmask of keywords
 	Terms     string
 	Submitter *Submitter
+	Authors   []*Author
 }
 
 func (s *Sequence) TermsList() []string {

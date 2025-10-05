@@ -60,7 +60,7 @@ func (idx *DataIndex) Load() error {
 		return err
 	}
 	authorsPath := filepath.Join(idx.OeisDir, "authors")
-	authorSeqCount, err := LoadAuthorsFile(authorsPath)
+	uidToAuthors, authorSeqCount, err := LoadAuthorsFile(authorsPath)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func (idx *DataIndex) Load() error {
 		return err
 	}
 
-	// Compute authors list
+	// Compute authors list from authorSeqCount
 	var authors []*Author
 	for name, count := range authorSeqCount {
 		authors = append(authors, &Author{
@@ -106,7 +106,6 @@ func (idx *DataIndex) Load() error {
 			NumSequences: count,
 		})
 	}
-	// Sort authors by name for consistency
 	sort.Slice(authors, func(i, j int) bool {
 		return authors[i].Name < authors[j].Name
 	})
@@ -129,7 +128,7 @@ func (idx *DataIndex) Load() error {
 		return programs[i].Id.IsLessThan(programs[j].Id)
 	})
 
-	// Update sequences and programs with keywords, names, used program IDs, and submitter
+	// Update sequences and programs with keywords, names, used program IDs, submitter, and authors
 	si, pi := 0, 0
 	for si < len(sequences) {
 		id := sequences[si].Id
@@ -172,9 +171,12 @@ func (idx *DataIndex) Load() error {
 			submitter = programs[pi].Submitter
 			pi++
 		}
-		// Update sequence keywords and submitter
+		// Update sequence keywords, submitter, and authors
 		sequences[si].Keywords = keywords
 		sequences[si].Submitter = submitter
+		if authors, ok := uidToAuthors[idStr]; ok {
+			sequences[si].Authors = authors
+		}
 		si++
 	}
 
@@ -294,13 +296,16 @@ func LoadStrippedFile(path string, nameMap map[string]string) ([]Sequence, error
 }
 
 // LoadAuthorsFile parses the authors file and returns a map of author name to number of sequences authored.
-func LoadAuthorsFile(path string) (map[string]int, error) {
+// Returns map[uid] = []*Author, and also builds a global author count map
+func LoadAuthorsFile(path string) (map[string][]*Author, map[string]int, error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, fmt.Errorf("failed to open authors file: %w", err)
+		return nil, nil, fmt.Errorf("failed to open authors file: %w", err)
 	}
 	defer file.Close()
+	uidToAuthors := make(map[string][]*Author)
 	authorCount := make(map[string]int)
+	authorObj := make(map[string]*Author)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -311,35 +316,46 @@ func LoadAuthorsFile(path string) (map[string]int, error) {
 		if len(parts) != 2 {
 			continue
 		}
-		// The right part contains authors, possibly separated by commas
+		uid := strings.TrimSpace(parts[0])
 		rawAuthors := parts[1]
-		// Split by comma, then clean up underscores and whitespace
-		// Parse author names by extracting text between underscores
 		inAuthor := false
 		var authorBuilder strings.Builder
+		var authors []*Author
 		for _, r := range rawAuthors {
 			if r == '_' {
 				if inAuthor {
-					// End of author name
 					name := strings.TrimSpace(authorBuilder.String())
 					if name != "" {
+						// Use canonical Author pointer
+						a, ok := authorObj[name]
+						if !ok {
+							a = &Author{Name: name}
+							authorObj[name] = a
+						}
+						authors = append(authors, a)
 						authorCount[name]++
 					}
 					authorBuilder.Reset()
 					inAuthor = false
 				} else {
-					// Start of author name
 					inAuthor = true
 				}
 			} else if inAuthor {
 				authorBuilder.WriteRune(r)
 			}
 		}
+		if len(authors) > 0 {
+			uidToAuthors[uid] = authors
+		}
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, fmt.Errorf("failed to read authors file: %w", err)
+		return nil, nil, fmt.Errorf("failed to read authors file: %w", err)
 	}
-	return authorCount, nil
+	// Set NumSequences for each Author
+	for name, a := range authorObj {
+		a.NumSequences = authorCount[name]
+	}
+	return uidToAuthors, authorCount, nil
 }
 
 // ExtractPariSeqs parses the OEIS programs file and returns a set of IDs with (PARI)
