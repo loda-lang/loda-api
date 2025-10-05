@@ -101,6 +101,30 @@ func TestSearchSequences(t *testing.T) {
 		t.Errorf("Search groups order: got %d results, want 1 with correct name", total)
 	}
 
+	// Search by author name (should match sequences with N. J. A. Sloane)
+	results, total = SearchSequences(idx, "Sloane", 0, 0)
+	if total != 6 {
+		t.Errorf("Search Sloane: got total=%d, want 6", total)
+	}
+	for _, seq := range results {
+		found := false
+		for _, a := range seq.Authors {
+			if strings.Contains(a.Name, "Sloane") {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("Search Sloane: sequence %q missing author Sloane", seq.Id)
+		}
+	}
+
+	// Search by author name (should match only A000002 for Simon Plouffe)
+	results, total = SearchSequences(idx, "Simon Plouffe", 0, 0)
+	if total != 1 || len(results) != 1 || results[0].Id.String() != "A000002" {
+		t.Errorf("Search Simon Plouffe: got %d results, want 1 for A000002", total)
+	}
+
 	// Pagination: skip and limit
 	allResults, allTotal := SearchSequences(idx, "", 0, 0)
 	if allTotal != 10 || len(allResults) != 10 {

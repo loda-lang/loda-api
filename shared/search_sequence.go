@@ -67,6 +67,11 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 			if seq.Submitter != nil {
 				submitterLower = strings.ToLower(seq.Submitter.Name)
 			}
+			// Build author names lowercased
+			var authorLowers []string
+			for _, a := range seq.Authors {
+				authorLowers = append(authorLowers, strings.ToLower(a.Name))
+			}
 			// Check UID tokens: match if the sequence ID equals the UID or the UID string is contained in the name
 			for _, uid := range sq.UIDTokens {
 				if !seq.Id.Equals(uid) && !strings.Contains(seq.Name, uid.String()) {
@@ -77,7 +82,20 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 			// Check string tokens
 			if match && len(sq.FilteredTokens) > 0 {
 				for _, t := range sq.FilteredTokens {
-					if !strings.Contains(nameLower, t) && (submitterLower == "" || !strings.Contains(submitterLower, t)) {
+					found := false
+					if strings.Contains(nameLower, t) {
+						found = true
+					} else if submitterLower != "" && strings.Contains(submitterLower, t) {
+						found = true
+					} else {
+						for _, author := range authorLowers {
+							if strings.Contains(author, t) {
+								found = true
+								break
+							}
+						}
+					}
+					if !found {
 						match = false
 						break
 					}
