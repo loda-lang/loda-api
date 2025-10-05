@@ -45,7 +45,8 @@ type ProgramsServer struct {
 	submissions           []shared.Program
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
-	dataMutex             sync.Mutex
+	dataIndexMutex        sync.Mutex
+	submissionsMutex      sync.Mutex
 	updateMutex           sync.Mutex
 }
 
@@ -67,8 +68,8 @@ func newCountHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
+		s.submissionsMutex.Lock()
+		defer s.submissionsMutex.Unlock()
 		util.WriteHttpOK(w, fmt.Sprint(len(s.submissions)))
 	}
 	return http.HandlerFunc(f)
@@ -80,8 +81,8 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
+		s.submissionsMutex.Lock()
+		defer s.submissionsMutex.Unlock()
 		s.checkSession()
 		util.WriteHttpOK(w, fmt.Sprint(s.session.Unix()))
 	}
@@ -94,8 +95,8 @@ func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, Result) {
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
 	}
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
@@ -123,8 +124,8 @@ func (s *ProgramsServer) doSubmit(program shared.Program) Result {
 	if len(profile) == 0 {
 		profile = "unknown"
 	}
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
 	s.submissions = append(s.submissions, program)
 	s.submissionsPerUser[submitter]++
 	s.submissionsPerProfile[profile]++
@@ -162,8 +163,8 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 		index, _ := strconv.Atoi(params["index"])
 
 		// main work
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
+		s.submissionsMutex.Lock()
+		defer s.submissionsMutex.Unlock()
 		s.checkSession()
 		if index < 0 || index >= len(s.submissions) {
 			util.WriteHttpNotFound(w)
@@ -209,9 +210,8 @@ func newProgramByIdHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
-		p := shared.FindProgramById(s.dataIndex.Programs, uid)
+		idx := s.getDataIndex()
+		p := shared.FindProgramById(idx.Programs, uid)
 		if p == nil {
 			log.Printf("Program ID not found: %v", uid.String())
 			w.WriteHeader(http.StatusNotFound)
@@ -242,9 +242,8 @@ func newProgramSearchHandler(s *ProgramsServer) http.Handler {
 		}
 		q := req.URL.Query().Get("q")
 		limit, skip := util.ParseLimitSkip(req, 10, 100)
-		s.dataMutex.Lock()
-		defer s.dataMutex.Unlock()
-		results, total := shared.SearchPrograms(s.dataIndex.Programs, q, limit, skip)
+		idx := s.getDataIndex()
+		results, total := shared.SearchPrograms(idx.Programs, q, limit, skip)
 		resp := shared.SearchResult{
 			Total: total,
 		}
@@ -339,12 +338,6 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func (s *ProgramsServer) FindSequence(id util.UID) *shared.Sequence {
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
-	return shared.FindSequenceById(s.dataIndex, id)
-}
-
 func newSubmitHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -367,7 +360,8 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteJsonResponse(w, res)
 			return
 		}
-		seq := s.FindSequence(id)
+		idx := s.getDataIndex()
+		seq := shared.FindSequenceById(idx, id)
 		if seq == nil {
 			util.WriteJsonResponse(w, Result{Status: "error", Message: "Sequence not found", Terms: nil})
 			return
@@ -400,8 +394,8 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 }
 
 func (s *ProgramsServer) writeCheckpoint() error {
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
 	f, err := os.Create(filepath.Join(s.dataDir, CheckpointFile))
 	if err != nil {
 		return fmt.Errorf("cannot opening checkpoint file: %v", err)
@@ -433,8 +427,8 @@ func (s *ProgramsServer) checkSession() {
 }
 
 func (s *ProgramsServer) publishMetrics() {
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
 	totalCount := 0
 	for profile, count := range s.submissionsPerProfile {
 		labels := map[string]string{"kind": "submitted", "profile": profile}
@@ -445,12 +439,15 @@ func (s *ProgramsServer) publishMetrics() {
 }
 
 func (s *ProgramsServer) clearUserStats() {
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
 	s.submissionsPerUser = make(map[string]int)
 }
 
 func (s *ProgramsServer) update() {
+	// Reset data index to free memory
+	s.resetDataIndex()
+
 	// Check available system memory, skip update if less than 500 MB (Linux only)
 	const minMemKB = 500 * 1024 // 500 MB
 	freeMemKB := util.GetFreeMemoryKB()
@@ -466,20 +463,32 @@ func (s *ProgramsServer) update() {
 	if _, err := s.lodaTool.Exec(0, "update"); err != nil {
 		log.Printf("LODA tool update failed: %v", err)
 	}
-	s.loadIndex()
+
+	// Reset data index again to force reload using the new data
+	s.resetDataIndex()
 }
 
-// loadPrograms loads submitters and programs from the stats directory
-func (s *ProgramsServer) loadIndex() {
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
-	s.dataIndex = shared.NewDataIndex(s.dataDir)
-	err := s.dataIndex.Load()
-	if err != nil {
-		log.Fatalf("Error loading index: %v", err)
-	}
-	// Run garbage collection to free memory
+func (s *ProgramsServer) resetDataIndex() {
+	s.dataIndexMutex.Lock()
+	s.dataIndex = nil
+	s.dataIndexMutex.Unlock()
 	runtime.GC()
+}
+
+// getDataIndex loads the dataIndex on demand, thread-safe
+func (s *ProgramsServer) getDataIndex() *shared.DataIndex {
+	s.dataIndexMutex.Lock()
+	defer s.dataIndexMutex.Unlock()
+	if s.dataIndex == nil {
+		idx := shared.NewDataIndex(s.dataDir)
+		err := idx.Load()
+		if err != nil {
+			log.Fatalf("Failed to load data index: %v", err)
+		}
+		s.dataIndex = idx
+		runtime.GC()
+	}
+	return s.dataIndex
 }
 
 func (s *ProgramsServer) loadCheckpoint() {
@@ -518,8 +527,6 @@ func (s *ProgramsServer) Run(port int) {
 		log.Fatalf("LODA tool installation failed: %v", err)
 	}
 
-	// load index and checkpoint
-	s.loadIndex()
 	s.loadCheckpoint()
 
 	// schedule background tasks
