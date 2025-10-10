@@ -338,6 +338,36 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func newProgramExportHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		p, ok := readProgramFromBody(w, req)
+		if !ok {
+			return
+		}
+		// Parse format query param
+		format := req.URL.Query().Get("format")
+		if format == "" {
+			format = "loda"
+		}
+		msg := "Exporting program "
+		if !p.Id.IsZero() {
+			msg += p.Id.String()
+		} else {
+			msg += fmt.Sprintf("with %d operations", len(p.Operations))
+		}
+		msg += fmt.Sprintf(" to format: %s", format)
+		log.Print(msg)
+
+		// Call LODA tool and get result object
+		result := s.lodaTool.Export(p, format)
+		if result.Status == "error" {
+			log.Printf("Export failed: %v", result.Message)
+		}
+		util.WriteJsonResponse(w, result)
+	}
+	return http.HandlerFunc(f)
+}
+
 func newSubmitHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -560,6 +590,7 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v2/programs/{id:[A-Z][0-9]+}", newProgramByIdHandler(s))
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
+	router.Handle("/v2/programs/export", newProgramExportHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
