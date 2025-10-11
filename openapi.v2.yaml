@@ -139,7 +139,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Result'
+                $ref: '#/components/schemas/EvalResult'
         '400':
           description: Bad request, invalid program format
   /programs/export:
@@ -157,11 +157,11 @@ paths:
       - name: format
         in: query
         required: false
-        description: Export format (formula, pari, loda, range). Default is loda.
+        description: Export format (formula, pari, loda, range). Default is formula.
         schema:
           type: string
           enum: [formula, pari, loda, range]
-          default: loda
+          default: formula
       requestBody:
         required: true
         content:
@@ -213,7 +213,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Result'
+                $ref: '#/components/schemas/EvalResult'
         '400':
           description: Bad request, invalid program format
   /stats/summary:
@@ -440,31 +440,31 @@ components:
         numUsages:
           type: integer
           description: Number of other programs that use this program by calling it using `seq`
-    Result:
+    OperationResult:
       type: object
       properties:
         status:
           type: string
           enum: [ success, error ]
-          description: Status of the evaluation
+          description: Status of the operation
         message:
           type: string
-          description: Detailed status message
-        terms:
-          $ref: '#/components/schemas/Terms'
+          description: Detailed status or error message
+    EvalResult:
+      allOf:
+        - $ref: '#/components/schemas/OperationResult'
+        - type: object
+          properties:
+            terms:
+              $ref: '#/components/schemas/Terms'
     ExportResult:
-      type: object
-      properties:
-        status:
-          type: string
-          enum: [ success, error ]
-          description: Status of the export operation
-        message:
-          type: string
-          description: Error message if any, or empty string
-        output:
-          type: string
-          description: Exported program in the requested format
+      allOf:
+        - $ref: '#/components/schemas/OperationResult'
+        - type: object
+          properties:
+            output:
+              type: string
+              description: Exported program in the requested format
     Keyword:
       type: object
       properties:

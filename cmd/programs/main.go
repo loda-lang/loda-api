@@ -296,6 +296,16 @@ func readProgramFromBody(w http.ResponseWriter, req *http.Request) (shared.Progr
 	return p, true
 }
 
+func logProgramAction(action string, p *shared.Program) {
+	msg := action + " program "
+	if !p.Id.IsZero() {
+		msg += p.Id.String()
+	} else {
+		msg += fmt.Sprintf("with %d operations", len(p.Operations))
+	}
+	log.Print(msg)
+}
+
 func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		p, ok := readProgramFromBody(w, req)
@@ -320,13 +330,7 @@ func newProgramEvalHandler(s *ProgramsServer) http.Handler {
 				return
 			}
 		}
-		msg := "Evaluating program "
-		if !p.Id.IsZero() {
-			msg += p.Id.String()
-		} else {
-			msg += fmt.Sprintf("with %d operations", len(p.Operations))
-		}
-		log.Print(msg)
+		logProgramAction("Evaluating", &p)
 
 		// Call LODA tool and get result object
 		result := s.lodaTool.Eval(p, numTerms)
@@ -349,14 +353,7 @@ func newProgramExportHandler(s *ProgramsServer) http.Handler {
 		if format == "" {
 			format = "loda"
 		}
-		msg := "Exporting program "
-		if !p.Id.IsZero() {
-			msg += p.Id.String()
-		} else {
-			msg += fmt.Sprintf("with %d operations", len(p.Operations))
-		}
-		msg += fmt.Sprintf(" to format: %s", format)
-		log.Print(msg)
+		logProgramAction("Exporting", &p)
 
 		// Call LODA tool and get result object
 		result := s.lodaTool.Export(p, format)
