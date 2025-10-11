@@ -18,10 +18,16 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-type Result struct {
+type EvalResult struct {
 	Status  string   `json:"status"`
 	Message string   `json:"message"`
 	Terms   []string `json:"terms"`
+}
+
+type ExportResult struct {
+	Status  string `json:"status"`
+	Message string `json:"message"`
+	Output  string `json:"output"`
 }
 
 type LODATool struct {
@@ -162,29 +168,42 @@ func (t *LODATool) Exec(timeout time.Duration, args ...string) (string, error) {
 	return outputBuilder.String(), err
 }
 
+// writeProgramToTempFile creates a temporary file and writes the program code to it.
+// Returns the file path and a cleanup function. The cleanup function should be called
+// to remove the temporary file when done.
+func (t *LODATool) writeProgramToTempFile(program shared.Program, prefix string) (string, func(), error) {
+	tmpfile, err := os.CreateTemp("", prefix+"*.asm")
+	if err != nil {
+		return "", nil, fmt.Errorf("failed to create temp file: %w", err)
+	}
+	cleanup := func() {
+		os.Remove(tmpfile.Name())
+	}
+	if _, err := tmpfile.Write([]byte(program.Code)); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to write temp file: %w", err)
+	}
+	if err := tmpfile.Close(); err != nil {
+		cleanup()
+		return "", nil, fmt.Errorf("failed to close temp file: %w", err)
+	}
+	return tmpfile.Name(), cleanup, nil
+}
+
 // Eval evaluates a LODA program and returns a Result with status, message, and terms.
-func (t *LODATool) Eval(program shared.Program, numTerms int) Result {
+func (t *LODATool) Eval(program shared.Program, numTerms int) EvalResult {
 	t.evalSem <- struct{}{}
 	defer func() { <-t.evalSem }()
-	tmpfile, err := os.CreateTemp("", "loda_eval_*.asm")
+	tmpfilePath, cleanup, err := t.writeProgramToTempFile(program, "loda_eval_")
 	if err != nil {
-		return Result{
+		return EvalResult{
 			Status:  "error",
-			Message: "failed to create temp file: " + err.Error(),
+			Message: err.Error(),
 			Terms:   nil,
 		}
 	}
-	defer os.Remove(tmpfile.Name())
-	if _, err := tmpfile.Write([]byte(program.Code)); err != nil {
-		return Result{
-			Status:  "error",
-			Message: "failed to write temp file: " + err.Error(),
-			Terms:   nil,
-		}
-	}
-	tmpfile.Close()
-
-	args := []string{"eval", tmpfile.Name(), "-t", strconv.Itoa(numTerms)}
+	defer cleanup()
+	args := []string{"eval", tmpfilePath, "-t", strconv.Itoa(numTerms)}
 	output, execErr := t.Exec(10*time.Second, args...)
 	var terms []string
 	status := "success"
@@ -209,9 +228,57 @@ func (t *LODATool) Eval(program shared.Program, numTerms int) Result {
 			terms[i] = strings.TrimSpace(terms[i])
 		}
 	}
-	return Result{
+	return EvalResult{
 		Status:  status,
 		Message: message,
 		Terms:   terms,
+	}
+}
+
+// Export exports a LODA program to various formats using the loda export command.
+// Supported formats: formula, pari, loda, range
+func (t *LODATool) Export(program shared.Program, format string) ExportResult {
+	t.evalSem <- struct{}{}
+	defer func() { <-t.evalSem }()
+	// Validate format
+	validFormats := []string{"formula", "pari", "loda", "range"}
+	isValid := false
+	for _, f := range validFormats {
+		if f == format {
+			isValid = true
+			break
+		}
+	}
+	if !isValid {
+		return ExportResult{
+			Status:  "error",
+			Message: fmt.Sprintf("invalid format: %s (supported: formula, pari, loda, range)", format),
+			Output:  "",
+		}
+	}
+	tmpfilePath, cleanup, err := t.writeProgramToTempFile(program, "loda_export_")
+	if err != nil {
+		return ExportResult{
+			Status:  "error",
+			Message: err.Error(),
+			Output:  "",
+		}
+	}
+	defer cleanup()
+	args := []string{"export", tmpfilePath, format}
+	output, execErr := t.Exec(10*time.Second, args...)
+	status := "success"
+	message := ""
+	if execErr != nil {
+		status = "error"
+		message = execErr.Error()
+		if output != "" {
+			message = strings.TrimSpace(output)
+		}
+	}
+	return ExportResult{
+		Status:  status,
+		Message: message,
+		Output:  strings.TrimSpace(output),
 	}
 }

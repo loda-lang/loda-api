@@ -139,7 +139,48 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Result'
+                $ref: '#/components/schemas/EvalResult'
+        '400':
+          description: Bad request, invalid program format
+  /programs/export:
+    post:
+      tags: [ Programs ]
+      summary: Export a LODA program to various formats
+      description: |
+        Export a LODA program to different formats using the LODA export command. The request body should contain the program code in plain text format. Supported export formats are: formula, pari, loda, and range.
+        
+        The response includes:
+        - `status`: "success" or "error"
+        - `message`: error message if any, or empty string
+        - `output`: exported program in the requested format
+      parameters:
+      - name: format
+        in: query
+        required: false
+        description: Export format (formula, pari, loda, range). Default is formula.
+        schema:
+          type: string
+          enum: [formula, pari, loda, range]
+          default: formula
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              description: LODA program code
+            example: |
+              mov $1,2
+              pow $1,$0
+              mov $0,$1
+              add $0,1
+      responses:
+        '200':
+          description: Export result including status, message and output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ExportResult'
         '400':
           description: Bad request, invalid program format
   /programs/{id}/submit:
@@ -172,7 +213,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Result'
+                $ref: '#/components/schemas/EvalResult'
         '400':
           description: Bad request, invalid program format
   /stats/summary:
@@ -399,18 +440,31 @@ components:
         numUsages:
           type: integer
           description: Number of other programs that use this program by calling it using `seq`
-    Result:
+    OperationResult:
       type: object
       properties:
         status:
           type: string
           enum: [ success, error ]
-          description: Status of the evaluation
+          description: Status of the operation
         message:
           type: string
-          description: Detailed status message
-        terms:
-          $ref: '#/components/schemas/Terms'
+          description: Detailed status or error message
+    EvalResult:
+      allOf:
+        - $ref: '#/components/schemas/OperationResult'
+        - type: object
+          properties:
+            terms:
+              $ref: '#/components/schemas/Terms'
+    ExportResult:
+      allOf:
+        - $ref: '#/components/schemas/OperationResult'
+        - type: object
+          properties:
+            output:
+              type: string
+              description: Exported program in the requested format
     Keyword:
       type: object
       properties:
