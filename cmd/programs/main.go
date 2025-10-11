@@ -90,7 +90,7 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 }
 
 // Returns (ok, Result)
-func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, Result) {
+func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, EvalResult) {
 	submitter := ""
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
@@ -100,22 +100,22 @@ func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, Result) {
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
-		return false, Result{Status: "error", Message: "Too many total submissions", Terms: nil}
+		return false, EvalResult{Status: "error", Message: "Too many total submissions", Terms: nil}
 	}
 	if s.submissionsPerUser[submitter] >= NumSubmissionsPerUser {
 		log.Printf("Rejected program from %s", submitter)
-		return false, Result{Status: "error", Message: "Too many user submissions", Terms: nil}
+		return false, EvalResult{Status: "error", Message: "Too many user submissions", Terms: nil}
 	}
 	for _, p := range s.submissions {
 		if slices.Equal(p.Operations, program.Operations) {
-			return false, Result{Status: "error", Message: "Duplicate submission", Terms: nil}
+			return false, EvalResult{Status: "error", Message: "Duplicate submission", Terms: nil}
 		}
 	}
-	return true, Result{}
+	return true, EvalResult{}
 }
 
 // Returns a Result object
-func (s *ProgramsServer) doSubmit(program shared.Program) Result {
+func (s *ProgramsServer) doSubmit(program shared.Program) EvalResult {
 	submitter := ""
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
@@ -133,7 +133,7 @@ func (s *ProgramsServer) doSubmit(program shared.Program) Result {
 		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser,
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
-	return Result{Status: "success", Message: "Accepted submission", Terms: nil}
+	return EvalResult{Status: "success", Message: "Accepted submission", Terms: nil}
 }
 
 func newPostHandler(s *ProgramsServer) http.Handler {
@@ -371,12 +371,12 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		idStr := params["id"]
 		id, err := util.NewUIDFromString(idStr)
 		if err != nil || id.IsZero() {
-			util.WriteJsonResponse(w, Result{Status: "error", Message: "Invalid program ID", Terms: nil})
+			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid program ID", Terms: nil})
 			return
 		}
 		program, ok := readProgramFromBody(w, req)
 		if !ok {
-			util.WriteJsonResponse(w, Result{Status: "error", Message: "Invalid program format", Terms: nil})
+			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid program format", Terms: nil})
 			return
 		}
 		submitter := program.Submitter
@@ -390,7 +390,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		idx := s.getDataIndex()
 		seq := shared.FindSequenceById(idx, id)
 		if seq == nil {
-			util.WriteJsonResponse(w, Result{Status: "error", Message: "Sequence not found", Terms: nil})
+			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Sequence not found", Terms: nil})
 			return
 		}
 		program.SetIdAndName(id, seq.Name)
@@ -410,7 +410,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if !slices.Equal(expectedTerms, result.Terms) {
 			log.Printf("Submission for %v produced incorrect terms; expected: %v, got: %v",
 				id.String(), expectedTerms, result.Terms)
-			util.WriteJsonResponse(w, Result{Status: "error", Message: "Terms don't match", Terms: result.Terms})
+			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Terms don't match", Terms: result.Terms})
 			return
 		}
 		res := s.doSubmit(program)
