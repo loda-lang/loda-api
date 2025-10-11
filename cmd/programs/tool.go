@@ -18,6 +18,9 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
+// SupportedExportFormats defines the export formats supported by the LODA tool
+var SupportedExportFormats = []string{"formula", "pari", "loda", "range"}
+
 type EvalResult struct {
 	Status  string   `json:"status"`
 	Message string   `json:"message"`
@@ -236,14 +239,13 @@ func (t *LODATool) Eval(program shared.Program, numTerms int) EvalResult {
 }
 
 // Export exports a LODA program to various formats using the loda export command.
-// Supported formats: formula, pari, loda, range
+// Supported formats are defined in SupportedExportFormats variable.
 func (t *LODATool) Export(program shared.Program, format string) ExportResult {
 	t.evalSem <- struct{}{}
 	defer func() { <-t.evalSem }()
 	// Validate format
-	validFormats := []string{"formula", "pari", "loda", "range"}
 	isValid := false
-	for _, f := range validFormats {
+	for _, f := range SupportedExportFormats {
 		if f == format {
 			isValid = true
 			break
@@ -252,7 +254,7 @@ func (t *LODATool) Export(program shared.Program, format string) ExportResult {
 	if !isValid {
 		return ExportResult{
 			Status:  "error",
-			Message: fmt.Sprintf("invalid format: %s (supported: formula, pari, loda, range)", format),
+			Message: fmt.Sprintf("invalid format: %s (supported: %s)", format, strings.Join(SupportedExportFormats, ", ")),
 			Output:  "",
 		}
 	}
@@ -265,7 +267,7 @@ func (t *LODATool) Export(program shared.Program, format string) ExportResult {
 		}
 	}
 	defer cleanup()
-	args := []string{"export", tmpfilePath, format}
+	args := []string{"export", "-o", format, tmpfilePath}
 	output, execErr := t.Exec(10*time.Second, args...)
 	status := "success"
 	message := ""
