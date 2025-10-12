@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"math/rand"
 	"strings"
 
 	"github.com/loda-lang/loda-api/util"
@@ -46,11 +47,9 @@ func FindSequenceById(idx *DataIndex, id util.UID) *Sequence {
 }
 
 // Search returns paginated results and total count of all matches
-func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence, int) {
+func SearchSequences(idx *DataIndex, query string, limit, skip int, shuffle bool) ([]Sequence, int) {
 	sq := ParseSearchQuery(query)
-	count := 0
-	var results []Sequence
-	var total int
+	var matches []*Sequence
 	for _, seq := range idx.Sequences {
 		// Check included and excluded keywords
 		if !HasAllKeywords(seq.Keywords, sq.IncludedKeywords) {
@@ -105,15 +104,26 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int) ([]Sequence,
 				continue
 			}
 		}
-		total++
-		if count < skip {
-			count++
-			continue
+		matches = append(matches, &seq)
+	}
+	// Shuffle if requested
+	total := len(matches)
+	if shuffle && total > 0 {
+		rand.Shuffle(total, func(i, j int) {
+			matches[i], matches[j] = matches[j], matches[i]
+		})
+	}
+	// Apply pagination
+	var results []Sequence
+	start := skip
+	end := skip + limit
+	if start < total {
+		if end > total || limit == 0 {
+			end = total
 		}
-		if limit > 0 && len(results) >= limit {
-			continue
+		for i := start; i < end; i++ {
+			results = append(results, *matches[i])
 		}
-		results = append(results, seq)
 	}
 	return results, total
 }

@@ -207,8 +207,8 @@ func (s *SequencesServer) SequenceSearchHandler() http.Handler {
 			return
 		}
 		q := req.URL.Query().Get("q")
-		limit, skip := util.ParseLimitSkip(req, 10, 100)
-		results, total := shared.SearchSequences(GetIndex(s), q, limit, skip)
+		limit, skip, shuffle := util.ParseLimitSkipShuffle(req, 10, 100)
+		results, total := shared.SearchSequences(GetIndex(s), q, limit, skip, shuffle)
 		resp := shared.SearchResult{
 			Total: total,
 		}

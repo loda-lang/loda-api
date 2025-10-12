@@ -1,6 +1,7 @@
 package shared
 
 import (
+	"math/rand"
 	"strings"
 
 	"github.com/loda-lang/loda-api/util"
@@ -46,11 +47,9 @@ func FindProgramById(programs []Program, id util.UID) *Program {
 }
 
 // SearchPrograms returns paginated results and total count of all matches
-func SearchPrograms(programs []Program, query string, limit, skip int) ([]Program, int) {
+func SearchPrograms(programs []Program, query string, limit, skip int, shuffle bool) ([]Program, int) {
 	sq := ParseSearchQuery(query)
-	count := 0
-	var results []Program
-	var total int
+	var matches []*Program
 	for _, prog := range programs {
 		// Check included and excluded keywords
 		if !HasAllKeywords(prog.Keywords, sq.IncludedKeywords) {
@@ -87,15 +86,26 @@ func SearchPrograms(programs []Program, query string, limit, skip int) ([]Progra
 				continue
 			}
 		}
-		total++
-		if count < skip {
-			count++
-			continue
+		matches = append(matches, &prog)
+	}
+	// Shuffle if requested
+	total := len(matches)
+	if shuffle && total > 0 {
+		rand.Shuffle(total, func(i, j int) {
+			matches[i], matches[j] = matches[j], matches[i]
+		})
+	}
+	// Apply pagination
+	var results []Program
+	start := skip
+	end := skip + limit
+	if start < total {
+		if end > total || limit == 0 {
+			end = total
 		}
-		if limit > 0 && len(results) >= limit {
-			continue
+		for i := start; i < end; i++ {
+			results = append(results, *matches[i])
 		}
-		results = append(results, prog)
 	}
 	return results, total
 }

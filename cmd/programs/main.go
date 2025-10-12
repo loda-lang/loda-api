@@ -241,9 +241,9 @@ func newProgramSearchHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		q := req.URL.Query().Get("q")
-		limit, skip := util.ParseLimitSkip(req, 10, 100)
+		limit, skip, shuffle := util.ParseLimitSkipShuffle(req, 10, 100)
 		idx := s.getDataIndex()
-		results, total := shared.SearchPrograms(idx.Programs, q, limit, skip)
+		results, total := shared.SearchPrograms(idx.Programs, q, limit, skip, shuffle)
 		resp := shared.SearchResult{
 			Total: total,
 		}

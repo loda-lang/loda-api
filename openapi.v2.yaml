@@ -54,6 +54,7 @@ paths:
       - $ref: '#/components/parameters/Query'
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
+      - $ref: '#/components/parameters/Shuffle'
       responses:
         '200':
           description: List of matching integer sequences
@@ -100,6 +101,7 @@ paths:
       - $ref: '#/components/parameters/Query'
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
+      - $ref: '#/components/parameters/Shuffle'
       responses:
         '200':
           description: List of matching LODA programs
@@ -334,6 +336,14 @@ components:
         type: integer
         minimum: 0
         default: 0
+    Shuffle:
+      name: shuffle
+      in: query
+      required: false
+      description: If set to true, the search results will be shuffled randomly
+      schema:
+        type: boolean
+        default: false
     Submitter:
       name: submitter
       in: query

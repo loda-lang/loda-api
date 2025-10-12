@@ -116,8 +116,8 @@ func ServeBinary(w http.ResponseWriter, req *http.Request, path string) {
 	http.ServeFile(w, req, path)
 }
 
-// ParseLimitSkip extracts 'limit' and 'skip' query params, applies bounds, and returns (limit, skip)
-func ParseLimitSkip(req *http.Request, defaultLimit, maxLimit int) (limit, skip int) {
+// ParseLimitSkip extracts 'limit', 'skip' and 'shuffle' query params, applies bounds, and returns (limit, skip, shuffle)
+func ParseLimitSkipShuffle(req *http.Request, defaultLimit, maxLimit int) (limit, skip int, shuffle bool) {
 	limit = defaultLimit
 	skip = 0
 	if l := req.URL.Query().Get("limit"); l != "" {
@@ -134,5 +134,6 @@ func ParseLimitSkip(req *http.Request, defaultLimit, maxLimit int) (limit, skip 
 			skip = 0
 		}
 	}
+	shuffle = req.URL.Query().Has("shuffle") && req.URL.Query().Get("shuffle") != "false"
 	return
 }

@@ -55,7 +55,7 @@ func TestSearchSequences(t *testing.T) {
 	idx := loadTestIndex(t)
 
 	// Search by query string (name substring)
-	results, total := SearchSequences(idx, "Kolakoski", 0, 0)
+	results, total := SearchSequences(idx, "Kolakoski", 0, 0, false)
 	if total != 1 || len(results) != 1 {
 		t.Errorf("Search Kolakoski: got %d results, want 1", total)
 	} else if !strings.Contains(results[0].Name, "Kolakoski") {
@@ -63,7 +63,7 @@ func TestSearchSequences(t *testing.T) {
 	}
 
 	// Search by included keyword (as +core)
-	results, total = SearchSequences(idx, "+core", 0, 0)
+	results, total = SearchSequences(idx, "+core", 0, 0, false)
 	if total != 7 {
 		t.Errorf("Search +core: got total=%d, want 7", total)
 	}
@@ -82,7 +82,7 @@ func TestSearchSequences(t *testing.T) {
 	}
 
 	// Search by excluded keyword (as -hard)
-	results, total = SearchSequences(idx, "-hard", 0, 0)
+	results, total = SearchSequences(idx, "-hard", 0, 0, false)
 	if total != 9 {
 		t.Errorf("Search -hard: got total=%d, want 9", total)
 	}
@@ -96,13 +96,13 @@ func TestSearchSequences(t *testing.T) {
 	}
 
 	// Search with query tokens (all must match)
-	results, total = SearchSequences(idx, "groups order", 0, 0)
+	results, total = SearchSequences(idx, "groups order", 0, 0, false)
 	if total != 1 || len(results) != 1 || !strings.Contains(results[0].Name, "groups") || !strings.Contains(results[0].Name, "order") {
 		t.Errorf("Search groups order: got %d results, want 1 with correct name", total)
 	}
 
 	// Search by author name (should match sequences with N. J. A. Sloane)
-	results, total = SearchSequences(idx, "Sloane", 0, 0)
+	results, total = SearchSequences(idx, "Sloane", 0, 0, false)
 	if total != 6 {
 		t.Errorf("Search Sloane: got total=%d, want 6", total)
 	}
@@ -119,18 +119,18 @@ func TestSearchSequences(t *testing.T) {
 		}
 	}
 
-	// Search by author name (should match only A000002 for Simon Plouffe)
-	results, total = SearchSequences(idx, "Simon Plouffe", 0, 0)
+	// Search by author name (as Simon Plouffe)
+	results, total = SearchSequences(idx, "Simon Plouffe", 0, 0, false)
 	if total != 1 || len(results) != 1 || results[0].Id.String() != "A000002" {
 		t.Errorf("Search Simon Plouffe: got %d results, want 1 for A000002", total)
 	}
 
 	// Pagination: skip and limit
-	allResults, allTotal := SearchSequences(idx, "", 0, 0)
+	allResults, allTotal := SearchSequences(idx, "", 0, 0, false)
 	if allTotal != 10 || len(allResults) != 10 {
 		t.Fatalf("All results: got %d results, want 10", allTotal)
 	}
-	paged, _ := SearchSequences(idx, "", 2, 1)
+	paged, _ := SearchSequences(idx, "", 2, 1, false)
 	if len(paged) != 2 {
 		t.Errorf("Pagination: got %d results, want 2", len(paged))
 	}
@@ -140,7 +140,7 @@ func TestSearchSequences(t *testing.T) {
 }
 
 func checkSearchByID(t *testing.T, idx *DataIndex, query string, expectedID string) {
-	results, total := SearchSequences(idx, query, 0, 0)
+	results, total := SearchSequences(idx, query, 0, 0, false)
 	if total != 1 || len(results) != 1 {
 		t.Errorf("SearchSequences by ID (%s): got %d results, want 1", query, total)
 	} else if results[0].Id.String() != expectedID {
@@ -154,4 +154,31 @@ func TestSearchSequencesByID(t *testing.T) {
 	checkSearchByID(t, idx, "A1", "A000001")
 	checkSearchByID(t, idx, "A000002", "A000002")
 	checkSearchByID(t, idx, "A2", "A000002")
+}
+
+func TestSearchSequencesShuffle(t *testing.T) {
+	idx := loadTestIndex(t)
+	// Get results without shuffle
+	results1, total1 := SearchSequences(idx, "+core", 0, 0, false)
+	results2, total2 := SearchSequences(idx, "+core", 0, 0, false)
+	// Results should be the same when not shuffled
+	if total1 != total2 {
+		t.Errorf("Non-shuffled searches have different totals: %d vs %d", total1, total2)
+	}
+	if len(results1) != len(results2) {
+		t.Errorf("Non-shuffled searches have different result lengths: %d vs %d", len(results1), len(results2))
+	}
+	for i := range results1 {
+		if results1[i].Id != results2[i].Id {
+			t.Errorf("Non-shuffled results differ at position %d: %s vs %s", i, results1[i].Id, results2[i].Id)
+		}
+	}
+	// Test with shuffle enabled - we can't easily test randomness, but we can test that it doesn't break anything
+	shuffled, totalShuffled := SearchSequences(idx, "+core", 0, 0, true)
+	if totalShuffled != total1 {
+		t.Errorf("Shuffled search has different total: %d vs %d", totalShuffled, total1)
+	}
+	if len(shuffled) != len(results1) {
+		t.Errorf("Shuffled search has different result length: %d vs %d", len(shuffled), len(results1))
+	}
 }

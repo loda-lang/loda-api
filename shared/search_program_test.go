@@ -55,12 +55,12 @@ func TestFindProgramById(t *testing.T) {
 func TestSearchPrograms(t *testing.T) {
 	programs := makeTestPrograms()
 	// Search by name substring
-	results, total := SearchPrograms(programs, "Kolakoski", 0, 0)
+	results, total := SearchPrograms(programs, "Kolakoski", 0, 0, false)
 	if total != 1 || len(results) != 1 || results[0].Name != "Kolakoski sequence" {
 		t.Errorf("Search by name failed: got total=%d, len=%d", total, len(results))
 	}
 	// Search by included keyword
-	results, total = SearchPrograms(programs, "+core", 0, 0)
+	results, total = SearchPrograms(programs, "+core", 0, 0, false)
 	if total != 3 {
 		t.Errorf("Search +core: got total=%d, want 3", total)
 	}
@@ -70,7 +70,7 @@ func TestSearchPrograms(t *testing.T) {
 		}
 	}
 	// Search by excluded keyword
-	results, total = SearchPrograms(programs, "-mult", 0, 0)
+	results, total = SearchPrograms(programs, "-mult", 0, 0, false)
 	if total != 2 {
 		t.Errorf("Search -mult: got total=%d, want 2", total)
 	}
@@ -80,17 +80,45 @@ func TestSearchPrograms(t *testing.T) {
 		}
 	}
 	// Search with multiple tokens
-	results, total = SearchPrograms(programs, "zero sequence", 0, 0)
+	// Search by multiple tokens (all must match)
+	results, total = SearchPrograms(programs, "zero sequence", 0, 0, false)
 	if total != 1 || len(results) != 1 || results[0].Name != "The zero sequence." {
 		t.Errorf("Search with multiple tokens failed: got total=%d, len=%d", total, len(results))
 	}
 	// Pagination
-	all, allTotal := SearchPrograms(programs, "", 0, 0)
+	all, allTotal := SearchPrograms(programs, "", 0, 0, false)
 	if allTotal != 4 {
 		t.Errorf("All: got total=%d, want 4", allTotal)
 	}
-	paged, _ := SearchPrograms(programs, "", 2, 1)
+	paged, _ := SearchPrograms(programs, "", 2, 1, false)
 	if len(paged) != 2 || paged[0].Id != all[1].Id || paged[1].Id != all[2].Id {
 		t.Errorf("Pagination failed")
+	}
+}
+
+func TestSearchProgramsShuffle(t *testing.T) {
+	programs := makeTestPrograms()
+	// Get results without shuffle
+	results1, total1 := SearchPrograms(programs, "+core", 0, 0, false)
+	results2, total2 := SearchPrograms(programs, "+core", 0, 0, false)
+	// Results should be the same when not shuffled
+	if total1 != total2 {
+		t.Errorf("Non-shuffled searches have different totals: %d vs %d", total1, total2)
+	}
+	if len(results1) != len(results2) {
+		t.Errorf("Non-shuffled searches have different result lengths: %d vs %d", len(results1), len(results2))
+	}
+	for i := range results1 {
+		if results1[i].Id != results2[i].Id {
+			t.Errorf("Non-shuffled results differ at position %d: %s vs %s", i, results1[i].Id, results2[i].Id)
+		}
+	}
+	// Test with shuffle enabled - we can't easily test randomness, but we can test that it doesn't break anything
+	shuffled, totalShuffled := SearchPrograms(programs, "+core", 0, 0, true)
+	if totalShuffled != total1 {
+		t.Errorf("Shuffled search has different total: %d vs %d", totalShuffled, total1)
+	}
+	if len(shuffled) != len(results1) {
+		t.Errorf("Shuffled search has different result length: %d vs %d", len(shuffled), len(results1))
 	}
 }
