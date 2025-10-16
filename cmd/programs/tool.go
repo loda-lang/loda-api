@@ -19,7 +19,7 @@ import (
 )
 
 // SupportedExportFormats defines the export formats supported by the LODA tool
-var SupportedExportFormats = []string{"formula", "pari", "loda", "range"}
+var SupportedExportFormats = []string{"formula", "pari", "lean", "loda", "range"}
 
 type EvalResult struct {
 	Status  string   `json:"status"`

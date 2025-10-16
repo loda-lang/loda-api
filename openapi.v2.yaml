@@ -149,7 +149,7 @@ paths:
       tags: [ Programs ]
       summary: Export a LODA program to various formats
       description: |
-        Export a LODA program to different formats using the LODA export command. The request body should contain the program code in plain text format. Supported export formats are: formula, pari, loda, and range.
+        Export a LODA program to different formats using the LODA export command. The request body should contain the program code in plain text format. Supported export formats are: formula, pari, lean, loda, and range.
         
         The response includes:
         - `status`: "success" or "error"
@@ -159,10 +159,10 @@ paths:
       - name: format
         in: query
         required: false
-        description: Export format (formula, pari, loda, range). Default is formula.
+        description: Export format (formula, pari, lean, loda, range). Default is formula.
         schema:
           type: string
-          enum: [formula, pari, loda, range]
+          enum: [formula, pari, lean, loda, range]
           default: formula
       requestBody:
         required: true
