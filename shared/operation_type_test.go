@@ -7,20 +7,24 @@ import (
 	"testing"
 )
 
-// Initialize global operation type index for tests
-func init() {
+// Helper function to create an operation type index for tests
+func loadTestOperationTypeIndex(t *testing.T) *OperationTypeIndex {
+	t.Helper()
 	path := filepath.Join("../testdata/stats/operation_types.csv")
 	opTypes, err := LoadOperationTypesCSV(path)
 	if err != nil {
-		panic("Failed to load operation types for tests: " + err.Error())
+		t.Fatalf("Failed to load operation types: %v", err)
 	}
-	_, err = NewOperationTypeIndex(opTypes)
+	opIndex, err := NewOperationTypeIndex(opTypes)
 	if err != nil {
-		panic("Failed to create operation type index for tests: " + err.Error())
+		t.Fatalf("Failed to create operation type index: %v", err)
 	}
+	return opIndex
 }
 
 func TestEncodeDecodeOperationTypes(t *testing.T) {
+	opIndex := loadTestOperationTypeIndex(t)
+	
 	tests := []struct {
 		name string
 		ops  []string
@@ -35,11 +39,11 @@ func TestEncodeDecodeOperationTypes(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			encoded, err := EncodeOperationTypes(tt.ops)
+			encoded, err := opIndex.EncodeOperationTypes(tt.ops)
 			if err != nil {
 				t.Fatalf("EncodeOperationTypes failed: %v", err)
 			}
-			decoded := DecodeOperationTypes(encoded)
+			decoded := opIndex.DecodeOperationTypes(encoded)
 
 			// Sort both for comparison
 			want := make([]string, len(tt.ops))
@@ -55,14 +59,18 @@ func TestEncodeDecodeOperationTypes(t *testing.T) {
 }
 
 func TestEncodeOperationTypesUnknown(t *testing.T) {
-	_, err := EncodeOperationTypes([]string{"unknown"})
+	opIndex := loadTestOperationTypeIndex(t)
+	
+	_, err := opIndex.EncodeOperationTypes([]string{"unknown"})
 	if err == nil {
 		t.Error("expected error for unknown operation type")
 	}
 }
 
 func TestHasOperationType(t *testing.T) {
-	bits, _ := EncodeOperationTypes([]string{"mov", "add", "mul"})
+	opIndex := loadTestOperationTypeIndex(t)
+	
+	bits, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "mul"})
 
 	tests := []struct {
 		op   string
@@ -77,7 +85,7 @@ func TestHasOperationType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.op, func(t *testing.T) {
-			got := HasOperationType(bits, tt.op)
+			got := opIndex.HasOperationType(bits, tt.op)
 			if got != tt.want {
 				t.Errorf("HasOperationType(%q) = %v, want %v", tt.op, got, tt.want)
 			}
@@ -86,32 +94,38 @@ func TestHasOperationType(t *testing.T) {
 }
 
 func TestHasAllOperationTypes(t *testing.T) {
-	bits1, _ := EncodeOperationTypes([]string{"mov", "add", "sub", "mul"})
-	bits2, _ := EncodeOperationTypes([]string{"mov", "add"})
-	bits3, _ := EncodeOperationTypes([]string{"div", "mod"})
+	opIndex := loadTestOperationTypeIndex(t)
+	
+	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "sub", "mul"})
+	bits2, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
+	bits3, _ := opIndex.EncodeOperationTypes([]string{"div", "mod"})
 
-	if !HasAllOperationTypes(bits1, bits2) {
+	if !opIndex.HasAllOperationTypes(bits1, bits2) {
 		t.Error("expected bits1 to contain all of bits2")
 	}
-	if HasAllOperationTypes(bits1, bits3) {
+	if opIndex.HasAllOperationTypes(bits1, bits3) {
 		t.Error("expected bits1 to not contain all of bits3")
 	}
 }
 
 func TestHasNoOperationTypes(t *testing.T) {
-	bits1, _ := EncodeOperationTypes([]string{"mov", "add"})
-	bits2, _ := EncodeOperationTypes([]string{"div", "mod"})
-	bits3, _ := EncodeOperationTypes([]string{"add", "mul"})
+	opIndex := loadTestOperationTypeIndex(t)
+	
+	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
+	bits2, _ := opIndex.EncodeOperationTypes([]string{"div", "mod"})
+	bits3, _ := opIndex.EncodeOperationTypes([]string{"add", "mul"})
 
-	if !HasNoOperationTypes(bits1, bits2) {
+	if !opIndex.HasNoOperationTypes(bits1, bits2) {
 		t.Error("expected bits1 to have none of bits2")
 	}
-	if HasNoOperationTypes(bits1, bits3) {
+	if opIndex.HasNoOperationTypes(bits1, bits3) {
 		t.Error("expected bits1 to have some of bits3")
 	}
 }
 
 func TestIsOperationType(t *testing.T) {
+	opIndex := loadTestOperationTypeIndex(t)
+	
 	tests := []struct {
 		op   string
 		want bool
@@ -125,7 +139,7 @@ func TestIsOperationType(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.op, func(t *testing.T) {
-			got := IsOperationType(tt.op)
+			got := opIndex.IsOperationType(tt.op)
 			if got != tt.want {
 				t.Errorf("IsOperationType(%q) = %v, want %v", tt.op, got, tt.want)
 			}

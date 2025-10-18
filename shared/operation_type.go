@@ -19,9 +19,6 @@ type OperationTypeIndex struct {
 	maxRefId       int                // Maximum ref_id value
 }
 
-// Global operation type index (initialized from loaded data)
-var globalOperationTypeIndex *OperationTypeIndex
-
 // NewOperationTypeIndex creates a new OperationTypeIndex from loaded operation types.
 // It validates that ref IDs are unique and range from 1..N.
 func NewOperationTypeIndex(operationTypes []*OperationType) (*OperationTypeIndex, error) {
@@ -67,16 +64,11 @@ func NewOperationTypeIndex(operationTypes []*OperationType) (*OperationTypeIndex
 		nameToBit[ot.Name] = uint(ot.RefId)
 	}
 
-	idx := &OperationTypeIndex{
+	return &OperationTypeIndex{
 		types:     types,
 		nameToBit: nameToBit,
 		maxRefId:  maxRefId,
-	}
-	
-	// Set global instance for convenience functions
-	globalOperationTypeIndex = idx
-	
-	return idx, nil
+	}, nil
 }
 
 // IsOperationType returns true if the given string is a valid operation type
@@ -137,62 +129,4 @@ func (idx *OperationTypeIndex) GetOperationTypes() []*OperationType {
 		result = append(result, idx.types[i])
 	}
 	return result
-}
-
-// Global convenience functions that use the global index
-
-// IsOperationType returns true if the given string is a valid operation type (uses global index)
-func IsOperationType(s string) bool {
-	if globalOperationTypeIndex == nil {
-		return false
-	}
-	return globalOperationTypeIndex.IsOperationType(s)
-}
-
-// EncodeOperationTypes encodes a list of operation types into a uint64 bitmask (uses global index)
-func EncodeOperationTypes(ops []string) (uint64, error) {
-	if globalOperationTypeIndex == nil {
-		return 0, fmt.Errorf("operation type index not initialized")
-	}
-	return globalOperationTypeIndex.EncodeOperationTypes(ops)
-}
-
-// DecodeOperationTypes decodes a uint64 bitmask into a list of operation types (uses global index)
-func DecodeOperationTypes(bits uint64) []string {
-	if globalOperationTypeIndex == nil {
-		return nil
-	}
-	return globalOperationTypeIndex.DecodeOperationTypes(bits)
-}
-
-// HasOperationType returns true if the given operation type is present in the bits (uses global index)
-func HasOperationType(bits uint64, op string) bool {
-	if globalOperationTypeIndex == nil {
-		return false
-	}
-	return globalOperationTypeIndex.HasOperationType(bits, op)
-}
-
-// HasAllOperationTypes returns true if all operation types in bits2 are present in bits1 (uses global index)
-func HasAllOperationTypes(bits1, bits2 uint64) bool {
-	if globalOperationTypeIndex == nil {
-		return false
-	}
-	return globalOperationTypeIndex.HasAllOperationTypes(bits1, bits2)
-}
-
-// HasNoOperationTypes returns true if none of the operation types in bits2 are present in bits1 (uses global index)
-func HasNoOperationTypes(bits1, bits2 uint64) bool {
-	if globalOperationTypeIndex == nil {
-		return true
-	}
-	return globalOperationTypeIndex.HasNoOperationTypes(bits1, bits2)
-}
-
-// MergeOperationTypes merges two operation type bitmasks into one (uses global index)
-func MergeOperationTypes(bits1, bits2 uint64) uint64 {
-	if globalOperationTypeIndex == nil {
-		return 0
-	}
-	return globalOperationTypeIndex.MergeOperationTypes(bits1, bits2)
 }

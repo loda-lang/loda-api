@@ -51,11 +51,6 @@ func (p Program) MarshalJSON() ([]byte, error) {
 	if strings.TrimSpace(p.Usages) != "" {
 		usages = strings.Fields(p.Usages)
 	}
-	// Use operationTypes from OpsMask if available, otherwise fall back to Operations
-	operations := p.Operations
-	if p.OpsMask != 0 {
-		operations = DecodeOperationTypes(p.OpsMask)
-	}
 	return json.Marshal(struct {
 		Id         string   `json:"id"`
 		Name       string   `json:"name"`
@@ -71,7 +66,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Code:       p.Code,
 		Submitter:  submitter,
 		Keywords:   DecodeKeywords(p.Keywords),
-		Operations: operations,
+		Operations: p.Operations,
 		Formula:    p.Formula,
 		Usages:     usages,
 	})

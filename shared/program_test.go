@@ -91,15 +91,27 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 }
 
 func TestProgramMarshalWithOpsMask(t *testing.T) {
+	// Load operation type index
+	opTypesPath := filepath.Join("../testdata/stats/operation_types.csv")
+	opTypes, err := LoadOperationTypesCSV(opTypesPath)
+	if err != nil {
+		t.Fatalf("failed to load operation types: %v", err)
+	}
+	opIndex, err := NewOperationTypeIndex(opTypes)
+	if err != nil {
+		t.Fatalf("failed to create operation type index: %v", err)
+	}
+	
 	// Create a program with OpsMask set
 	uid, _ := util.NewUID('A', 1)
 	prog := Program{
-		Id:      uid,
-		Name:    "Test Program",
-		OpsMask: 0, // No ops
+		Id:         uid,
+		Name:       "Test Program",
+		Operations: []string{"mov $1,$0", "add $1,1"},
+		OpsMask:    0,
 	}
 	// Set OpsMask to include mov and add operations
-	opsMask, err := EncodeOperationTypes([]string{"mov", "add"})
+	opsMask, err := opIndex.EncodeOperationTypes([]string{"mov", "add"})
 	if err != nil {
 		t.Fatalf("failed to encode operation types: %v", err)
 	}
@@ -111,7 +123,7 @@ func TestProgramMarshalWithOpsMask(t *testing.T) {
 		t.Fatalf("marshal failed: %v", err)
 	}
 	
-	// Verify that operations field in JSON contains decoded operation types
+	// Verify that operations field in JSON uses the Operations field
 	var jsonMap map[string]interface{}
 	if err := json.Unmarshal(data, &jsonMap); err != nil {
 		t.Fatalf("failed to unmarshal to map: %v", err)
@@ -123,22 +135,8 @@ func TestProgramMarshalWithOpsMask(t *testing.T) {
 	if len(ops) != 2 {
 		t.Errorf("expected 2 operations, got %d", len(ops))
 	}
-	// Check that operations contain "mov" and "add"
-	hasMovOp := false
-	hasAddOp := false
-	for _, op := range ops {
-		opStr, ok := op.(string)
-		if !ok {
-			continue
-		}
-		if opStr == "mov" {
-			hasMovOp = true
-		}
-		if opStr == "add" {
-			hasAddOp = true
-		}
-	}
-	if !hasMovOp || !hasAddOp {
-		t.Errorf("expected operations to contain 'mov' and 'add', got %v", ops)
+	// Check that operations contain the actual LODA operation strings
+	if ops[0] != "mov $1,$0" || ops[1] != "add $1,1" {
+		t.Errorf("expected operations to be LODA operation strings, got %v", ops)
 	}
 }

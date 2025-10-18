@@ -116,6 +116,18 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if len(programs) != 13 {
 		t.Errorf("expected 13 programs, got %d", len(programs))
 	}
+	
+	// Load operation type index for testing
+	opTypesPath := filepath.Join("../testdata/stats/operation_types.csv")
+	opTypes, err := LoadOperationTypesCSV(opTypesPath)
+	if err != nil {
+		t.Fatalf("LoadOperationTypesCSV failed: %v", err)
+	}
+	opIndex, err := NewOperationTypeIndex(opTypes)
+	if err != nil {
+		t.Fatalf("NewOperationTypeIndex failed: %v", err)
+	}
+	
 	// Check a few known values (based on the new CSV and submitter mapping)
 	p := programs[0]
 	if p.Id.String() != "A000002" || p.Length != 10 {
@@ -131,8 +143,8 @@ func TestLoadProgramsCSV(t *testing.T) {
 		t.Errorf("unexpected ops_bitmask for program[0]: got %d, want 805308526", p.OpsMask)
 	}
 	// Verify operation types can be decoded
-	opTypes := DecodeOperationTypes(p.OpsMask)
-	if len(opTypes) == 0 {
+	decodedOpTypes := opIndex.DecodeOperationTypes(p.OpsMask)
+	if len(decodedOpTypes) == 0 {
 		t.Errorf("expected operation types to be decoded from ops_bitmask, got empty list")
 	}
 
@@ -164,7 +176,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 		t.Errorf("unexpected ops_bitmask for program[9]: got %d, want 2", p.OpsMask)
 	}
 	// Verify bit 1 (mov) is set in ops_bitmask
-	if !HasOperationType(p.OpsMask, "mov") {
+	if !opIndex.HasOperationType(p.OpsMask, "mov") {
 		t.Errorf("expected 'mov' operation type to be present in ops_bitmask")
 	}
 
