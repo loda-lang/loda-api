@@ -17,6 +17,7 @@ type Program struct {
 	Submitter  *Submitter
 	Keywords   uint64 // bitmask of keywords
 	Operations []string
+	OpsMask    uint64 // bitmask of operation types
 	Formula    string
 	Length     int
 	Usages     string // space-separated program IDs
@@ -50,6 +51,11 @@ func (p Program) MarshalJSON() ([]byte, error) {
 	if strings.TrimSpace(p.Usages) != "" {
 		usages = strings.Fields(p.Usages)
 	}
+	// Use operationTypes from OpsMask if available, otherwise fall back to Operations
+	operations := p.Operations
+	if p.OpsMask != 0 {
+		operations = DecodeOperationTypes(p.OpsMask)
+	}
 	return json.Marshal(struct {
 		Id         string   `json:"id"`
 		Name       string   `json:"name"`
@@ -65,7 +71,7 @@ func (p Program) MarshalJSON() ([]byte, error) {
 		Code:       p.Code,
 		Submitter:  submitter,
 		Keywords:   DecodeKeywords(p.Keywords),
-		Operations: p.Operations,
+		Operations: operations,
 		Formula:    p.Formula,
 		Usages:     usages,
 	})
@@ -100,6 +106,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	p.Submitter = submitter
 	p.Keywords = keywords
 	p.Operations = aux.Operations
+	p.OpsMask = 0 // OpsMask is not persisted in JSON, only used internally
 	p.Usages = strings.Join(aux.Usages, " ")
 	return nil
 }

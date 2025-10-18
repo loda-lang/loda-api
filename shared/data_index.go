@@ -561,7 +561,7 @@ func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 	return submitters, nil
 }
 
-var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect"}
+var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect", "ops_bitmask"}
 
 func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 	f, err := os.Open(path)
@@ -586,7 +586,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(rec) != 10 {
+		if len(rec) != 11 {
 			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
 		}
 		uid, err := util.NewUIDFromString(rec[0])
@@ -613,6 +613,12 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		loopFlag := rec[7] == "1"
 		formulaFlag := rec[8] == "1"
 		indirectFlag := rec[9] == "1"
+		
+		// Parse ops_bitmask
+		opsMask, err := strconv.ParseUint(rec[10], 10, 64)
+		if err != nil {
+			return nil, err
+		}
 
 		// Add loda-specific keywords using constants
 		keywords := KeywordLodaBits
@@ -640,6 +646,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
+			OpsMask:   opsMask,
 		}
 		programs = append(programs, p)
 	}

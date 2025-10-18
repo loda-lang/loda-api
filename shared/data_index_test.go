@@ -127,6 +127,14 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if p.Submitter == nil || p.Submitter.Name != "" {
 		t.Errorf("unexpected submitter for program[0]: %+v", p.Submitter)
 	}
+	if p.OpsMask != 805308526 {
+		t.Errorf("unexpected ops_bitmask for program[0]: got %d, want 805308526", p.OpsMask)
+	}
+	// Verify operation types can be decoded
+	opTypes := DecodeOperationTypes(p.OpsMask)
+	if len(opTypes) == 0 {
+		t.Errorf("expected operation types to be decoded from ops_bitmask, got empty list")
+	}
 
 	p = programs[2]
 	if p.Id.String() != "A000005" || p.Length != 22 {
@@ -137,6 +145,9 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 	if p.Submitter == nil || p.Submitter.Name != "Luna Moon" {
 		t.Errorf("unexpected submitter for program[2]: %+v", p.Submitter)
+	}
+	if p.OpsMask != 813695726 {
+		t.Errorf("unexpected ops_bitmask for program[2]: got %d, want 813695726", p.OpsMask)
 	}
 
 	p = programs[9]
@@ -149,6 +160,13 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if p.Submitter == nil || p.Submitter.Name != "Star*Gazer" {
 		t.Errorf("unexpected submitter for program[9]: %+v", p.Submitter)
 	}
+	if p.OpsMask != 2 {
+		t.Errorf("unexpected ops_bitmask for program[9]: got %d, want 2", p.OpsMask)
+	}
+	// Verify bit 1 (mov) is set in ops_bitmask
+	if !HasOperationType(p.OpsMask, "mov") {
+		t.Errorf("expected 'mov' operation type to be present in ops_bitmask")
+	}
 
 	p = programs[12]
 	if p.Id.String() != "A000016" || p.Length != 15 {
@@ -159,6 +177,9 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 	if p.Submitter == nil || p.Submitter.Name != "@Pixel$Hero" {
 		t.Errorf("unexpected submitter for program[12]: %+v", p.Submitter)
+	}
+	if p.OpsMask != 822086766 {
+		t.Errorf("unexpected ops_bitmask for program[12]: got %d, want 822086766", p.OpsMask)
 	}
 }
 
