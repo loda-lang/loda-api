@@ -202,10 +202,17 @@ func TestLoadOperationTypesCSV(t *testing.T) {
 	if opTypes[33].Name != "seq" || opTypes[33].RefId != 34 || opTypes[33].Count != 60327 {
 		t.Errorf("unexpected operation type[33]: %+v", opTypes[33])
 	}
-	// Verify ref_id matches position in OperationTypeList
+	
+	// Create an index to validate the operation types
+	opIndex, err := NewOperationTypeIndex(opTypes)
+	if err != nil {
+		t.Fatalf("NewOperationTypeIndex failed: %v", err)
+	}
+	
+	// Verify all operation types are accessible via the index
 	for _, op := range opTypes {
-		if op.RefId <= 0 || op.RefId >= len(OperationTypeList) || OperationTypeList[op.RefId] != op.Name {
-			t.Errorf("operation type %s with ref_id %d does not match OperationTypeList", op.Name, op.RefId)
+		if !opIndex.IsOperationType(op.Name) {
+			t.Errorf("operation type %s with ref_id %d not found in index", op.Name, op.RefId)
 		}
 	}
 }

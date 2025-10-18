@@ -17,14 +17,15 @@ import (
 )
 
 type DataIndex struct {
-	DataDir    string
-	OeisDir    string
-	StatsDir   string
-	Programs   []Program
-	Sequences  []Sequence
-	Submitters []*Submitter
-	Authors    []*Author
-	NumUsages  map[string]int
+	DataDir           string
+	OeisDir           string
+	StatsDir          string
+	Programs          []Program
+	Sequences         []Sequence
+	Submitters        []*Submitter
+	Authors           []*Author
+	NumUsages         map[string]int
+	OperationTypeIndex *OperationTypeIndex
 }
 
 func NewDataIndex(dataDir string) *DataIndex {
@@ -84,6 +85,15 @@ func (idx *DataIndex) Load() error {
 
 	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
 	submitters, err := LoadSubmittersCSV(submittersPath)
+	if err != nil {
+		return err
+	}
+	operationTypesPath := filepath.Join(idx.StatsDir, "operation_types.csv")
+	operationTypes, err := LoadOperationTypesCSV(operationTypesPath)
+	if err != nil {
+		return err
+	}
+	operationTypeIndex, err := NewOperationTypeIndex(operationTypes)
 	if err != nil {
 		return err
 	}
@@ -185,6 +195,7 @@ func (idx *DataIndex) Load() error {
 	idx.Sequences = sequences
 	idx.NumUsages = numUsages
 	idx.Authors = authors
+	idx.OperationTypeIndex = operationTypeIndex
 
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))

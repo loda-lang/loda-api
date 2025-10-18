@@ -1,10 +1,24 @@
 package shared
 
 import (
+	"path/filepath"
 	"slices"
 	"sort"
 	"testing"
 )
+
+// Initialize global operation type index for tests
+func init() {
+	path := filepath.Join("../testdata/stats/operation_types.csv")
+	opTypes, err := LoadOperationTypesCSV(path)
+	if err != nil {
+		panic("Failed to load operation types for tests: " + err.Error())
+	}
+	_, err = NewOperationTypeIndex(opTypes)
+	if err != nil {
+		panic("Failed to create operation type index for tests: " + err.Error())
+	}
+}
 
 func TestEncodeDecodeOperationTypes(t *testing.T) {
 	tests := []struct {
