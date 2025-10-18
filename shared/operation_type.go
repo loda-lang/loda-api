@@ -4,6 +4,13 @@ import (
 	"fmt"
 )
 
+// OperationType represents a LODA operation type with its statistics
+type OperationType struct {
+	Name  string `json:"name"`
+	RefId int    `json:"refId"`
+	Count int    `json:"count"`
+}
+
 // List of all operation types with their ref_id as index (ref_id starts at 1)
 var OperationTypeList = []string{
 	"", // index 0, unused (ref_ids start at 1)

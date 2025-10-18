@@ -183,6 +183,33 @@ func TestLoadProgramsCSV(t *testing.T) {
 	}
 }
 
+func TestLoadOperationTypesCSV(t *testing.T) {
+	path := filepath.Join("../testdata/stats/operation_types.csv")
+	opTypes, err := LoadOperationTypesCSV(path)
+	if err != nil {
+		t.Fatalf("LoadOperationTypesCSV failed: %v", err)
+	}
+	if len(opTypes) != 34 {
+		t.Errorf("expected 34 operation types, got %d", len(opTypes))
+	}
+	// Check a few known values
+	if opTypes[0].Name != "mov" || opTypes[0].RefId != 1 || opTypes[0].Count != 667789 {
+		t.Errorf("unexpected operation type[0]: %+v", opTypes[0])
+	}
+	if opTypes[1].Name != "add" || opTypes[1].RefId != 2 || opTypes[1].Count != 490252 {
+		t.Errorf("unexpected operation type[1]: %+v", opTypes[1])
+	}
+	if opTypes[33].Name != "seq" || opTypes[33].RefId != 34 || opTypes[33].Count != 60327 {
+		t.Errorf("unexpected operation type[33]: %+v", opTypes[33])
+	}
+	// Verify ref_id matches position in OperationTypeList
+	for _, op := range opTypes {
+		if op.RefId >= len(OperationTypeList) || OperationTypeList[op.RefId] != op.Name {
+			t.Errorf("operation type %s with ref_id %d does not match OperationTypeList", op.Name, op.RefId)
+		}
+	}
+}
+
 func TestLoadSubmittersCSV(t *testing.T) {
 	path := filepath.Join("../testdata/stats/submitters.csv")
 	submitters, err := LoadSubmittersCSV(path)

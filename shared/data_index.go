@@ -506,6 +506,52 @@ func extractProgramUsages(path string) (map[string]string, error) {
 	return result, nil
 }
 
+var expectedOperationTypesHeader = []string{"name", "ref_id", "count"}
+
+func LoadOperationTypesCSV(path string) ([]*OperationType, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+	header, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(header, expectedOperationTypesHeader) {
+		return nil, fmt.Errorf("unexpected header in operation_types.csv: %v", header)
+	}
+	var operationTypes []*OperationType
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(rec) != 3 {
+			return nil, fmt.Errorf("unexpected number of fields in operation_types.csv: %v", rec)
+		}
+		name := rec[0]
+		refId, err := strconv.Atoi(rec[1])
+		if err != nil {
+			return nil, err
+		}
+		count, err := strconv.Atoi(rec[2])
+		if err != nil {
+			return nil, err
+		}
+		operationTypes = append(operationTypes, &OperationType{
+			Name:  name,
+			RefId: refId,
+			Count: count,
+		})
+	}
+	return operationTypes, nil
+}
+
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
 
 func LoadSubmittersCSV(path string) ([]*Submitter, error) {
