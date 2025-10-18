@@ -204,7 +204,7 @@ func TestLoadOperationTypesCSV(t *testing.T) {
 	}
 	// Verify ref_id matches position in OperationTypeList
 	for _, op := range opTypes {
-		if op.RefId >= len(OperationTypeList) || OperationTypeList[op.RefId] != op.Name {
+		if op.RefId <= 0 || op.RefId >= len(OperationTypeList) || OperationTypeList[op.RefId] != op.Name {
 			t.Errorf("operation type %s with ref_id %d does not match OperationTypeList", op.Name, op.RefId)
 		}
 	}
