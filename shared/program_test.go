@@ -42,6 +42,30 @@ func TestNewProgramFromText_A000030(t *testing.T) {
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,$0" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
 	}
+	
+	// Check OpsMask is initialized to 0
+	if prog.OpsMask != 0 {
+		t.Errorf("expected OpsMask to be 0, got %d", prog.OpsMask)
+	}
+	
+	// Extract and verify operation types
+	opTypes := extractOperationTypes(prog.Operations)
+	expectedOpTypes := []string{"mov", "lpb", "div", "sub", "lpe"}
+	if len(opTypes) != len(expectedOpTypes) {
+		t.Errorf("expected %d operation types, got %d: %v", len(expectedOpTypes), len(opTypes), opTypes)
+	}
+	for _, expected := range expectedOpTypes {
+		found := false
+		for _, actual := range opTypes {
+			if actual == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected operation type %q not found in %v", expected, opTypes)
+		}
+	}
 }
 
 func TestNewProgramFromText_A000042(t *testing.T) {
@@ -53,6 +77,30 @@ func TestNewProgramFromText_A000042(t *testing.T) {
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,10" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
 	}
+	
+	// Check OpsMask is initialized to 0
+	if prog.OpsMask != 0 {
+		t.Errorf("expected OpsMask to be 0, got %d", prog.OpsMask)
+	}
+	
+	// Extract and verify operation types
+	opTypes := extractOperationTypes(prog.Operations)
+	expectedOpTypes := []string{"mov", "pow", "div"}
+	if len(opTypes) != len(expectedOpTypes) {
+		t.Errorf("expected %d operation types, got %d: %v", len(expectedOpTypes), len(opTypes), opTypes)
+	}
+	for _, expected := range expectedOpTypes {
+		found := false
+		for _, actual := range opTypes {
+			if actual == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected operation type %q not found in %v", expected, opTypes)
+		}
+	}
 }
 
 func TestNewProgramFromText_A000168(t *testing.T) {
@@ -63,6 +111,30 @@ func TestNewProgramFromText_A000168(t *testing.T) {
 	checkProgramMeta(t, prog, "A000168", "a(n) = 2*3^n", "")
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,$0" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
+	}
+	
+	// Check OpsMask is initialized to 0
+	if prog.OpsMask != 0 {
+		t.Errorf("expected OpsMask to be 0, got %d", prog.OpsMask)
+	}
+	
+	// Extract and verify operation types
+	opTypes := extractOperationTypes(prog.Operations)
+	expectedOpTypes := []string{"mov", "add", "seq", "mul", "div"}
+	if len(opTypes) != len(expectedOpTypes) {
+		t.Errorf("expected %d operation types, got %d: %v", len(expectedOpTypes), len(opTypes), opTypes)
+	}
+	for _, expected := range expectedOpTypes {
+		found := false
+		for _, actual := range opTypes {
+			if actual == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected operation type %q not found in %v", expected, opTypes)
+		}
 	}
 }
 
@@ -87,3 +159,5 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 		t.Errorf("Operations length mismatch after roundtrip")
 	}
 }
+
+
