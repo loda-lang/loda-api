@@ -15,9 +15,9 @@ type Program struct {
 	Name       string
 	Code       string
 	Submitter  *Submitter
-	Keywords   uint64 // bitmask of keywords
+	Keywords   uint64   // bitmask of keywords
+	OpsMask    uint64   // bitmask of operation types
 	Operations []string
-	OpsMask    uint64 // bitmask of operation types
 	Formula    string
 	Length     int
 	Usages     string // space-separated program IDs
@@ -35,6 +35,7 @@ func NewProgramFromCode(code string) (Program, error) {
 		Name:       name,
 		Code:       code,
 		Submitter:  submitter,
+		OpsMask:    0, // OpsMask is computed separately when OperationTypeIndex is available
 		Operations: operations,
 		Formula:    formula,
 		Length:     len(operations),
@@ -146,6 +147,7 @@ func (p *Program) SetCode(code string) error {
 		p.Submitter = submitter
 	}
 	p.Code = code
+	p.OpsMask = 0 // OpsMask is computed separately when OperationTypeIndex is available
 	p.Operations = extractOperations(code)
 	p.Formula = extractFormula(code)
 	p.Length = len(p.Operations)
