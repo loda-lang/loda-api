@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/loda-lang/loda-api/util"
 )
 
 // checkProgramMeta checks the ID, name prefix, and submitter of a Program.
@@ -85,5 +87,58 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 	}
 	if len(out.Operations) != len(prog.Operations) {
 		t.Errorf("Operations length mismatch after roundtrip")
+	}
+}
+
+func TestProgramMarshalWithOpsMask(t *testing.T) {
+	// Create a program with OpsMask set
+	uid, _ := util.NewUID('A', 1)
+	prog := Program{
+		Id:      uid,
+		Name:    "Test Program",
+		OpsMask: 0, // No ops
+	}
+	// Set OpsMask to include mov and add operations
+	opsMask, err := EncodeOperationTypes([]string{"mov", "add"})
+	if err != nil {
+		t.Fatalf("failed to encode operation types: %v", err)
+	}
+	prog.OpsMask = opsMask
+	
+	// Marshal to JSON
+	data, err := json.Marshal(prog)
+	if err != nil {
+		t.Fatalf("marshal failed: %v", err)
+	}
+	
+	// Verify that operations field in JSON contains decoded operation types
+	var jsonMap map[string]interface{}
+	if err := json.Unmarshal(data, &jsonMap); err != nil {
+		t.Fatalf("failed to unmarshal to map: %v", err)
+	}
+	ops, ok := jsonMap["operations"].([]interface{})
+	if !ok {
+		t.Fatalf("operations field not found or wrong type")
+	}
+	if len(ops) != 2 {
+		t.Errorf("expected 2 operations, got %d", len(ops))
+	}
+	// Check that operations contain "mov" and "add"
+	hasMovOp := false
+	hasAddOp := false
+	for _, op := range ops {
+		opStr, ok := op.(string)
+		if !ok {
+			continue
+		}
+		if opStr == "mov" {
+			hasMovOp = true
+		}
+		if opStr == "add" {
+			hasAddOp = true
+		}
+	}
+	if !hasMovOp || !hasAddOp {
+		t.Errorf("expected operations to contain 'mov' and 'add', got %v", ops)
 	}
 }
