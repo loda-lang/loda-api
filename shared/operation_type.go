@@ -11,17 +11,17 @@ type OperationType struct {
 	Count int    `json:"count"`
 }
 
-// OperationTypeIndex provides efficient encoding/decoding of operation types to bitmasks.
+// OpTypeIndex provides efficient encoding/decoding of operation types to bitmasks.
 // It is initialized from loaded operation type data and validates uniqueness and ref ID ranges.
-type OperationTypeIndex struct {
+type OpTypeIndex struct {
 	types          []*OperationType   // All operation types indexed by ref_id
 	nameToBit      map[string]uint    // Map from operation name to bit index
 	maxRefId       int                // Maximum ref_id value
 }
 
-// NewOperationTypeIndex creates a new OperationTypeIndex from loaded operation types.
+// NewOpTypeIndex creates a new OpTypeIndex from loaded operation types.
 // It validates that ref IDs are unique and range from 1..N.
-func NewOperationTypeIndex(operationTypes []*OperationType) (*OperationTypeIndex, error) {
+func NewOpTypeIndex(operationTypes []*OperationType) (*OpTypeIndex, error) {
 	if len(operationTypes) == 0 {
 		return nil, fmt.Errorf("operation types list is empty")
 	}
@@ -64,7 +64,7 @@ func NewOperationTypeIndex(operationTypes []*OperationType) (*OperationTypeIndex
 		nameToBit[ot.Name] = uint(ot.RefId)
 	}
 
-	return &OperationTypeIndex{
+	return &OpTypeIndex{
 		types:     types,
 		nameToBit: nameToBit,
 		maxRefId:  maxRefId,
@@ -72,13 +72,13 @@ func NewOperationTypeIndex(operationTypes []*OperationType) (*OperationTypeIndex
 }
 
 // IsOperationType returns true if the given string is a valid operation type
-func (idx *OperationTypeIndex) IsOperationType(s string) bool {
+func (idx *OpTypeIndex) IsOperationType(s string) bool {
 	_, ok := idx.nameToBit[s]
 	return ok
 }
 
 // EncodeOperationTypes encodes a list of operation types into a uint64 bitmask
-func (idx *OperationTypeIndex) EncodeOperationTypes(ops []string) (uint64, error) {
+func (idx *OpTypeIndex) EncodeOperationTypes(ops []string) (uint64, error) {
 	var bits uint64
 	for _, op := range ops {
 		bit, ok := idx.nameToBit[op]
@@ -91,7 +91,7 @@ func (idx *OperationTypeIndex) EncodeOperationTypes(ops []string) (uint64, error
 }
 
 // DecodeOperationTypes decodes a uint64 bitmask into a list of operation types
-func (idx *OperationTypeIndex) DecodeOperationTypes(bits uint64) []string {
+func (idx *OpTypeIndex) DecodeOperationTypes(bits uint64) []string {
 	var result []string
 	for i := 1; i <= idx.maxRefId; i++ {
 		if bits&(1<<uint(i)) != 0 {
@@ -102,28 +102,28 @@ func (idx *OperationTypeIndex) DecodeOperationTypes(bits uint64) []string {
 }
 
 // HasOperationType returns true if the given operation type is present in the bits
-func (idx *OperationTypeIndex) HasOperationType(bits uint64, op string) bool {
+func (idx *OpTypeIndex) HasOperationType(bits uint64, op string) bool {
 	bit, ok := idx.nameToBit[op]
 	return ok && bits&(1<<bit) != 0
 }
 
 // HasAllOperationTypes returns true if all operation types in bits2 are present in bits1
-func (idx *OperationTypeIndex) HasAllOperationTypes(bits1, bits2 uint64) bool {
+func (idx *OpTypeIndex) HasAllOperationTypes(bits1, bits2 uint64) bool {
 	return bits1&bits2 == bits2
 }
 
 // HasNoOperationTypes returns true if none of the operation types in bits2 are present in bits1
-func (idx *OperationTypeIndex) HasNoOperationTypes(bits1, bits2 uint64) bool {
+func (idx *OpTypeIndex) HasNoOperationTypes(bits1, bits2 uint64) bool {
 	return bits1&bits2 == 0
 }
 
 // MergeOperationTypes merges two operation type bitmasks into one
-func (idx *OperationTypeIndex) MergeOperationTypes(bits1, bits2 uint64) uint64 {
+func (idx *OpTypeIndex) MergeOperationTypes(bits1, bits2 uint64) uint64 {
 	return bits1 | bits2
 }
 
 // GetOperationTypes returns all operation types (excluding index 0)
-func (idx *OperationTypeIndex) GetOperationTypes() []*OperationType {
+func (idx *OpTypeIndex) GetOperationTypes() []*OperationType {
 	result := make([]*OperationType, 0, idx.maxRefId)
 	for i := 1; i <= idx.maxRefId; i++ {
 		result = append(result, idx.types[i])

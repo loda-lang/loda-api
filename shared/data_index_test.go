@@ -123,9 +123,9 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("LoadOperationTypesCSV failed: %v", err)
 	}
-	opIndex, err := NewOperationTypeIndex(opTypes)
+	opIndex, err := NewOpTypeIndex(opTypes)
 	if err != nil {
-		t.Fatalf("NewOperationTypeIndex failed: %v", err)
+		t.Fatalf("NewOpTypeIndex failed: %v", err)
 	}
 	
 	// Check a few known values (based on the new CSV and submitter mapping)
@@ -216,9 +216,9 @@ func TestLoadOperationTypesCSV(t *testing.T) {
 	}
 	
 	// Create an index to validate the operation types
-	opIndex, err := NewOperationTypeIndex(opTypes)
+	opIndex, err := NewOpTypeIndex(opTypes)
 	if err != nil {
-		t.Fatalf("NewOperationTypeIndex failed: %v", err)
+		t.Fatalf("NewOpTypeIndex failed: %v", err)
 	}
 	
 	// Verify all operation types are accessible via the index

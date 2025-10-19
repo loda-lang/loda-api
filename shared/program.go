@@ -35,7 +35,7 @@ func NewProgramFromCode(code string) (Program, error) {
 		Name:       name,
 		Code:       code,
 		Submitter:  submitter,
-		OpsMask:    0, // OpsMask is computed separately when OperationTypeIndex is available
+		OpsMask:    0, // OpsMask is computed separately when OpTypeIndex is available
 		Operations: operations,
 		Formula:    formula,
 		Length:     len(operations),
@@ -147,7 +147,7 @@ func (p *Program) SetCode(code string) error {
 		p.Submitter = submitter
 	}
 	p.Code = code
-	p.OpsMask = 0 // OpsMask is computed separately when OperationTypeIndex is available
+	p.OpsMask = 0 // OpsMask is computed separately when OpTypeIndex is available
 	p.Operations = extractOperations(code)
 	p.Formula = extractFormula(code)
 	p.Length = len(p.Operations)

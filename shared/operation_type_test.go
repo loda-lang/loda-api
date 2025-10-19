@@ -8,14 +8,14 @@ import (
 )
 
 // Helper function to create an operation type index for tests
-func loadTestOperationTypeIndex(t *testing.T) *OperationTypeIndex {
+func loadTestOpTypeIndex(t *testing.T) *OpTypeIndex {
 	t.Helper()
 	path := filepath.Join("../testdata/stats/operation_types.csv")
 	opTypes, err := LoadOperationTypesCSV(path)
 	if err != nil {
 		t.Fatalf("Failed to load operation types: %v", err)
 	}
-	opIndex, err := NewOperationTypeIndex(opTypes)
+	opIndex, err := NewOpTypeIndex(opTypes)
 	if err != nil {
 		t.Fatalf("Failed to create operation type index: %v", err)
 	}
@@ -23,7 +23,7 @@ func loadTestOperationTypeIndex(t *testing.T) *OperationTypeIndex {
 }
 
 func TestEncodeDecodeOperationTypes(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	tests := []struct {
 		name string
@@ -59,7 +59,7 @@ func TestEncodeDecodeOperationTypes(t *testing.T) {
 }
 
 func TestEncodeOperationTypesUnknown(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	_, err := opIndex.EncodeOperationTypes([]string{"unknown"})
 	if err == nil {
@@ -68,7 +68,7 @@ func TestEncodeOperationTypesUnknown(t *testing.T) {
 }
 
 func TestHasOperationType(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	bits, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "mul"})
 
@@ -94,7 +94,7 @@ func TestHasOperationType(t *testing.T) {
 }
 
 func TestHasAllOperationTypes(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "sub", "mul"})
 	bits2, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
@@ -109,7 +109,7 @@ func TestHasAllOperationTypes(t *testing.T) {
 }
 
 func TestHasNoOperationTypes(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
 	bits2, _ := opIndex.EncodeOperationTypes([]string{"div", "mod"})
@@ -124,7 +124,7 @@ func TestHasNoOperationTypes(t *testing.T) {
 }
 
 func TestIsOperationType(t *testing.T) {
-	opIndex := loadTestOperationTypeIndex(t)
+	opIndex := loadTestOpTypeIndex(t)
 	
 	tests := []struct {
 		op   string

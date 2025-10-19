@@ -25,7 +25,7 @@ type DataIndex struct {
 	Submitters        []*Submitter
 	Authors           []*Author
 	NumUsages         map[string]int
-	OperationTypeIndex *OperationTypeIndex
+	OpTypeIndex *OpTypeIndex
 }
 
 func NewDataIndex(dataDir string) *DataIndex {
@@ -93,7 +93,7 @@ func (idx *DataIndex) Load() error {
 	if err != nil {
 		return err
 	}
-	operationTypeIndex, err := NewOperationTypeIndex(operationTypes)
+	operationTypeIndex, err := NewOpTypeIndex(operationTypes)
 	if err != nil {
 		return err
 	}
@@ -195,7 +195,7 @@ func (idx *DataIndex) Load() error {
 	idx.Sequences = sequences
 	idx.NumUsages = numUsages
 	idx.Authors = authors
-	idx.OperationTypeIndex = operationTypeIndex
+	idx.OpTypeIndex = operationTypeIndex
 
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))
