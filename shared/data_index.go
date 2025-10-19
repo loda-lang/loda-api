@@ -17,14 +17,14 @@ import (
 )
 
 type DataIndex struct {
-	DataDir           string
-	OeisDir           string
-	StatsDir          string
-	Programs          []Program
-	Sequences         []Sequence
-	Submitters        []*Submitter
-	Authors           []*Author
-	NumUsages         map[string]int
+	DataDir     string
+	OeisDir     string
+	StatsDir    string
+	Programs    []Program
+	Sequences   []Sequence
+	Submitters  []*Submitter
+	Authors     []*Author
+	NumUsages   map[string]int
 	OpTypeIndex *OpTypeIndex
 }
 
@@ -618,7 +618,7 @@ func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 	return submitters, nil
 }
 
-var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect", "ops_bitmask"}
+var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect", "ops_mask"}
 
 func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 	f, err := os.Open(path)
@@ -670,8 +670,8 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		loopFlag := rec[7] == "1"
 		formulaFlag := rec[8] == "1"
 		indirectFlag := rec[9] == "1"
-		
-		// Parse ops_bitmask
+
+		// Parse ops_mask
 		opsMask, err := strconv.ParseUint(rec[10], 10, 64)
 		if err != nil {
 			return nil, err
