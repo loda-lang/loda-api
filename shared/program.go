@@ -15,7 +15,8 @@ type Program struct {
 	Name       string
 	Code       string
 	Submitter  *Submitter
-	Keywords   uint64 // bitmask of keywords
+	Keywords   uint64   // bitmask of keywords
+	OpsMask    uint64   // bitmask of operation types
 	Operations []string
 	Formula    string
 	Length     int
@@ -34,6 +35,7 @@ func NewProgramFromCode(code string) (Program, error) {
 		Name:       name,
 		Code:       code,
 		Submitter:  submitter,
+		OpsMask:    0, // OpsMask is computed separately when OpTypeIndex is available
 		Operations: operations,
 		Formula:    formula,
 		Length:     len(operations),
@@ -100,6 +102,7 @@ func (p *Program) UnmarshalJSON(data []byte) error {
 	p.Submitter = submitter
 	p.Keywords = keywords
 	p.Operations = aux.Operations
+	p.OpsMask = 0 // OpsMask is not persisted in JSON, only used internally
 	p.Usages = strings.Join(aux.Usages, " ")
 	return nil
 }
@@ -144,6 +147,7 @@ func (p *Program) SetCode(code string) error {
 		p.Submitter = submitter
 	}
 	p.Code = code
+	p.OpsMask = 0 // OpsMask is computed separately when OpTypeIndex is available
 	p.Operations = extractOperations(code)
 	p.Formula = extractFormula(code)
 	p.Length = len(p.Operations)

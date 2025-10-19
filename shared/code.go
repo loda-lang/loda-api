@@ -19,6 +19,25 @@ func extractOperations(code string) []string {
 	return operations
 }
 
+// extractOperationTypes extracts the unique operation types from operations.
+// For example, "mov $1,$0" -> "mov", "add $1,1" -> "add"
+func extractOperationTypes(operations []string) []string {
+	seen := make(map[string]bool)
+	var opTypes []string
+	for _, op := range operations {
+		// Get the first word (the operation type)
+		parts := strings.Fields(op)
+		if len(parts) > 0 {
+			opType := parts[0]
+			if !seen[opType] {
+				seen[opType] = true
+				opTypes = append(opTypes, opType)
+			}
+		}
+	}
+	return opTypes
+}
+
 func extractHeaderComments(code string) []string {
 	lines := strings.Split(code, "\n")
 	var header []string

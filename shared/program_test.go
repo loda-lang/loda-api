@@ -22,6 +22,34 @@ func checkProgramMeta(t *testing.T, prog Program, wantID, wantNamePrefix, wantSu
 	}
 }
 
+// checkOperationTypes checks that OpsMask is initialized to 0 and verifies the extracted operation types.
+func checkOperationTypes(t *testing.T, prog Program, expectedOpTypes []string) {
+	t.Helper()
+	
+	// Check OpsMask is initialized to 0
+	if prog.OpsMask != 0 {
+		t.Errorf("expected OpsMask to be 0, got %d", prog.OpsMask)
+	}
+	
+	// Extract and verify operation types
+	opTypes := extractOperationTypes(prog.Operations)
+	if len(opTypes) != len(expectedOpTypes) {
+		t.Errorf("expected %d operation types, got %d: %v", len(expectedOpTypes), len(opTypes), opTypes)
+	}
+	for _, expected := range expectedOpTypes {
+		found := false
+		for _, actual := range opTypes {
+			if actual == expected {
+				found = true
+				break
+			}
+		}
+		if !found {
+			t.Errorf("expected operation type %q not found in %v", expected, opTypes)
+		}
+	}
+}
+
 // loadProgramFromTestFile reads a .asm test file and returns the parsed Program.
 func loadProgramFromTestFile(filename string) (Program, error) {
 	path := filepath.Join("../testdata/programs", filename)
@@ -42,6 +70,7 @@ func TestNewProgramFromText_A000030(t *testing.T) {
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,$0" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
 	}
+	checkOperationTypes(t, prog, []string{"mov", "lpb", "div", "sub", "lpe"})
 }
 
 func TestNewProgramFromText_A000042(t *testing.T) {
@@ -53,6 +82,7 @@ func TestNewProgramFromText_A000042(t *testing.T) {
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,10" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
 	}
+	checkOperationTypes(t, prog, []string{"mov", "pow", "div"})
 }
 
 func TestNewProgramFromText_A000168(t *testing.T) {
@@ -64,6 +94,7 @@ func TestNewProgramFromText_A000168(t *testing.T) {
 	if len(prog.Operations) == 0 || prog.Operations[0] != "mov $1,$0" {
 		t.Errorf("unexpected Operations: %v", prog.Operations)
 	}
+	checkOperationTypes(t, prog, []string{"mov", "add", "seq", "mul", "div"})
 }
 
 func TestProgramMarshalUnmarshalJSON(t *testing.T) {
@@ -87,3 +118,5 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 		t.Errorf("Operations length mismatch after roundtrip")
 	}
 }
+
+

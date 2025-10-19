@@ -17,14 +17,15 @@ import (
 )
 
 type DataIndex struct {
-	DataDir    string
-	OeisDir    string
-	StatsDir   string
-	Programs   []Program
-	Sequences  []Sequence
-	Submitters []*Submitter
-	Authors    []*Author
-	NumUsages  map[string]int
+	DataDir           string
+	OeisDir           string
+	StatsDir          string
+	Programs          []Program
+	Sequences         []Sequence
+	Submitters        []*Submitter
+	Authors           []*Author
+	NumUsages         map[string]int
+	OpTypeIndex *OpTypeIndex
 }
 
 func NewDataIndex(dataDir string) *DataIndex {
@@ -84,6 +85,15 @@ func (idx *DataIndex) Load() error {
 
 	submittersPath := filepath.Join(idx.StatsDir, "submitters.csv")
 	submitters, err := LoadSubmittersCSV(submittersPath)
+	if err != nil {
+		return err
+	}
+	operationTypesPath := filepath.Join(idx.StatsDir, "operation_types.csv")
+	operationTypes, err := LoadOperationTypesCSV(operationTypesPath)
+	if err != nil {
+		return err
+	}
+	operationTypeIndex, err := NewOpTypeIndex(operationTypes)
 	if err != nil {
 		return err
 	}
@@ -185,6 +195,7 @@ func (idx *DataIndex) Load() error {
 	idx.Sequences = sequences
 	idx.NumUsages = numUsages
 	idx.Authors = authors
+	idx.OpTypeIndex = operationTypeIndex
 
 	log.Printf("Loaded %d sequences, %d programs, %d submitters",
 		len(sequences), len(programs), len(submitters))
@@ -506,6 +517,52 @@ func extractProgramUsages(path string) (map[string]string, error) {
 	return result, nil
 }
 
+var expectedOperationTypesHeader = []string{"name", "ref_id", "count"}
+
+func LoadOperationTypesCSV(path string) ([]*OperationType, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	r := csv.NewReader(f)
+	header, err := r.Read()
+	if err != nil {
+		return nil, err
+	}
+	if !slices.Equal(header, expectedOperationTypesHeader) {
+		return nil, fmt.Errorf("unexpected header in operation_types.csv: %v", header)
+	}
+	var operationTypes []*OperationType
+	for {
+		rec, err := r.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+		if len(rec) != 3 {
+			return nil, fmt.Errorf("unexpected number of fields in operation_types.csv: %v", rec)
+		}
+		name := rec[0]
+		refId, err := strconv.Atoi(rec[1])
+		if err != nil {
+			return nil, err
+		}
+		count, err := strconv.Atoi(rec[2])
+		if err != nil {
+			return nil, err
+		}
+		operationTypes = append(operationTypes, &OperationType{
+			Name:  name,
+			RefId: refId,
+			Count: count,
+		})
+	}
+	return operationTypes, nil
+}
+
 var expectedSubmitterHeader = []string{"submitter", "ref_id", "num_programs"}
 
 func LoadSubmittersCSV(path string) ([]*Submitter, error) {
@@ -561,7 +618,7 @@ func LoadSubmittersCSV(path string) ([]*Submitter, error) {
 	return submitters, nil
 }
 
-var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect"}
+var expectedProgramsHeader = []string{"id", "submitter", "length", "usages", "inc_eval", "log_eval", "vir_eval", "loop", "formula", "indirect", "ops_bitmask"}
 
 func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 	f, err := os.Open(path)
@@ -586,7 +643,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		if err != nil {
 			return nil, err
 		}
-		if len(rec) != 10 {
+		if len(rec) != 11 {
 			return nil, fmt.Errorf("unexpected number of fields: %v", rec)
 		}
 		uid, err := util.NewUIDFromString(rec[0])
@@ -613,6 +670,12 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 		loopFlag := rec[7] == "1"
 		formulaFlag := rec[8] == "1"
 		indirectFlag := rec[9] == "1"
+		
+		// Parse ops_bitmask
+		opsMask, err := strconv.ParseUint(rec[10], 10, 64)
+		if err != nil {
+			return nil, err
+		}
 
 		// Add loda-specific keywords using constants
 		keywords := KeywordLodaBits
@@ -640,6 +703,7 @@ func LoadProgramsCSV(path string, submitters []*Submitter) ([]Program, error) {
 			Keywords:  keywords,
 			Submitter: submitter,
 			Length:    length,
+			OpsMask:   opsMask,
 		}
 		programs = append(programs, p)
 	}
