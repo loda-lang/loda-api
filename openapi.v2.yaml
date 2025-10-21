@@ -41,15 +41,16 @@ paths:
         - **Name**: Matches tokens in the sequence name (case-insensitive).
         - **ID**: Matches tokens in the sequence ID (e.g., A000045).
         - **Keywords**: Include keywords by specifying them in the query (e.g., `core easy`). Exclude keywords by prefixing with a minus sign (e.g., `-hard`).
+        - **Operation Types**: Include operation types (opcodes) of the corresponding LODA program (e.g., `mov add`). Exclude operation types by prefixing with a minus sign (e.g., `-mul`).
         - **Author**: Matches tokens in the author names (case-insensitive).
         - **Submitter**: Matches tokens in the submitter names of the corresponding LODA programs (case-insensitive).
-        - **Advanced**: All tokens in the query must be present in either the sequence name, author name, or submitter name. Keywords are handled as described above.
+        - **Advanced**: All tokens in the query must be present in either the sequence name, author name, or submitter name. Keywords and operation types are handled as described above.
 
         Example queries:
         - `Fibonacci core` (sequences with "Fibonacci" in the name and the "core" keyword)
+        - `A000045` (sequence with ID A000045)
         - `Alice` (sequences autored by Alice or with programs submitted by Alice)
         - `-hard` (exclude sequences with the "hard" keyword)
-        - `A000045` (sequence with ID A000045)
       parameters:
       - $ref: '#/components/parameters/Query'
       - $ref: '#/components/parameters/Limit'
@@ -89,14 +90,16 @@ paths:
         - **Name**: Matches tokens in the program name (case-insensitive).
         - **ID**: Matches tokens in the program ID (e.g., A000045).
         - **Keywords**: Include keywords by specifying them in the query (e.g., `core easy`). Exclude keywords by prefixing with a minus sign (e.g., `-hard`).
+        - **Operation Types**: Include operation types (opcodes) to match in the LODA program (e.g., `mov add`). Exclude operation types by prefixing with a minus sign (e.g., `-mul`).
         - **Submitter**: Matches tokens in the submitter's name (case-insensitive).
-        - **Advanced**: All tokens in the query must be present in either the program name or submitter name. Keywords are handled as described above.
+        - **Advanced**: All tokens in the query must be present in either the program name or submitter name. Keywords and operation types are handled as described above.
       
         Example queries:
         - `Fibonacci core` (programs with "Fibonacci" in the name and the "core" keyword)
+        - `A000045` (program with ID A000045)
         - `Alice` (programs submitted by Alice)
         - `-hard` (exclude programs with the "hard" keyword)
-        - `A000045` (program with ID A000045)
+        - `bin` (include programs with "bin" operations)
       parameters:
       - $ref: '#/components/parameters/Query'
       - $ref: '#/components/parameters/Limit'

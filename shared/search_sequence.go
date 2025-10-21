@@ -48,7 +48,7 @@ func FindSequenceById(idx *DataIndex, id util.UID) *Sequence {
 
 // Search returns paginated results and total count of all matches
 func SearchSequences(idx *DataIndex, query string, limit, skip int, shuffle bool) ([]Sequence, int) {
-	sq := ParseSearchQuery(query)
+	sq := ParseSearchQuery(query, idx.OpTypeIndex)
 	var matches []*Sequence
 	for _, seq := range idx.Sequences {
 		// Check included and excluded keywords
@@ -56,6 +56,12 @@ func SearchSequences(idx *DataIndex, query string, limit, skip int, shuffle bool
 			continue
 		}
 		if !HasNoKeywords(seq.Keywords, sq.ExcludedKeywords) {
+			continue
+		}
+		if !HasAllOperationTypes(seq.OpsMask, sq.IncludedOps) {
+			continue
+		}
+		if !HasNoOperationTypes(seq.OpsMask, sq.ExcludedOps) {
 			continue
 		}
 		match := true

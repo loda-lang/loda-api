@@ -24,7 +24,6 @@ func loadTestOpTypeIndex(t *testing.T) *OpTypeIndex {
 
 func TestEncodeDecodeOperationTypes(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	tests := []struct {
 		name string
 		ops  []string
@@ -60,7 +59,6 @@ func TestEncodeDecodeOperationTypes(t *testing.T) {
 
 func TestEncodeOperationTypesUnknown(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	_, err := opIndex.EncodeOperationTypes([]string{"unknown"})
 	if err == nil {
 		t.Error("expected error for unknown operation type")
@@ -69,7 +67,6 @@ func TestEncodeOperationTypesUnknown(t *testing.T) {
 
 func TestHasOperationType(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	bits, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "mul"})
 
 	tests := []struct {
@@ -95,37 +92,34 @@ func TestHasOperationType(t *testing.T) {
 
 func TestHasAllOperationTypes(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add", "sub", "mul"})
 	bits2, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
 	bits3, _ := opIndex.EncodeOperationTypes([]string{"div", "mod"})
 
-	if !opIndex.HasAllOperationTypes(bits1, bits2) {
+	if !HasAllOperationTypes(bits1, bits2) {
 		t.Error("expected bits1 to contain all of bits2")
 	}
-	if opIndex.HasAllOperationTypes(bits1, bits3) {
+	if HasAllOperationTypes(bits1, bits3) {
 		t.Error("expected bits1 to not contain all of bits3")
 	}
 }
 
 func TestHasNoOperationTypes(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	bits1, _ := opIndex.EncodeOperationTypes([]string{"mov", "add"})
 	bits2, _ := opIndex.EncodeOperationTypes([]string{"div", "mod"})
 	bits3, _ := opIndex.EncodeOperationTypes([]string{"add", "mul"})
 
-	if !opIndex.HasNoOperationTypes(bits1, bits2) {
+	if !HasNoOperationTypes(bits1, bits2) {
 		t.Error("expected bits1 to have none of bits2")
 	}
-	if opIndex.HasNoOperationTypes(bits1, bits3) {
+	if HasNoOperationTypes(bits1, bits3) {
 		t.Error("expected bits1 to have some of bits3")
 	}
 }
 
 func TestIsOperationType(t *testing.T) {
 	opIndex := loadTestOpTypeIndex(t)
-	
 	tests := []struct {
 		op   string
 		want bool

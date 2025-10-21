@@ -14,9 +14,9 @@ type OperationType struct {
 // OpTypeIndex provides efficient encoding/decoding of operation types to bitmasks.
 // It is initialized from loaded operation type data and validates uniqueness and ref ID ranges.
 type OpTypeIndex struct {
-	types          []*OperationType   // All operation types indexed by ref_id
-	nameToBit      map[string]uint    // Map from operation name to bit index
-	maxRefId       int                // Maximum ref_id value
+	types     []*OperationType // All operation types indexed by ref_id
+	nameToBit map[string]uint  // Map from operation name to bit index
+	maxRefId  int              // Maximum ref_id value
 }
 
 // NewOpTypeIndex creates a new OpTypeIndex from loaded operation types.
@@ -30,7 +30,7 @@ func NewOpTypeIndex(operationTypes []*OperationType) (*OpTypeIndex, error) {
 	maxRefId := 0
 	refIdSeen := make(map[int]bool)
 	nameSeen := make(map[string]bool)
-	
+
 	for _, ot := range operationTypes {
 		if ot.RefId <= 0 {
 			return nil, fmt.Errorf("invalid ref_id %d for operation type %s: must be >= 1", ot.RefId, ot.Name)
@@ -58,7 +58,7 @@ func NewOpTypeIndex(operationTypes []*OperationType) (*OpTypeIndex, error) {
 	// Build indexed structures
 	types := make([]*OperationType, maxRefId+1) // index 0 is unused, ref_ids start at 1
 	nameToBit := make(map[string]uint)
-	
+
 	for _, ot := range operationTypes {
 		types[ot.RefId] = ot
 		nameToBit[ot.Name] = uint(ot.RefId)
@@ -108,17 +108,17 @@ func (idx *OpTypeIndex) HasOperationType(bits uint64, op string) bool {
 }
 
 // HasAllOperationTypes returns true if all operation types in bits2 are present in bits1
-func (idx *OpTypeIndex) HasAllOperationTypes(bits1, bits2 uint64) bool {
+func HasAllOperationTypes(bits1, bits2 uint64) bool {
 	return bits1&bits2 == bits2
 }
 
 // HasNoOperationTypes returns true if none of the operation types in bits2 are present in bits1
-func (idx *OpTypeIndex) HasNoOperationTypes(bits1, bits2 uint64) bool {
+func HasNoOperationTypes(bits1, bits2 uint64) bool {
 	return bits1&bits2 == 0
 }
 
 // MergeOperationTypes merges two operation type bitmasks into one
-func (idx *OpTypeIndex) MergeOperationTypes(bits1, bits2 uint64) uint64 {
+func MergeOperationTypes(bits1, bits2 uint64) uint64 {
 	return bits1 | bits2
 }
 

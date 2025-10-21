@@ -1,4 +1,4 @@
-id,submitter,length,usages,inc_eval,log_eval,vir_eval,loop,formula,indirect,ops_bitmask
+id,submitter,length,usages,inc_eval,log_eval,vir_eval,loop,formula,indirect,ops_mask
 A000002,1,10,20,1,0,0,1,1,0,805308526
 A000004,2,1,0,0,0,0,0,1,0,2
 A000005,3,22,1741,0,0,0,1,0,0,813695726

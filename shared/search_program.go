@@ -47,15 +47,21 @@ func FindProgramById(programs []Program, id util.UID) *Program {
 }
 
 // SearchPrograms returns paginated results and total count of all matches
-func SearchPrograms(programs []Program, query string, limit, skip int, shuffle bool) ([]Program, int) {
-	sq := ParseSearchQuery(query)
+func SearchPrograms(idx *DataIndex, query string, limit, skip int, shuffle bool) ([]Program, int) {
+	sq := ParseSearchQuery(query, idx.OpTypeIndex)
 	var matches []*Program
-	for _, prog := range programs {
-		// Check included and excluded keywords
+	for _, prog := range idx.Programs {
+		// Check included and excluded keywords and ops
 		if !HasAllKeywords(prog.Keywords, sq.IncludedKeywords) {
 			continue
 		}
 		if !HasNoKeywords(prog.Keywords, sq.ExcludedKeywords) {
+			continue
+		}
+		if !HasAllOperationTypes(prog.OpsMask, sq.IncludedOps) {
+			continue
+		}
+		if !HasNoOperationTypes(prog.OpsMask, sq.ExcludedOps) {
 			continue
 		}
 		match := true

@@ -11,6 +11,7 @@ type Sequence struct {
 	Id        util.UID
 	Name      string
 	Keywords  uint64 // bitmask of keywords
+	OpsMask   uint64 // bitmask of operation types
 	Terms     string
 	Submitter *Submitter
 	Authors   []*Author
