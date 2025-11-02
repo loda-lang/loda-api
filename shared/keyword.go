@@ -29,11 +29,11 @@ var (
 	KeywordLodaFormulaBits uint64
 	KeywordLodaIncevalBits uint64
 	KeywordLodaIndirectBits uint64
+	KeywordLodaLeanBits    uint64
 	KeywordLodaLogevalBits uint64
-	KeywordLodaVirevalBits uint64
 	KeywordLodaLoopBits    uint64
 	KeywordLodaPariBits    uint64
-	KeywordLodaLeanBits    uint64
+	KeywordLodaVirevalBits uint64
 	KeywordLookBits        uint64
 	KeywordMoreBits        uint64
 	KeywordMultBits        uint64
