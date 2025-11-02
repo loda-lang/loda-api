@@ -29,9 +29,11 @@ var (
 	KeywordLodaFormulaBits uint64
 	KeywordLodaIncevalBits uint64
 	KeywordLodaIndirectBits uint64
+	KeywordLodaLeanBits    uint64
 	KeywordLodaLogevalBits uint64
-	KeywordLodaVirevalBits uint64
 	KeywordLodaLoopBits    uint64
+	KeywordLodaPariBits    uint64
+	KeywordLodaVirevalBits uint64
 	KeywordLookBits        uint64
 	KeywordMoreBits        uint64
 	KeywordMultBits        uint64
@@ -71,9 +73,11 @@ func init() {
 	KeywordLodaFormulaBits = MustEncodeKeyword("loda-formula")
 	KeywordLodaIncevalBits = MustEncodeKeyword("loda-inceval")
 	KeywordLodaIndirectBits = MustEncodeKeyword("loda-indirect")
+	KeywordLodaLeanBits = MustEncodeKeyword("loda-lean")
 	KeywordLodaLogevalBits = MustEncodeKeyword("loda-logeval")
-	KeywordLodaVirevalBits = MustEncodeKeyword("loda-vireval")
 	KeywordLodaLoopBits = MustEncodeKeyword("loda-loop")
+	KeywordLodaPariBits = MustEncodeKeyword("loda-pari")
+	KeywordLodaVirevalBits = MustEncodeKeyword("loda-vireval")
 	KeywordLookBits = MustEncodeKeyword("look")
 	KeywordMoreBits = MustEncodeKeyword("more")
 	KeywordMultBits = MustEncodeKeyword("mult")
@@ -94,7 +98,7 @@ var KeywordList = []string{
 	"base", "bref", "cofr", "conjecture", "cons", "core", "dead",
 	"decimal-expansion", "dumb", "easy", "egf-expansion", "eigen",
 	"fini", "formula", "frac", "full", "gf-expansion", "hard", "less",
-	"loda", "loda-formula", "loda-inceval", "loda-indirect", "loda-logeval", "loda-vireval", "loda-loop",
+	"loda", "loda-formula", "loda-inceval", "loda-indirect", "loda-lean", "loda-logeval", "loda-loop", "loda-pari", "loda-vireval",
 	"look", "more", "mult", "nice", "nonn", "obsc", "pari", "sign",
 	"tabf", "tabl", "unkn", "walk", "word",
 }
@@ -124,9 +128,11 @@ var KeywordDescriptions = map[string]string{
 	"loda-formula":      "Formulas generated from a LODA programs exist for these sequences",
 	"loda-inceval":      "LODA programs that can be computed incrementally exist for these sequences",
 	"loda-indirect":     "LODA programs that uses indirect operands exist for these sequences",
+	"loda-lean":         "LODA programs with Lean proofs exist for these sequences",
 	"loda-logeval":      "LODA programs with logarithmic complexity exist for these sequences",
-	"loda-vireval":      "LODA programs that support virtual evaluation exist for these sequences",
 	"loda-loop":         "LODA programs with loop exist for these sequences",
+	"loda-pari":         "LODA programs with PARI/GP implementations exist for these sequences",
+	"loda-vireval":      "LODA programs that support virtual evaluation exist for these sequences",
 	"look":              "Pin or scatter plots reveal interesting information",
 	"more":              "Sequences that need more terms",
 	"mult":              "Multiplicative functions",
