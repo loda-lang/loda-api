@@ -327,10 +327,10 @@ components:
       name: limit
       in: query
       required: false
-      description: Maximum number of results to return (pagination limit)
+      description: Maximum number of results to return (pagination limit). Set to 0 to return all results.
       schema:
         type: integer
-        minimum: 1
+        minimum: 0
         maximum: 100
         default: 10
     Skip:
