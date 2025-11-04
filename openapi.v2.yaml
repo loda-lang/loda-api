@@ -251,7 +251,10 @@ paths:
     get:
       tags: [ Stats ]
       summary: List all submitters
-      description: Returns a list of all submitters with their number of submitted programs.
+      description: Returns a list of all submitters with their number of submitted programs. Supports pagination.
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Skip'
       responses:
         '200':
           description: List of submitters

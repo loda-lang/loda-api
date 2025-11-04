@@ -299,6 +299,18 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 				result = append(result, *sub)
 			}
 		}
+		// Apply pagination
+		limit, skip, _ := util.ParseLimitSkipShuffle(req, 0, 10000)
+		total := len(result)
+		start := skip
+		if start > total {
+			start = total
+		}
+		end := start + limit
+		if end > total || limit == 0 {
+			end = total
+		}
+		result = result[start:end]
 		util.WriteJsonResponse(w, result)
 	})
 }
