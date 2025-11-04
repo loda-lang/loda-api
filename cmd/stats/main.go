@@ -300,7 +300,7 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 			}
 		}
 		// Apply pagination
-		limit, skip, _ := util.ParseLimitSkipShuffle(req, 0, 10000)
+		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
 		total := len(result)
 		start := skip
 		if start > total {

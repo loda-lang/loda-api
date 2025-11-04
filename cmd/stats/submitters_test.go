@@ -24,8 +24,8 @@ func TestSubmittersHandler(t *testing.T) {
 	}
 	handler := newSubmittersHandler(s)
 
-	// Test 1: Get all submitters (no pagination)
-	t.Run("no pagination", func(t *testing.T) {
+	// Test 1: Get submitters with default limit (10)
+	t.Run("default limit", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
@@ -39,13 +39,34 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		// Should return all non-nil submitters (10 in test data, excluding the one with 0 programs)
+		// Should return 10 submitters (default limit is 10, and we have exactly 10 non-nil submitters)
 		if len(result) != 10 {
 			t.Errorf("expected 10 submitters, got %d", len(result))
 		}
 	})
 
-	// Test 2: Pagination with limit
+	// Test 2: Get all submitters (limit=0 means no limit)
+	t.Run("no limit", func(t *testing.T) {
+		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=0", nil)
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, req)
+
+		if w.Code != http.StatusOK {
+			t.Errorf("expected status 200, got %d", w.Code)
+		}
+
+		var result []shared.Submitter
+		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
+			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Should return all 10 non-nil submitters
+		if len(result) != 10 {
+			t.Errorf("expected 10 submitters, got %d", len(result))
+		}
+	})
+
+	// Test 3: Pagination with limit
 	t.Run("with limit", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=3", nil)
 		w := httptest.NewRecorder()
@@ -65,7 +86,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 	})
 
-	// Test 3: Pagination with skip
+	// Test 4: Pagination with skip
 	t.Run("with skip", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?skip=2", nil)
 		w := httptest.NewRecorder()
@@ -86,7 +107,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 	})
 
-	// Test 4: Pagination with both limit and skip
+	// Test 5: Pagination with both limit and skip
 	t.Run("with limit and skip", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=2&skip=1", nil)
 		w := httptest.NewRecorder()
@@ -106,7 +127,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 
 		// Get all submitters to verify correct items are returned
-		reqAll := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters", nil)
+		reqAll := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=0", nil)
 		wAll := httptest.NewRecorder()
 		handler.ServeHTTP(wAll, reqAll)
 		var allResult []shared.Submitter
@@ -121,7 +142,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 	})
 
-	// Test 5: Skip beyond available items
+	// Test 6: Skip beyond available items
 	t.Run("skip beyond available", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?skip=100", nil)
 		w := httptest.NewRecorder()
@@ -142,7 +163,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 	})
 
-	// Test 6: Limit larger than available items
+	// Test 7: Limit larger than available items (capped at maxLimit=100)
 	t.Run("limit larger than available", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=1000", nil)
 		w := httptest.NewRecorder()
@@ -163,7 +184,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 	})
 
-	// Test 7: Method not allowed
+	// Test 8: Method not allowed
 	t.Run("method not allowed", func(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v2/stats/submitters", nil)
 		w := httptest.NewRecorder()
