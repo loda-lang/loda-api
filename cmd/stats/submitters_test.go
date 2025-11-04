@@ -18,6 +18,14 @@ func TestSubmittersHandler(t *testing.T) {
 		t.Fatalf("failed to load submitters: %v", err)
 	}
 
+	// Count non-nil submitters
+	expectedTotal := 0
+	for _, sub := range submitters {
+		if sub != nil {
+			expectedTotal++
+		}
+	}
+
 	// Create a test server
 	s := &StatsServer{
 		submitters: submitters,
@@ -39,9 +47,13 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		// Should return 10 submitters (default limit is 10, and we have exactly 10 non-nil submitters)
-		if len(result) != 10 {
-			t.Errorf("expected 10 submitters, got %d", len(result))
+		// Should return default limit (10) or total if less than 10
+		expectedCount := 10
+		if expectedTotal < 10 {
+			expectedCount = expectedTotal
+		}
+		if len(result) != expectedCount {
+			t.Errorf("expected %d submitters, got %d", expectedCount, len(result))
 		}
 	})
 
@@ -60,9 +72,9 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		// Should return all 10 non-nil submitters
-		if len(result) != 10 {
-			t.Errorf("expected 10 submitters, got %d", len(result))
+		// Should return all non-nil submitters
+		if len(result) != expectedTotal {
+			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result))
 		}
 	})
 
@@ -101,9 +113,13 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		// Should return 8 submitters (10 total - 2 skipped)
-		if len(result) != 8 {
-			t.Errorf("expected 8 submitters, got %d", len(result))
+		// Should return remaining submitters (total - 2 skipped, capped by default limit 10)
+		expectedSkipResult := expectedTotal - 2
+		if expectedSkipResult > 10 {
+			expectedSkipResult = 10
+		}
+		if len(result) != expectedSkipResult {
+			t.Errorf("expected %d submitters, got %d", expectedSkipResult, len(result))
 		}
 	})
 
@@ -178,9 +194,9 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		// Should return all 10 submitters
-		if len(result) != 10 {
-			t.Errorf("expected 10 submitters, got %d", len(result))
+		// Should return all submitters (capped at maxLimit=100, but we have fewer)
+		if len(result) != expectedTotal {
+			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result))
 		}
 	})
 
