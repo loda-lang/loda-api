@@ -306,9 +306,12 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 		if start > total {
 			start = total
 		}
-		end := start + limit
-		if end > total || limit == 0 {
-			end = total
+		end := total
+		if limit > 0 {
+			end = start + limit
+			if end > total {
+				end = total
+			}
 		}
 		result = result[start:end]
 		util.WriteJsonResponse(w, result)
