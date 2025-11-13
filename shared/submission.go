@@ -31,6 +31,9 @@ type Submission struct {
 	Content        string
 	SubmissionType SubmissionType
 	ObjectType     ObjectType
+	// Additional fields for internal use (not serialized in JSON)
+	Operations   []string // extracted operations for duplicate detection
+	MinerProfile string   // miner profile for metrics
 }
 
 // MarshalJSON implements custom JSON serialization for Submission
@@ -81,6 +84,9 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	s.Content = aux.Content
 	s.SubmissionType = submissionType
 	s.ObjectType = objectType
+	// Extract operations and miner profile for internal use
+	s.Operations = extractOperations(aux.Content)
+	s.MinerProfile = extractMinerProfile(aux.Content)
 	return nil
 }
 
@@ -88,4 +94,30 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 type SubmissionsResult struct {
 	Total   int          `json:"total"`
 	Results []Submission `json:"results"`
+}
+
+// NewSubmissionFromProgram creates a Submission from a Program (for v1 API compatibility)
+func NewSubmissionFromProgram(program Program) Submission {
+	submitter := ""
+	if program.Submitter != nil {
+		submitter = program.Submitter.Name
+	}
+	return Submission{
+		Id:             program.Id,
+		Submitter:      submitter,
+		Content:        program.Code,
+		SubmissionType: SubmissionTypeAdd, // v1 submissions are always "add"
+		ObjectType:     ObjectTypeProgram,
+		Operations:     program.Operations,
+		MinerProfile:   program.GetMinerProfile(),
+	}
+}
+
+// NewSubmissionFromCode creates a Submission from program code (for v1 API compatibility)
+func NewSubmissionFromCode(code string) (Submission, error) {
+	program, err := NewProgramFromCode(code)
+	if err != nil {
+		return Submission{}, err
+	}
+	return NewSubmissionFromProgram(program), nil
 }

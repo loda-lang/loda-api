@@ -17,7 +17,9 @@ import (
 func TestV2SubmissionsPostHandler(t *testing.T) {
 	// Create a test server
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{},
+		submissions:           []shared.Submission{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	// Test valid submission
@@ -45,15 +47,17 @@ func TestV2SubmissionsPostHandler(t *testing.T) {
 	assert.Equal(t, "success", result["status"])
 
 	// Verify submission was stored
-	assert.Equal(t, 1, len(s.v2Submissions))
-	assert.Equal(t, "A000045", s.v2Submissions[0].Id.String())
-	assert.Equal(t, "alice", s.v2Submissions[0].Submitter)
+	assert.Equal(t, 1, len(s.submissions))
+	assert.Equal(t, "A000045", s.submissions[0].Id.String())
+	assert.Equal(t, "alice", s.submissions[0].Submitter)
 }
 
 // TestV2SubmissionsPostHandler_InvalidObjectType tests rejection of non-program submissions
 func TestV2SubmissionsPostHandler_InvalidObjectType(t *testing.T) {
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{},
+		submissions:           []shared.Submission{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	submission := map[string]interface{}{
@@ -88,7 +92,7 @@ func TestV2SubmissionsGetHandler(t *testing.T) {
 	id2, _ := util.NewUIDFromString("A000142")
 
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{
+		submissions: []shared.Submission{
 			{
 				Id:             id1,
 				Submitter:      "alice",
@@ -104,6 +108,8 @@ func TestV2SubmissionsGetHandler(t *testing.T) {
 				ObjectType:     shared.ObjectTypeProgram,
 			},
 		},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "/v2/submissions", nil)
@@ -139,7 +145,9 @@ func TestV2SubmissionsGetHandler_Pagination(t *testing.T) {
 	}
 
 	s := &ProgramsServer{
-		v2Submissions: submissions,
+		submissions:           submissions,
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	// Test first page
@@ -181,7 +189,9 @@ func TestV2SubmissionsGetHandler_Pagination(t *testing.T) {
 // TestV2SubmissionsPostHandler_MissingFields tests validation
 func TestV2SubmissionsPostHandler_MissingFields(t *testing.T) {
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{},
+		submissions:           []shared.Submission{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	tests := []struct {
@@ -246,7 +256,9 @@ func TestV2SubmissionsPostHandler_MissingFields(t *testing.T) {
 // TestV2SubmissionsEndToEnd tests both POST and GET together
 func TestV2SubmissionsEndToEnd(t *testing.T) {
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{},
+		submissions:           []shared.Submission{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	// Submit first submission
@@ -298,7 +310,9 @@ func TestV2SubmissionsEndToEnd(t *testing.T) {
 // TestV2SubmissionsRoutes tests that routes are properly configured
 func TestV2SubmissionsRoutes(t *testing.T) {
 	s := &ProgramsServer{
-		v2Submissions: []shared.Submission{},
+		submissions:           []shared.Submission{},
+		submissionsPerProfile: make(map[string]int),
+		submissionsPerUser:    make(map[string]int),
 	}
 
 	router := mux.NewRouter()

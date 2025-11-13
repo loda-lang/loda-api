@@ -43,10 +43,9 @@ type ProgramsServer struct {
 	lodaTool              *LODATool
 	session               time.Time
 	dataIndex             *shared.DataIndex
-	submissions           []shared.Program
+	submissions           []shared.Submission // Unified submissions (v1 and v2)
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
-	v2Submissions         []shared.Submission // New v2 submissions API
 	dataIndexMutex        sync.Mutex
 	submissionsMutex      sync.Mutex
 	updateMutex           sync.Mutex
@@ -58,10 +57,9 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 		influxDbClient:        influxDbClient,
 		lodaTool:              lodaTool,
 		session:               time.Now(),
-		submissions:           []shared.Program{},
+		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
-		v2Submissions:         []shared.Submission{},
 	}
 }
 
@@ -93,11 +91,7 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 }
 
 // Returns (ok, Result)
-func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, EvalResult) {
-	submitter := ""
-	if program.Submitter != nil {
-		submitter = program.Submitter.Name
-	}
+func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, EvalResult) {
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
 	s.checkSession()
@@ -105,12 +99,12 @@ func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, EvalResult) 
 		log.Print("Maximum number of submissions exceeded")
 		return false, EvalResult{Status: "error", Message: "Too many total submissions", Terms: nil}
 	}
-	if s.submissionsPerUser[submitter] >= NumSubmissionsPerUser {
-		log.Printf("Rejected program from %s", submitter)
+	if s.submissionsPerUser[submission.Submitter] >= NumSubmissionsPerUser {
+		log.Printf("Rejected submission from %s", submission.Submitter)
 		return false, EvalResult{Status: "error", Message: "Too many user submissions", Terms: nil}
 	}
 	for _, p := range s.submissions {
-		if slices.Equal(p.Operations, program.Operations) {
+		if slices.Equal(p.Operations, submission.Operations) {
 			return false, EvalResult{Status: "error", Message: "Duplicate submission", Terms: nil}
 		}
 	}
@@ -118,22 +112,18 @@ func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, EvalResult) 
 }
 
 // Returns a Result object
-func (s *ProgramsServer) doSubmit(program shared.Program) EvalResult {
-	submitter := ""
-	if program.Submitter != nil {
-		submitter = program.Submitter.Name
-	}
-	profile := program.GetMinerProfile()
+func (s *ProgramsServer) doSubmit(submission shared.Submission) EvalResult {
+	profile := submission.MinerProfile
 	if len(profile) == 0 {
 		profile = "unknown"
 	}
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
-	s.submissions = append(s.submissions, program)
-	s.submissionsPerUser[submitter]++
+	s.submissions = append(s.submissions, submission)
+	s.submissionsPerUser[submission.Submitter]++
 	s.submissionsPerProfile[profile]++
 	msg := fmt.Sprintf("Accepted submission from %s (%d/%d); profile %s (%d)",
-		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser,
+		submission.Submitter, s.submissionsPerUser[submission.Submitter], NumSubmissionsPerUser,
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
 	return EvalResult{Status: "success", Message: "Accepted submission", Terms: nil}
@@ -145,11 +135,13 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		if ok, res := s.checkSubmit(program); !ok {
+		// Convert Program to Submission
+		submission := shared.NewSubmissionFromProgram(program)
+		if ok, res := s.checkSubmit(submission); !ok {
 			util.WriteJsonResponse(w, res)
 			return
 		}
-		res := s.doSubmit(program)
+		res := s.doSubmit(submission)
 		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
@@ -173,7 +165,7 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpNotFound(w)
 			return
 		}
-		util.WriteHttpOK(w, s.submissions[index].Code)
+		util.WriteHttpOK(w, s.submissions[index].Content)
 	}
 	return http.HandlerFunc(f)
 }
@@ -386,10 +378,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if sname := req.URL.Query().Get("submitter"); sname != "" {
 			submitter = &shared.Submitter{Name: sname}
 		}
-		if ok, res := s.checkSubmit(program); !ok {
-			util.WriteJsonResponse(w, res)
-			return
-		}
+		
 		idx := s.getDataIndex()
 		seq := shared.FindSequenceById(idx, id)
 		if seq == nil {
@@ -398,6 +387,14 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		}
 		program.SetIdAndName(id, seq.Name)
 		program.SetSubmitter(submitter)
+		
+		// Convert Program to Submission
+		submission := shared.NewSubmissionFromProgram(program)
+		
+		if ok, res := s.checkSubmit(submission); !ok {
+			util.WriteJsonResponse(w, res)
+			return
+		}
 
 		// Check that the program produces the expected terms
 		expectedTerms := seq.TermsList()
@@ -416,7 +413,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Terms don't match", Terms: result.Terms})
 			return
 		}
-		res := s.doSubmit(program)
+		res := s.doSubmit(submission)
 		res.Terms = result.Terms
 		util.WriteJsonResponse(w, res)
 	}
@@ -431,8 +428,8 @@ func (s *ProgramsServer) writeCheckpoint() error {
 		return fmt.Errorf("cannot opening checkpoint file: %v", err)
 	}
 	defer f.Close()
-	for _, p := range s.submissions {
-		_, err = f.WriteString(fmt.Sprintf("%s%s\n", p.Code, ProgramSeparator))
+	for _, sub := range s.submissions {
+		_, err = f.WriteString(fmt.Sprintf("%s%s\n", sub.Content, ProgramSeparator))
 		if err != nil {
 			return fmt.Errorf("cannot write to checkpoint file: %v", err)
 		}
@@ -529,16 +526,16 @@ func (s *ProgramsServer) loadCheckpoint() {
 		return
 	}
 	log.Printf("Loading checkpoint %s", checkpointPath)
-	s.submissions = []shared.Program{}
+	s.submissions = []shared.Submission{}
 	scanner := bufio.NewScanner(file)
 	program := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == ProgramSeparator {
 			if len(program) > 0 {
-				p, err := shared.NewProgramFromCode(program)
-				if err == nil && len(p.Operations) > 0 {
-					s.submissions = append(s.submissions, p)
+				sub, err := shared.NewSubmissionFromCode(program)
+				if err == nil && len(sub.Operations) > 0 {
+					s.submissions = append(s.submissions, sub)
 				} else {
 					log.Printf("Invalid program in checkpoint: %v", err)
 				}
@@ -563,7 +560,7 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		s.submissionsMutex.Lock()
 		defer s.submissionsMutex.Unlock()
 		
-		total := len(s.v2Submissions)
+		total := len(s.submissions)
 		results := []shared.Submission{}
 		
 		// Apply pagination
@@ -577,7 +574,7 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		}
 		
 		if start < end {
-			results = s.v2Submissions[start:end]
+			results = s.submissions[start:end]
 		}
 		
 		resp := shared.SubmissionsResult{
@@ -626,37 +623,14 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		
-		// Check submission limits
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		s.checkSession()
-		
-		if len(s.v2Submissions) >= NumSubmissionsMax {
-			log.Print("Maximum number of v2 submissions exceeded")
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Too many total submissions", Terms: nil})
+		// Use unified check and submit functions
+		if ok, res := s.checkSubmit(submission); !ok {
+			util.WriteJsonResponse(w, res)
 			return
 		}
 		
-		// Count submissions per user
-		userSubmissions := 0
-		for _, sub := range s.v2Submissions {
-			if sub.Submitter == submission.Submitter {
-				userSubmissions++
-			}
-		}
-		if userSubmissions >= NumSubmissionsPerUser {
-			log.Printf("Rejected v2 submission from %s", submission.Submitter)
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Too many user submissions", Terms: nil})
-			return
-		}
-		
-		// Add submission
-		s.v2Submissions = append(s.v2Submissions, submission)
-		msg := fmt.Sprintf("Accepted v2 submission from %s for %s (type: %s, object: %s)",
-			submission.Submitter, submission.Id.String(), submission.SubmissionType, submission.ObjectType)
-		log.Print(msg)
-		
-		util.WriteJsonResponse(w, EvalResult{Status: "success", Message: "Accepted submission", Terms: nil})
+		res := s.doSubmit(submission)
+		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
 }
