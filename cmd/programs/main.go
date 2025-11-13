@@ -618,7 +618,7 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 		}
 		
 		// For now, only support programs
-		if submission.ObjectType != shared.ObjectTypeProgram {
+		if submission.Type != shared.TypeProgram {
 			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Only program submissions are supported", Terms: nil})
 			return
 		}

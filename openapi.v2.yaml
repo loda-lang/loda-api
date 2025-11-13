@@ -299,9 +299,9 @@ paths:
       summary: Submit a new program or sequence
       description: |
         Submit a new program or sequence. Currently only program submissions are supported.
-        The request body should contain a JSON object with the submission details including ID, submitter, content, submission type, and object type.
+        The request body should contain a JSON object with the submission details including ID, submitter, content, mode, and type.
         
-        Submission types:
+        Submission modes:
         - **add**: Add a new program or sequence
         - **update**: Update an existing program or sequence
         - **delete**: Delete a program or sequence
@@ -327,8 +327,8 @@ paths:
                 lpe
                 mul $0,$2
                 add $0,$1
-              submissionType: add
-              objectType: program
+              mode: add
+              type: program
       responses:
         '200':
           description: Submission result
@@ -583,8 +583,8 @@ components:
         - id
         - submitter
         - content
-        - submissionType
-        - objectType
+        - mode
+        - type
       properties:
         id:
           type: string
@@ -607,12 +607,12 @@ components:
             lpe
             mul $0,$2
             add $0,$1
-        submissionType:
+        mode:
           type: string
           enum: [add, update, delete]
           description: Type of submission operation
           example: add
-        objectType:
+        type:
           type: string
           enum: [program, sequence]
           description: Type of object being submitted

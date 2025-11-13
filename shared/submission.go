@@ -7,30 +7,30 @@ import (
 	"github.com/loda-lang/loda-api/util"
 )
 
-// SubmissionType represents the type of submission operation
-type SubmissionType string
+// Mode represents the type of submission operation
+type Mode string
 
 const (
-	SubmissionTypeAdd    SubmissionType = "add"
-	SubmissionTypeUpdate SubmissionType = "update"
-	SubmissionTypeDelete SubmissionType = "delete"
+	ModeAdd    Mode = "add"
+	ModeUpdate Mode = "update"
+	ModeDelete Mode = "delete"
 )
 
-// ObjectType represents the type of object being submitted
-type ObjectType string
+// Type represents the type of object being submitted
+type Type string
 
 const (
-	ObjectTypeProgram  ObjectType = "program"
-	ObjectTypeSequence ObjectType = "sequence"
+	TypeProgram  Type = "program"
+	TypeSequence Type = "sequence"
 )
 
 // Submission represents a submission of a program or sequence
 type Submission struct {
-	Id             util.UID
-	Submitter      string
-	Content        string
-	SubmissionType SubmissionType
-	ObjectType     ObjectType
+	Id        util.UID
+	Submitter string
+	Content   string
+	Mode      Mode
+	Type      Type
 	// Additional fields for internal use (not serialized in JSON)
 	Operations   []string // extracted operations for duplicate detection
 	MinerProfile string   // miner profile for metrics
@@ -39,28 +39,28 @@ type Submission struct {
 // MarshalJSON implements custom JSON serialization for Submission
 func (s Submission) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
-		Id             string `json:"id"`
-		Submitter      string `json:"submitter"`
-		Content        string `json:"content"`
-		SubmissionType string `json:"submissionType"`
-		ObjectType     string `json:"objectType"`
+		Id        string `json:"id"`
+		Submitter string `json:"submitter"`
+		Content   string `json:"content"`
+		Mode      string `json:"mode"`
+		Type      string `json:"type"`
 	}{
-		Id:             s.Id.String(),
-		Submitter:      s.Submitter,
-		Content:        s.Content,
-		SubmissionType: string(s.SubmissionType),
-		ObjectType:     string(s.ObjectType),
+		Id:        s.Id.String(),
+		Submitter: s.Submitter,
+		Content:   s.Content,
+		Mode:      string(s.Mode),
+		Type:      string(s.Type),
 	})
 }
 
 // UnmarshalJSON implements custom JSON deserialization for Submission
 func (s *Submission) UnmarshalJSON(data []byte) error {
 	var aux struct {
-		Id             string `json:"id"`
-		Submitter      string `json:"submitter"`
-		Content        string `json:"content"`
-		SubmissionType string `json:"submissionType"`
-		ObjectType     string `json:"objectType"`
+		Id        string `json:"id"`
+		Submitter string `json:"submitter"`
+		Content   string `json:"content"`
+		Mode      string `json:"mode"`
+		Type      string `json:"type"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -69,21 +69,21 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	// Validate submission type
-	submissionType := SubmissionType(aux.SubmissionType)
-	if submissionType != SubmissionTypeAdd && submissionType != SubmissionTypeUpdate && submissionType != SubmissionTypeDelete {
-		return fmt.Errorf("invalid submission type: %s", aux.SubmissionType)
+	// Validate mode
+	mode := Mode(aux.Mode)
+	if mode != ModeAdd && mode != ModeUpdate && mode != ModeDelete {
+		return fmt.Errorf("invalid mode: %s", aux.Mode)
 	}
-	// Validate object type
-	objectType := ObjectType(aux.ObjectType)
-	if objectType != ObjectTypeProgram && objectType != ObjectTypeSequence {
-		return fmt.Errorf("invalid object type: %s", aux.ObjectType)
+	// Validate type
+	objType := Type(aux.Type)
+	if objType != TypeProgram && objType != TypeSequence {
+		return fmt.Errorf("invalid type: %s", aux.Type)
 	}
 	s.Id = uid
 	s.Submitter = aux.Submitter
 	s.Content = aux.Content
-	s.SubmissionType = submissionType
-	s.ObjectType = objectType
+	s.Mode = mode
+	s.Type = objType
 	// Extract operations and miner profile for internal use
 	s.Operations = extractOperations(aux.Content)
 	s.MinerProfile = extractMinerProfile(aux.Content)
@@ -103,13 +103,13 @@ func NewSubmissionFromProgram(program Program) Submission {
 		submitter = program.Submitter.Name
 	}
 	return Submission{
-		Id:             program.Id,
-		Submitter:      submitter,
-		Content:        program.Code,
-		SubmissionType: SubmissionTypeAdd, // v1 submissions are always "add"
-		ObjectType:     ObjectTypeProgram,
-		Operations:     program.Operations,
-		MinerProfile:   program.GetMinerProfile(),
+		Id:           program.Id,
+		Submitter:    submitter,
+		Content:      program.Code,
+		Mode:         ModeAdd, // v1 submissions are always "add"
+		Type:         TypeProgram,
+		Operations:   program.Operations,
+		MinerProfile: program.GetMinerProfile(),
 	}
 }
 

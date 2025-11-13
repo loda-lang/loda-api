@@ -27,8 +27,8 @@ func TestV2SubmissionsPostHandler(t *testing.T) {
 		"id":             "A000045",
 		"submitter":      "alice",
 		"content":        "mov $0,1\nadd $0,2",
-		"submissionType": "add",
-		"objectType":     "program",
+		"mode": "add",
+		"type":     "program",
 	}
 	body, _ := json.Marshal(submission)
 
@@ -52,8 +52,8 @@ func TestV2SubmissionsPostHandler(t *testing.T) {
 	assert.Equal(t, "alice", s.submissions[0].Submitter)
 }
 
-// TestV2SubmissionsPostHandler_InvalidObjectType tests rejection of non-program submissions
-func TestV2SubmissionsPostHandler_InvalidObjectType(t *testing.T) {
+// TestV2SubmissionsPostHandler_InvalidType tests rejection of non-program submissions
+func TestV2SubmissionsPostHandler_InvalidType(t *testing.T) {
 	s := &ProgramsServer{
 		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
@@ -64,8 +64,8 @@ func TestV2SubmissionsPostHandler_InvalidObjectType(t *testing.T) {
 		"id":             "A000045",
 		"submitter":      "alice",
 		"content":        "1,1,2,3,5,8",
-		"submissionType": "add",
-		"objectType":     "sequence",
+		"mode": "add",
+		"type":     "sequence",
 	}
 	body, _ := json.Marshal(submission)
 
@@ -97,15 +97,15 @@ func TestV2SubmissionsGetHandler(t *testing.T) {
 				Id:             id1,
 				Submitter:      "alice",
 				Content:        "mov $0,1",
-				SubmissionType: shared.SubmissionTypeAdd,
-				ObjectType:     shared.ObjectTypeProgram,
+				Mode: shared.ModeAdd,
+				Type:     shared.TypeProgram,
 			},
 			{
 				Id:             id2,
 				Submitter:      "bob",
 				Content:        "mul $0,2",
-				SubmissionType: shared.SubmissionTypeUpdate,
-				ObjectType:     shared.ObjectTypeProgram,
+				Mode: shared.ModeUpdate,
+				Type:     shared.TypeProgram,
 			},
 		},
 		submissionsPerProfile: make(map[string]int),
@@ -139,8 +139,8 @@ func TestV2SubmissionsGetHandler_Pagination(t *testing.T) {
 			Id:             id,
 			Submitter:      "alice",
 			Content:        "mov $0,1",
-			SubmissionType: shared.SubmissionTypeAdd,
-			ObjectType:     shared.ObjectTypeProgram,
+			Mode: shared.ModeAdd,
+			Type:     shared.TypeProgram,
 		})
 	}
 
@@ -204,8 +204,8 @@ func TestV2SubmissionsPostHandler_MissingFields(t *testing.T) {
 			submission: map[string]interface{}{
 				"id":             "A000045",
 				"content":        "mov $0,1",
-				"submissionType": "add",
-				"objectType":     "program",
+				"mode": "add",
+				"type":     "program",
 			},
 			errMsg: "Missing submitter",
 		},
@@ -214,8 +214,8 @@ func TestV2SubmissionsPostHandler_MissingFields(t *testing.T) {
 			submission: map[string]interface{}{
 				"id":             "A000045",
 				"submitter":      "alice",
-				"submissionType": "add",
-				"objectType":     "program",
+				"mode": "add",
+				"type":     "program",
 			},
 			errMsg: "Missing content",
 		},
@@ -225,8 +225,8 @@ func TestV2SubmissionsPostHandler_MissingFields(t *testing.T) {
 				"id":             "A000045",
 				"submitter":      "alice",
 				"content":        "",
-				"submissionType": "add",
-				"objectType":     "program",
+				"mode": "add",
+				"type":     "program",
 			},
 			errMsg: "Missing content",
 		},
@@ -266,8 +266,8 @@ func TestV2SubmissionsEndToEnd(t *testing.T) {
 		"id":             "A000045",
 		"submitter":      "alice",
 		"content":        "mov $0,1",
-		"submissionType": "add",
-		"objectType":     "program",
+		"mode": "add",
+		"type":     "program",
 	}
 	body1, _ := json.Marshal(submission1)
 	req := httptest.NewRequest(http.MethodPost, "/v2/submissions", bytes.NewBuffer(body1))
@@ -280,8 +280,8 @@ func TestV2SubmissionsEndToEnd(t *testing.T) {
 		"id":             "A000142",
 		"submitter":      "bob",
 		"content":        "mul $0,2",
-		"submissionType": "update",
-		"objectType":     "program",
+		"mode": "update",
+		"type":     "program",
 	}
 	body2, _ := json.Marshal(submission2)
 	req = httptest.NewRequest(http.MethodPost, "/v2/submissions", bytes.NewBuffer(body2))
@@ -330,8 +330,8 @@ func TestV2SubmissionsRoutes(t *testing.T) {
 		"id":             "A000045",
 		"submitter":      "alice",
 		"content":        "mov $0,1",
-		"submissionType": "add",
-		"objectType":     "program",
+		"mode": "add",
+		"type":     "program",
 	}
 	body, _ := json.Marshal(submission)
 	req = httptest.NewRequest(http.MethodPost, "/v2/submissions", bytes.NewBuffer(body))
