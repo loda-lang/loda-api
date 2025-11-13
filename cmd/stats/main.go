@@ -293,13 +293,34 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 			return
 		}
 		// Remove nils (from sparse array)
-		var result []shared.Submitter
+		var allSubmitters []shared.Submitter
 		for _, sub := range s.submitters {
 			if sub != nil {
-				result = append(result, *sub)
+				allSubmitters = append(allSubmitters, *sub)
 			}
 		}
-		util.WriteJsonResponse(w, result)
+		// Apply pagination
+		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
+		total := len(allSubmitters)
+		start := skip
+		if start > total {
+			start = total
+		}
+		end := total
+		if limit > 0 {
+			end = start + limit
+			if end > total {
+				end = total
+			}
+		}
+		paginatedSubmitters := allSubmitters[start:end]
+		
+		// Create response with total count
+		resp := shared.SubmittersResult{
+			Total:   total,
+			Results: paginatedSubmitters,
+		}
+		util.WriteJsonResponse(w, resp)
 	})
 }
 
@@ -336,7 +357,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))
 	router.Handle("/v2/stats/keywords", newKeywordsHandler(s))
 	router.Handle("/v2/stats/programs/numUsages", newProgramsNumUsagesHandler(s))
-	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
+	router.Handle("/v2/submitters", newSubmittersHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
