@@ -42,9 +42,14 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
 		}
 
 		// Should return default limit (10) or total if less than 10
@@ -52,8 +57,8 @@ func TestSubmittersHandler(t *testing.T) {
 		if expectedTotal < 10 {
 			expectedCount = expectedTotal
 		}
-		if len(result) != expectedCount {
-			t.Errorf("expected %d submitters, got %d", expectedCount, len(result))
+		if len(result.Results) != expectedCount {
+			t.Errorf("expected %d submitters, got %d", expectedCount, len(result.Results))
 		}
 	})
 
@@ -67,14 +72,19 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
+		}
+
 		// Should return all non-nil submitters
-		if len(result) != expectedTotal {
-			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result))
+		if len(result.Results) != expectedTotal {
+			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result.Results))
 		}
 	})
 
@@ -88,13 +98,18 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		if len(result) != 3 {
-			t.Errorf("expected 3 submitters, got %d", len(result))
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
+		}
+
+		if len(result.Results) != 3 {
+			t.Errorf("expected 3 submitters, got %d", len(result.Results))
 		}
 	})
 
@@ -108,9 +123,14 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
+		}
+
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
 		}
 
 		// Should return remaining submitters (total - 2 skipped, capped by default limit 10)
@@ -118,8 +138,8 @@ func TestSubmittersHandler(t *testing.T) {
 		if expectedSkipResult > 10 {
 			expectedSkipResult = 10
 		}
-		if len(result) != expectedSkipResult {
-			t.Errorf("expected %d submitters, got %d", expectedSkipResult, len(result))
+		if len(result.Results) != expectedSkipResult {
+			t.Errorf("expected %d submitters, got %d", expectedSkipResult, len(result.Results))
 		}
 	})
 
@@ -133,28 +153,33 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
-		if len(result) != 2 {
-			t.Errorf("expected 2 submitters, got %d", len(result))
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
+		}
+
+		if len(result.Results) != 2 {
+			t.Errorf("expected 2 submitters, got %d", len(result.Results))
 		}
 
 		// Get all submitters to verify correct items are returned
 		reqAll := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=0", nil)
 		wAll := httptest.NewRecorder()
 		handler.ServeHTTP(wAll, reqAll)
-		var allResult []shared.Submitter
+		var allResult shared.SubmittersResult
 		json.NewDecoder(wAll.Body).Decode(&allResult)
 
 		// Verify the skipped items match the expected slice
-		if result[0].Name != allResult[1].Name {
-			t.Errorf("expected first item to be %q, got %q", allResult[1].Name, result[0].Name)
+		if result.Results[0].Name != allResult.Results[1].Name {
+			t.Errorf("expected first item to be %q, got %q", allResult.Results[1].Name, result.Results[0].Name)
 		}
-		if result[1].Name != allResult[2].Name {
-			t.Errorf("expected second item to be %q, got %q", allResult[2].Name, result[1].Name)
+		if result.Results[1].Name != allResult.Results[2].Name {
+			t.Errorf("expected second item to be %q, got %q", allResult.Results[2].Name, result.Results[1].Name)
 		}
 	})
 
@@ -168,14 +193,19 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
+		}
+
 		// Should return empty array
-		if len(result) != 0 {
-			t.Errorf("expected 0 submitters, got %d", len(result))
+		if len(result.Results) != 0 {
+			t.Errorf("expected 0 submitters, got %d", len(result.Results))
 		}
 	})
 
@@ -189,14 +219,19 @@ func TestSubmittersHandler(t *testing.T) {
 			t.Errorf("expected status 200, got %d", w.Code)
 		}
 
-		var result []shared.Submitter
+		var result shared.SubmittersResult
 		if err := json.NewDecoder(w.Body).Decode(&result); err != nil {
 			t.Fatalf("failed to decode response: %v", err)
 		}
 
+		// Should return total count
+		if result.Total != expectedTotal {
+			t.Errorf("expected total %d, got %d", expectedTotal, result.Total)
+		}
+
 		// Should return all submitters (capped at maxLimit=100, but we have fewer)
-		if len(result) != expectedTotal {
-			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result))
+		if len(result.Results) != expectedTotal {
+			t.Errorf("expected %d submitters, got %d", expectedTotal, len(result.Results))
 		}
 	})
 

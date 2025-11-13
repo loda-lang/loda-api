@@ -257,13 +257,11 @@ paths:
       - $ref: '#/components/parameters/Skip'
       responses:
         '200':
-          description: List of submitters
+          description: List of submitters with total count
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Submitter'
+                $ref: '#/components/schemas/SubmittersResult'
   /stats/programs/numUsages:
     get:
       tags: [ Stats ]
@@ -505,6 +503,16 @@ components:
         numPrograms:
           type: integer
           description: Number of programs submitted by this user
+    SubmittersResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of submitters
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submitter'
     StatsSummary:
       type: object
       properties:

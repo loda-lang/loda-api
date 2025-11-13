@@ -293,15 +293,15 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 			return
 		}
 		// Remove nils (from sparse array)
-		var result []shared.Submitter
+		var allSubmitters []shared.Submitter
 		for _, sub := range s.submitters {
 			if sub != nil {
-				result = append(result, *sub)
+				allSubmitters = append(allSubmitters, *sub)
 			}
 		}
 		// Apply pagination
 		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
-		total := len(result)
+		total := len(allSubmitters)
 		start := skip
 		if start > total {
 			start = total
@@ -313,8 +313,14 @@ func newSubmittersHandler(s *StatsServer) http.Handler {
 				end = total
 			}
 		}
-		result = result[start:end]
-		util.WriteJsonResponse(w, result)
+		paginatedSubmitters := allSubmitters[start:end]
+		
+		// Create response with total count
+		resp := shared.SubmittersResult{
+			Total:   total,
+			Results: paginatedSubmitters,
+		}
+		util.WriteJsonResponse(w, resp)
 	})
 }
 
