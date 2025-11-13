@@ -34,7 +34,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 1: Get submitters with default limit (10)
 	t.Run("default limit", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -64,7 +64,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 2: Get all submitters (limit=0 means no limit)
 	t.Run("no limit", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=0", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?limit=0", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -90,7 +90,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 3: Pagination with limit
 	t.Run("with limit", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=3", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?limit=3", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -115,7 +115,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 4: Pagination with skip
 	t.Run("with skip", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?skip=2", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?skip=2", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -145,7 +145,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 5: Pagination with both limit and skip
 	t.Run("with limit and skip", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=2&skip=1", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?limit=2&skip=1", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -168,7 +168,7 @@ func TestSubmittersHandler(t *testing.T) {
 		}
 
 		// Get all submitters to verify correct items are returned
-		reqAll := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=0", nil)
+		reqAll := httptest.NewRequest(http.MethodGet, "/v2/submitters?limit=0", nil)
 		wAll := httptest.NewRecorder()
 		handler.ServeHTTP(wAll, reqAll)
 		var allResult shared.SubmittersResult
@@ -185,7 +185,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 6: Skip beyond available items
 	t.Run("skip beyond available", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?skip=100", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?skip=100", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -211,7 +211,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 7: Limit larger than available items (capped at maxLimit=100)
 	t.Run("limit larger than available", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodGet, "/v2/stats/submitters?limit=1000", nil)
+		req := httptest.NewRequest(http.MethodGet, "/v2/submitters?limit=1000", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 
@@ -237,7 +237,7 @@ func TestSubmittersHandler(t *testing.T) {
 
 	// Test 8: Method not allowed
 	t.Run("method not allowed", func(t *testing.T) {
-		req := httptest.NewRequest(http.MethodPost, "/v2/stats/submitters", nil)
+		req := httptest.NewRequest(http.MethodPost, "/v2/submitters", nil)
 		w := httptest.NewRecorder()
 		handler.ServeHTTP(w, req)
 

@@ -11,6 +11,8 @@ tags:
   description: Endpoints related to LODA programs
 - name: Sequences
   description: Endpoints related to integer sequences
+- name: Submissions
+  description: Endpoints related to program submissions
 - name: Stats
   description: Endpoints related to statistics
 paths:
@@ -221,6 +223,21 @@ paths:
                 $ref: '#/components/schemas/EvalResult'
         '400':
           description: Bad request, invalid program format
+  /submitters:
+    get:
+      tags: [ Submissions ]
+      summary: List all submitters
+      description: Returns a list of all submitters with their number of submitted programs. Supports pagination.
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Skip'
+      responses:
+        '200':
+          description: List of submitters with total count
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmittersResult'
   /stats/summary:
     get:
       tags: [ Stats ]
@@ -247,21 +264,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/Keyword'
-  /stats/submitters:
-    get:
-      tags: [ Stats ]
-      summary: List all submitters
-      description: Returns a list of all submitters with their number of submitted programs. Supports pagination.
-      parameters:
-      - $ref: '#/components/parameters/Limit'
-      - $ref: '#/components/parameters/Skip'
-      responses:
-        '200':
-          description: List of submitters with total count
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SubmittersResult'
   /stats/programs/numUsages:
     get:
       tags: [ Stats ]

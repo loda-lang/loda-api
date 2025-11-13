@@ -72,4 +72,4 @@ curl -fsS -X POST ${stats_host_v1}/cpuhours
 
 echo
 echo "### STATS V2 ###"
-curl -fsS -O ${stats_host_v2}/stats/submitters && rm submitters
+curl -fsS -O ${stats_host_v2}/submitters && rm submitters
