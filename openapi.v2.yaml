@@ -11,6 +11,8 @@ tags:
   description: Endpoints related to LODA programs
 - name: Sequences
   description: Endpoints related to integer sequences
+- name: Submissions
+  description: Endpoints related to program and sequence submissions
 - name: Stats
   description: Endpoints related to statistics
 paths:
@@ -221,6 +223,67 @@ paths:
                 $ref: '#/components/schemas/EvalResult'
         '400':
           description: Bad request, invalid program format
+  /submissions:
+    get:
+      tags: [ Submissions ]
+      summary: Get submissions
+      description: |
+        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs and sequences with support for pagination.
+        Submissions contain the ID, submitter, content, submission type (add/update/delete), and object type (program/sequence).
+      parameters:
+      - $ref: '#/components/parameters/Limit'
+      - $ref: '#/components/parameters/Skip'
+      responses:
+        '200':
+          description: List of submissions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionsResult'
+    post:
+      tags: [ Submissions ]
+      summary: Submit a new program or sequence
+      description: |
+        Submit a new program or sequence. Currently only program submissions are supported.
+        The request body should contain a JSON object with the submission details including ID, submitter, content, mode, and type.
+        
+        Submission modes:
+        - **add**: Add a new program or sequence
+        - **update**: Update an existing program or sequence
+        - **delete**: Delete a program or sequence
+        
+        Object types:
+        - **program**: LODA program submission
+        - **sequence**: Integer sequence submission (not yet supported)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Submission'
+            example:
+              id: A000045
+              submitter: Alice
+              content: |
+                mov $2,1
+                lpb $0
+                  sub $0,2
+                  add $2,$1
+                  add $1,$2
+                lpe
+                mul $0,$2
+                add $0,$1
+              mode: add
+              type: program
+      responses:
+        '200':
+          description: Submission result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '400':
+          description: Bad request, invalid submission format
   /stats/summary:
     get:
       tags: [ Stats ]
@@ -493,6 +556,56 @@ components:
         numSequences:
           type: integer
           description: Number of sequences associated with this keyword
+    Submission:
+      type: object
+      required:
+        - id
+        - submitter
+        - content
+        - mode
+        - type
+      properties:
+        id:
+          type: string
+          pattern: '^[A-Z]\d{1,10}$'
+          description: ID of the program or sequence
+          example: A000045
+        submitter:
+          type: string
+          description: Name of the person submitting
+          example: Alice
+        content:
+          type: string
+          description: Content of the submission (program code or sequence data)
+          example: |
+            mov $2,1
+            lpb $0
+              sub $0,2
+              add $2,$1
+              add $1,$2
+            lpe
+            mul $0,$2
+            add $0,$1
+        mode:
+          type: string
+          enum: [add, update, delete]
+          description: Type of submission operation
+          example: add
+        type:
+          type: string
+          enum: [program, sequence]
+          description: Type of object being submitted
+          example: program
+    SubmissionsResult:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total number of submissions
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Submission'
     Submitter:
       type: object
       properties:
