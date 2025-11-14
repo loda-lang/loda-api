@@ -608,18 +608,19 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid or missing ID", Terms: nil})
 			return
 		}
-		if submission.Submitter == "" {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Missing submitter", Terms: nil})
-			return
-		}
-		if submission.Content == "" {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Missing content", Terms: nil})
-			return
-		}
 		
 		// For now, only support programs
-		if submission.Type != shared.TypeProgram {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Only program submissions are supported", Terms: nil})
+		if submission.Type == shared.TypeProgram {
+			if submission.Mode != shared.ModeAdd && submission.Mode != shared.ModeUpdate {
+				util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Unsupported submission mode for programs", Terms: nil})
+				return
+			}
+			if submission.Content == "" {
+				util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Missing content", Terms: nil})
+				return
+			}
+		} else {
+			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Unsupported submission type", Terms: nil})
 			return
 		}
 		
