@@ -559,10 +559,33 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		}
 		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
 
+		// Get filter parameters
+		modeFilter := req.URL.Query().Get("mode")
+		typeFilter := req.URL.Query().Get("type")
+		submitterFilter := req.URL.Query().Get("submitter")
+
 		s.submissionsMutex.Lock()
 		defer s.submissionsMutex.Unlock()
 
-		total := len(s.submissions)
+		// Apply filters
+		filtered := []shared.Submission{}
+		for _, sub := range s.submissions {
+			// Filter by mode if specified
+			if modeFilter != "" && string(sub.Mode) != modeFilter {
+				continue
+			}
+			// Filter by type if specified
+			if typeFilter != "" && string(sub.Type) != typeFilter {
+				continue
+			}
+			// Filter by submitter if specified
+			if submitterFilter != "" && sub.Submitter != submitterFilter {
+				continue
+			}
+			filtered = append(filtered, sub)
+		}
+
+		total := len(filtered)
 		results := []shared.Submission{}
 
 		// Apply pagination
@@ -576,7 +599,7 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		}
 
 		if start < end {
-			results = s.submissions[start:end]
+			results = filtered[start:end]
 		}
 
 		resp := shared.SubmissionsResult{

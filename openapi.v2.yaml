@@ -228,11 +228,31 @@ paths:
       tags: [ Submissions ]
       summary: Get submissions
       description: |
-        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs and sequences with support for pagination.
+        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs and sequences with support for pagination and filtering.
         Submissions contain the ID, submitter, content, submission type (add/update/delete), and object type (program/sequence).
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
+      - name: mode
+        in: query
+        required: false
+        description: Filter submissions by mode (add, update, or delete)
+        schema:
+          type: string
+          enum: [add, update, delete]
+      - name: type
+        in: query
+        required: false
+        description: Filter submissions by object type (program or sequence)
+        schema:
+          type: string
+          enum: [program, sequence]
+      - name: submitter
+        in: query
+        required: false
+        description: Filter submissions by submitter name
+        schema:
+          type: string
       responses:
         '200':
           description: List of submissions
