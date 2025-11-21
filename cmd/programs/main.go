@@ -90,29 +90,28 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-// Returns (ok, Result)
-func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, EvalResult) {
+// Returns (ok, OperationResult)
+func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, OperationResult) {
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
-		return false, EvalResult{Status: "error", Message: "Too many total submissions", Terms: nil}
+		return false, OperationResult{Status: "error", Message: "Too many total submissions"}
 	}
 	if s.submissionsPerUser[submission.Submitter] >= NumSubmissionsPerUser {
 		log.Printf("Rejected submission from %s", submission.Submitter)
-		return false, EvalResult{Status: "error", Message: "Too many user submissions", Terms: nil}
+		return false, OperationResult{Status: "error", Message: "Too many user submissions"}
 	}
 	for _, p := range s.submissions {
 		if slices.Equal(p.Operations, submission.Operations) {
-			return false, EvalResult{Status: "error", Message: "Duplicate submission", Terms: nil}
+			return false, OperationResult{Status: "error", Message: "Duplicate submission"}
 		}
 	}
-	return true, EvalResult{}
+	return true, OperationResult{}
 }
 
-// Returns a Result object
-func (s *ProgramsServer) doSubmit(submission shared.Submission) EvalResult {
+func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult {
 	profile := submission.MinerProfile
 	if len(profile) == 0 {
 		profile = "unknown"
@@ -126,7 +125,7 @@ func (s *ProgramsServer) doSubmit(submission shared.Submission) EvalResult {
 		submission.Submitter, s.submissionsPerUser[submission.Submitter], NumSubmissionsPerUser,
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
-	return EvalResult{Status: "success", Message: "Accepted submission", Terms: nil}
+	return OperationResult{Status: "success", Message: "Accepted submission"}
 }
 
 func newPostHandler(s *ProgramsServer) http.Handler {
@@ -138,11 +137,13 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		// Convert Program to Submission
 		submission := shared.NewSubmissionFromProgram(program)
 		if ok, res := s.checkSubmit(submission); !ok {
-			util.WriteJsonResponse(w, res)
+			// Convert OperationResult to EvalResult for v1 API
+			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
 			return
 		}
 		res := s.doSubmit(submission)
-		util.WriteJsonResponse(w, res)
+		// Convert OperationResult to EvalResult for v1 API
+		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
 	}
 	return http.HandlerFunc(f)
 }
@@ -378,7 +379,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if sname := req.URL.Query().Get("submitter"); sname != "" {
 			submitter = &shared.Submitter{Name: sname}
 		}
-		
+
 		idx := s.getDataIndex()
 		seq := shared.FindSequenceById(idx, id)
 		if seq == nil {
@@ -387,12 +388,13 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		}
 		program.SetIdAndName(id, seq.Name)
 		program.SetSubmitter(submitter)
-		
+
 		// Convert Program to Submission
 		submission := shared.NewSubmissionFromProgram(program)
-		
+
 		if ok, res := s.checkSubmit(submission); !ok {
-			util.WriteJsonResponse(w, res)
+			// Convert OperationResult to EvalResult
+			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
 			return
 		}
 
@@ -414,8 +416,8 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		res := s.doSubmit(submission)
-		res.Terms = result.Terms
-		util.WriteJsonResponse(w, res)
+		// Convert OperationResult to EvalResult and add terms from evaluation
+		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: result.Terms})
 	}
 	return http.HandlerFunc(f)
 }
@@ -556,13 +558,13 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
-		
+
 		s.submissionsMutex.Lock()
 		defer s.submissionsMutex.Unlock()
-		
+
 		total := len(s.submissions)
 		results := []shared.Submission{}
-		
+
 		// Apply pagination
 		start := skip
 		if start > total {
@@ -572,11 +574,11 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		if end > total {
 			end = total
 		}
-		
+
 		if start < end {
 			results = s.submissions[start:end]
 		}
-		
+
 		resp := shared.SubmissionsResult{
 			Total:   total,
 			Results: results,
@@ -593,7 +595,7 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpMethodNotAllowed(w)
 			return
 		}
-		
+
 		// Read and parse submission from body
 		defer req.Body.Close()
 		var submission shared.Submission
@@ -602,34 +604,34 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		
+
 		// Validate submission
 		if submission.Id.IsZero() {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid or missing ID", Terms: nil})
+			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Invalid or missing ID"})
 			return
 		}
-		
+
 		// For now, only support programs
 		if submission.Type == shared.TypeProgram {
 			if submission.Mode != shared.ModeAdd && submission.Mode != shared.ModeUpdate {
-				util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Unsupported submission mode for programs", Terms: nil})
+				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission mode for programs"})
 				return
 			}
 			if submission.Content == "" {
-				util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Missing content", Terms: nil})
+				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Missing content"})
 				return
 			}
 		} else {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Unsupported submission type", Terms: nil})
+			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission type"})
 			return
 		}
-		
+
 		// Use unified check and submit functions
 		if ok, res := s.checkSubmit(submission); !ok {
 			util.WriteJsonResponse(w, res)
 			return
 		}
-		
+
 		res := s.doSubmit(submission)
 		util.WriteJsonResponse(w, res)
 	}

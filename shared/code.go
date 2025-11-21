@@ -98,16 +98,24 @@ func extractFormula(code string) string {
 	return ""
 }
 
-func extractMinerProfile(code string) string {
-	// Miner profiles are not always in the header
+// extractCommentValue extracts the value after a comment prefix from program code
+func extractCommentValue(code string, prefix string) string {
 	lines := strings.Split(code, "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
-		if after, ok := strings.CutPrefix(line, "; Miner Profile:"); ok {
+		if after, ok := strings.CutPrefix(line, prefix); ok {
 			return strings.TrimSpace(after)
 		}
 	}
 	return ""
+}
+
+func extractMinerProfile(code string) string {
+	return extractCommentValue(code, "; Miner Profile:")
+}
+
+func extractChangeType(code string) string {
+	return extractCommentValue(code, "; Change Type:")
 }
 
 func updateIdAndName(code string, id util.UID, name string) string {

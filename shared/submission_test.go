@@ -11,11 +11,11 @@ import (
 func TestSubmission_MarshalJSON(t *testing.T) {
 	id, _ := util.NewUIDFromString("A000045")
 	sub := Submission{
-		Id:             id,
-		Submitter:      "alice",
-		Content:        "mov $0,1",
-		Mode: ModeAdd,
-		Type:     TypeProgram,
+		Id:        id,
+		Submitter: "alice",
+		Content:   "mov $0,1",
+		Mode:      ModeAdd,
+		Type:      TypeProgram,
 	}
 
 	data, err := json.Marshal(sub)
@@ -102,18 +102,18 @@ func TestSubmissionsResult_JSON(t *testing.T) {
 		Total: 2,
 		Results: []Submission{
 			{
-				Id:             id1,
-				Submitter:      "alice",
-				Content:        "mov $0,1",
-				Mode: ModeAdd,
-				Type:     TypeProgram,
+				Id:        id1,
+				Submitter: "alice",
+				Content:   "mov $0,1",
+				Mode:      ModeAdd,
+				Type:      TypeProgram,
 			},
 			{
-				Id:             id2,
-				Submitter:      "bob",
-				Content:        "mul $0,2",
-				Mode: ModeUpdate,
-				Type:     TypeProgram,
+				Id:        id2,
+				Submitter: "bob",
+				Content:   "mul $0,2",
+				Mode:      ModeUpdate,
+				Type:      TypeProgram,
 			},
 		},
 	}
@@ -128,4 +128,61 @@ func TestSubmissionsResult_JSON(t *testing.T) {
 	assert.Equal(t, 2, len(unmarshaled.Results))
 	assert.Equal(t, "A000045", unmarshaled.Results[0].Id.String())
 	assert.Equal(t, "alice", unmarshaled.Results[0].Submitter)
+}
+
+func TestNewSubmissionFromProgram_ChangeTypeFound(t *testing.T) {
+	code := `; A164177: Number of binary strings of length n.
+; Submitted by bob
+mov $2,1
+lpb $0
+  sub $0,1
+lpe
+mov $0,$2
+; Miner Profile: batch-new
+; Change Type: Found
+`
+	program, err := NewProgramFromCode(code)
+	assert.NoError(t, err)
+
+	sub := NewSubmissionFromProgram(program)
+	assert.Equal(t, ModeAdd, sub.Mode)
+	assert.Equal(t, "bob", sub.Submitter)
+	assert.Equal(t, "batch-new", sub.MinerProfile)
+}
+
+func TestNewSubmissionFromProgram_ChangeTypeFaster(t *testing.T) {
+	code := `; A000045: Fibonacci numbers
+; Submitted by user123
+mov $2,1
+lpb $0
+  sub $0,1
+lpe
+mov $0,$2
+; Miner Profile: batch-optimize
+; Change Type: Faster
+`
+	program, err := NewProgramFromCode(code)
+	assert.NoError(t, err)
+
+	sub := NewSubmissionFromProgram(program)
+	assert.Equal(t, ModeUpdate, sub.Mode)
+	assert.Equal(t, "user123", sub.Submitter)
+	assert.Equal(t, "batch-optimize", sub.MinerProfile)
+}
+
+func TestNewSubmissionFromProgram_NoChangeType(t *testing.T) {
+	code := `; A000045: Fibonacci numbers
+; Submitted by user123
+mov $2,1
+lpb $0
+  sub $0,1
+lpe
+mov $0,$2
+`
+	program, err := NewProgramFromCode(code)
+	assert.NoError(t, err)
+
+	sub := NewSubmissionFromProgram(program)
+	assert.Equal(t, ModeAdd, sub.Mode) // defaults to add when no Change Type
+	assert.Equal(t, "user123", sub.Submitter)
 }

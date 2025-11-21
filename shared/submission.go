@@ -84,9 +84,14 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	s.Content = aux.Content
 	s.Mode = mode
 	s.Type = objType
-	// Extract operations and miner profile for internal use
-	s.Operations = extractOperations(aux.Content)
-	s.MinerProfile = extractMinerProfile(aux.Content)
+	// Extract operations and miner profile from programs for internal use
+	if s.Type == TypeProgram {
+		s.Operations = extractOperations(aux.Content)
+		s.MinerProfile = extractMinerProfile(aux.Content)
+	} else {
+		s.Operations = nil
+		s.MinerProfile = ""
+	}
 	return nil
 }
 
@@ -102,11 +107,20 @@ func NewSubmissionFromProgram(program Program) Submission {
 	if program.Submitter != nil {
 		submitter = program.Submitter.Name
 	}
+	// Extract change type to determine mode
+	changeType := extractChangeType(program.Code)
+	mode := ModeAdd // default to "add"
+	if changeType == "Found" {
+		mode = ModeAdd
+	} else if changeType != "" {
+		// Any other non-empty change type means "update"
+		mode = ModeUpdate
+	}
 	return Submission{
 		Id:           program.Id,
 		Submitter:    submitter,
 		Content:      program.Code,
-		Mode:         ModeAdd, // v1 submissions are always "add"
+		Mode:         mode,
 		Type:         TypeProgram,
 		Operations:   program.Operations,
 		MinerProfile: program.GetMinerProfile(),
