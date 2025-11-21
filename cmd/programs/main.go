@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -42,7 +43,7 @@ type ProgramsServer struct {
 	lodaTool              *LODATool
 	session               time.Time
 	dataIndex             *shared.DataIndex
-	submissions           []shared.Program
+	submissions           []shared.Submission // Unified submissions (v1 and v2)
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
 	dataIndexMutex        sync.Mutex
@@ -56,7 +57,7 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 		influxDbClient:        influxDbClient,
 		lodaTool:              lodaTool,
 		session:               time.Now(),
-		submissions:           []shared.Program{},
+		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
 	}
@@ -89,51 +90,42 @@ func newSessionHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-// Returns (ok, Result)
-func (s *ProgramsServer) checkSubmit(program shared.Program) (bool, EvalResult) {
-	submitter := ""
-	if program.Submitter != nil {
-		submitter = program.Submitter.Name
-	}
+// Returns (ok, OperationResult)
+func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, OperationResult) {
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
 	s.checkSession()
 	if len(s.submissions) > NumSubmissionsMax {
 		log.Print("Maximum number of submissions exceeded")
-		return false, EvalResult{Status: "error", Message: "Too many total submissions", Terms: nil}
+		return false, OperationResult{Status: "error", Message: "Too many total submissions"}
 	}
-	if s.submissionsPerUser[submitter] >= NumSubmissionsPerUser {
-		log.Printf("Rejected program from %s", submitter)
-		return false, EvalResult{Status: "error", Message: "Too many user submissions", Terms: nil}
+	if s.submissionsPerUser[submission.Submitter] >= NumSubmissionsPerUser {
+		log.Printf("Rejected submission from %s", submission.Submitter)
+		return false, OperationResult{Status: "error", Message: "Too many user submissions"}
 	}
 	for _, p := range s.submissions {
-		if slices.Equal(p.Operations, program.Operations) {
-			return false, EvalResult{Status: "error", Message: "Duplicate submission", Terms: nil}
+		if slices.Equal(p.Operations, submission.Operations) {
+			return false, OperationResult{Status: "error", Message: "Duplicate submission"}
 		}
 	}
-	return true, EvalResult{}
+	return true, OperationResult{}
 }
 
-// Returns a Result object
-func (s *ProgramsServer) doSubmit(program shared.Program) EvalResult {
-	submitter := ""
-	if program.Submitter != nil {
-		submitter = program.Submitter.Name
-	}
-	profile := program.GetMinerProfile()
+func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult {
+	profile := submission.MinerProfile
 	if len(profile) == 0 {
 		profile = "unknown"
 	}
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
-	s.submissions = append(s.submissions, program)
-	s.submissionsPerUser[submitter]++
+	s.submissions = append(s.submissions, submission)
+	s.submissionsPerUser[submission.Submitter]++
 	s.submissionsPerProfile[profile]++
 	msg := fmt.Sprintf("Accepted submission from %s (%d/%d); profile %s (%d)",
-		submitter, s.submissionsPerUser[submitter], NumSubmissionsPerUser,
+		submission.Submitter, s.submissionsPerUser[submission.Submitter], NumSubmissionsPerUser,
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
-	return EvalResult{Status: "success", Message: "Accepted submission", Terms: nil}
+	return OperationResult{Status: "success", Message: "Accepted submission"}
 }
 
 func newPostHandler(s *ProgramsServer) http.Handler {
@@ -142,12 +134,16 @@ func newPostHandler(s *ProgramsServer) http.Handler {
 		if !ok {
 			return
 		}
-		if ok, res := s.checkSubmit(program); !ok {
-			util.WriteJsonResponse(w, res)
+		// Convert Program to Submission
+		submission := shared.NewSubmissionFromProgram(program)
+		if ok, res := s.checkSubmit(submission); !ok {
+			// Convert OperationResult to EvalResult for v1 API
+			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
 			return
 		}
-		res := s.doSubmit(program)
-		util.WriteJsonResponse(w, res)
+		res := s.doSubmit(submission)
+		// Convert OperationResult to EvalResult for v1 API
+		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
 	}
 	return http.HandlerFunc(f)
 }
@@ -170,7 +166,7 @@ func newGetHandler(s *ProgramsServer) http.Handler {
 			util.WriteHttpNotFound(w)
 			return
 		}
-		util.WriteHttpOK(w, s.submissions[index].Code)
+		util.WriteHttpOK(w, s.submissions[index].Content)
 	}
 	return http.HandlerFunc(f)
 }
@@ -383,10 +379,7 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		if sname := req.URL.Query().Get("submitter"); sname != "" {
 			submitter = &shared.Submitter{Name: sname}
 		}
-		if ok, res := s.checkSubmit(program); !ok {
-			util.WriteJsonResponse(w, res)
-			return
-		}
+
 		idx := s.getDataIndex()
 		seq := shared.FindSequenceById(idx, id)
 		if seq == nil {
@@ -395,6 +388,15 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 		}
 		program.SetIdAndName(id, seq.Name)
 		program.SetSubmitter(submitter)
+
+		// Convert Program to Submission
+		submission := shared.NewSubmissionFromProgram(program)
+
+		if ok, res := s.checkSubmit(submission); !ok {
+			// Convert OperationResult to EvalResult
+			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
+			return
+		}
 
 		// Check that the program produces the expected terms
 		expectedTerms := seq.TermsList()
@@ -413,9 +415,9 @@ func newSubmitHandler(s *ProgramsServer) http.Handler {
 			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Terms don't match", Terms: result.Terms})
 			return
 		}
-		res := s.doSubmit(program)
-		res.Terms = result.Terms
-		util.WriteJsonResponse(w, res)
+		res := s.doSubmit(submission)
+		// Convert OperationResult to EvalResult and add terms from evaluation
+		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: result.Terms})
 	}
 	return http.HandlerFunc(f)
 }
@@ -428,8 +430,8 @@ func (s *ProgramsServer) writeCheckpoint() error {
 		return fmt.Errorf("cannot opening checkpoint file: %v", err)
 	}
 	defer f.Close()
-	for _, p := range s.submissions {
-		_, err = f.WriteString(fmt.Sprintf("%s%s\n", p.Code, ProgramSeparator))
+	for _, sub := range s.submissions {
+		_, err = f.WriteString(fmt.Sprintf("%s%s\n", sub.Content, ProgramSeparator))
 		if err != nil {
 			return fmt.Errorf("cannot write to checkpoint file: %v", err)
 		}
@@ -526,16 +528,16 @@ func (s *ProgramsServer) loadCheckpoint() {
 		return
 	}
 	log.Printf("Loading checkpoint %s", checkpointPath)
-	s.submissions = []shared.Program{}
+	s.submissions = []shared.Submission{}
 	scanner := bufio.NewScanner(file)
 	program := ""
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == ProgramSeparator {
 			if len(program) > 0 {
-				p, err := shared.NewProgramFromCode(program)
-				if err == nil && len(p.Operations) > 0 {
-					s.submissions = append(s.submissions, p)
+				sub, err := shared.NewSubmissionFromCode(program)
+				if err == nil && len(sub.Operations) > 0 {
+					s.submissions = append(s.submissions, sub)
 				} else {
 					log.Printf("Invalid program in checkpoint: %v", err)
 				}
@@ -546,6 +548,94 @@ func (s *ProgramsServer) loadCheckpoint() {
 		}
 	}
 	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
+}
+
+// newV2SubmissionsGetHandler handles GET requests for v2/submissions
+func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		limit, skip, _ := util.ParseLimitSkipShuffle(req, 10, 100)
+
+		s.submissionsMutex.Lock()
+		defer s.submissionsMutex.Unlock()
+
+		total := len(s.submissions)
+		results := []shared.Submission{}
+
+		// Apply pagination
+		start := skip
+		if start > total {
+			start = total
+		}
+		end := start + limit
+		if end > total {
+			end = total
+		}
+
+		if start < end {
+			results = s.submissions[start:end]
+		}
+
+		resp := shared.SubmissionsResult{
+			Total:   total,
+			Results: results,
+		}
+		util.WriteJsonResponse(w, resp)
+	}
+	return http.HandlerFunc(f)
+}
+
+// newV2SubmissionsPostHandler handles POST requests for v2/submissions
+func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+
+		// Read and parse submission from body
+		defer req.Body.Close()
+		var submission shared.Submission
+		if err := json.NewDecoder(req.Body).Decode(&submission); err != nil {
+			log.Printf("Invalid submission JSON: %v", err)
+			util.WriteHttpBadRequest(w)
+			return
+		}
+
+		// Validate submission
+		if submission.Id.IsZero() {
+			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Invalid or missing ID"})
+			return
+		}
+
+		// For now, only support programs
+		if submission.Type == shared.TypeProgram {
+			if submission.Mode != shared.ModeAdd && submission.Mode != shared.ModeUpdate {
+				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission mode for programs"})
+				return
+			}
+			if submission.Content == "" {
+				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Missing content"})
+				return
+			}
+		} else {
+			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission type"})
+			return
+		}
+
+		// Use unified check and submit functions
+		if ok, res := s.checkSubmit(submission); !ok {
+			util.WriteJsonResponse(w, res)
+			return
+		}
+
+		res := s.doSubmit(submission)
+		util.WriteJsonResponse(w, res)
+	}
+	return http.HandlerFunc(f)
 }
 
 func (s *ProgramsServer) Run(port int) {
@@ -588,6 +678,8 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
 	router.Handle("/v2/programs/export", newProgramExportHandler(s))
+	router.Handle("/v2/submissions", newV2SubmissionsGetHandler(s)).Methods(http.MethodGet)
+	router.Handle("/v2/submissions", newV2SubmissionsPostHandler(s)).Methods(http.MethodPost)
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
