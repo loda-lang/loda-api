@@ -603,6 +603,7 @@ func newV2SubmissionsGetHandler(s *ProgramsServer) http.Handler {
 		}
 
 		resp := shared.SubmissionsResult{
+			Session: s.session.Unix(),
 			Total:   total,
 			Results: results,
 		}

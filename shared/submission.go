@@ -97,6 +97,7 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 
 // SubmissionsResult represents a paginated list of submissions
 type SubmissionsResult struct {
+	Session int64        `json:"session"`
 	Total   int          `json:"total"`
 	Results []Submission `json:"results"`
 }

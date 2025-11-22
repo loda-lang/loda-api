@@ -619,6 +619,10 @@ components:
     SubmissionsResult:
       type: object
       properties:
+        session:
+          type: integer
+          format: int64
+          description: Unix timestamp of the current session
         total:
           type: integer
           description: Total number of submissions
