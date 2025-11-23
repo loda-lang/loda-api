@@ -637,12 +637,16 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 
 		// For now, only support programs
 		if submission.Type == shared.TypeProgram {
-			if submission.Mode != shared.ModeAdd && submission.Mode != shared.ModeUpdate {
+			switch submission.Mode {
+			case shared.ModeAdd, shared.ModeUpdate:
+				if submission.Content == "" {
+					util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Missing content"})
+					return
+				}
+			case shared.ModeDelete:
+				// Deletion: content can be empty
+			default:
 				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission mode for programs"})
-				return
-			}
-			if submission.Content == "" {
-				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Missing content"})
 				return
 			}
 		} else {
