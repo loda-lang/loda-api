@@ -104,9 +104,12 @@ func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, Operat
 		log.Printf("Rejected submission from %s", submission.Submitter)
 		return false, OperationResult{Status: "error", Message: "Too many user submissions"}
 	}
-	for _, p := range s.submissions {
-		if slices.Equal(p.Operations, submission.Operations) {
-			return false, OperationResult{Status: "error", Message: "Duplicate submission"}
+	// Skip duplicate check for remove mode
+	if submission.Mode != shared.ModeRemove {
+		for _, p := range s.submissions {
+			if slices.Equal(p.Operations, submission.Operations) {
+				return false, OperationResult{Status: "error", Message: "Duplicate submission"}
+			}
 		}
 	}
 	return true, OperationResult{}
