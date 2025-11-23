@@ -33,7 +33,8 @@ const (
 	CheckpointInterval    = 10 * time.Minute
 	UpdateInterval        = 24 * time.Hour
 	CheckSessionInterval  = 24 * time.Hour
-	CheckpointFile        = "checkpoint.txt"
+	CheckpointFile        = "checkpoint.json"
+	CheckpointFileLegacy  = "checkpoint.txt"
 	ProgramSeparator      = "=============================="
 )
 
@@ -366,14 +367,13 @@ func (s *ProgramsServer) writeCheckpoint() error {
 	defer s.submissionsMutex.Unlock()
 	f, err := os.Create(filepath.Join(s.dataDir, CheckpointFile))
 	if err != nil {
-		return fmt.Errorf("cannot opening checkpoint file: %v", err)
+		return fmt.Errorf("cannot open checkpoint file: %v", err)
 	}
 	defer f.Close()
-	for _, sub := range s.submissions {
-		_, err = f.WriteString(fmt.Sprintf("%s%s\n", sub.Content, ProgramSeparator))
-		if err != nil {
-			return fmt.Errorf("cannot write to checkpoint file: %v", err)
-		}
+	encoder := json.NewEncoder(f)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(s.submissions); err != nil {
+		return fmt.Errorf("cannot write to checkpoint file: %v", err)
 	}
 	return nil
 }
@@ -463,10 +463,32 @@ func (s *ProgramsServer) loadCheckpoint() {
 	checkpointPath := filepath.Join(s.dataDir, CheckpointFile)
 	file, err := os.Open(checkpointPath)
 	if err != nil {
+		// Try loading legacy format
+		log.Printf("Cannot load JSON checkpoint %s, attempting legacy format", checkpointPath)
+		s.loadCheckpointLegacy()
+		return
+	}
+	defer file.Close()
+	log.Printf("Loading checkpoint %s", checkpointPath)
+	s.submissions = []shared.Submission{}
+	decoder := json.NewDecoder(file)
+	if err := decoder.Decode(&s.submissions); err != nil {
+		log.Printf("Cannot decode checkpoint JSON: %v, trying legacy format", err)
+		s.loadCheckpointLegacy()
+		return
+	}
+	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
+}
+
+func (s *ProgramsServer) loadCheckpointLegacy() {
+	checkpointPath := filepath.Join(s.dataDir, CheckpointFileLegacy)
+	file, err := os.Open(checkpointPath)
+	if err != nil {
 		log.Printf("Cannot load checkpoint %s", checkpointPath)
 		return
 	}
-	log.Printf("Loading checkpoint %s", checkpointPath)
+	defer file.Close()
+	log.Printf("Loading legacy checkpoint %s", checkpointPath)
 	s.submissions = []shared.Submission{}
 	scanner := bufio.NewScanner(file)
 	program := ""
@@ -486,7 +508,7 @@ func (s *ProgramsServer) loadCheckpoint() {
 			program = program + line + "\n"
 		}
 	}
-	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
+	log.Printf("Loaded %v submissions from legacy checkpoint", len(s.submissions))
 }
 
 // newV2SubmissionsGetHandler handles GET requests for v2/submissions
