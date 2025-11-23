@@ -113,3 +113,105 @@ func TestCheckpoint_MissingFile(t *testing.T) {
 	// Should not crash, just have empty submissions
 	assert.Equal(t, 0, len(server.submissions))
 }
+
+func TestCheckSubmit_DuplicateAdd(t *testing.T) {
+	// Create a test server
+	server := NewProgramsServer("", nil, nil)
+
+	// Create a submission with mode "add"
+	id1, _ := util.NewUIDFromString("A000045")
+	submission1 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeAdd,
+		Type:       shared.TypeProgram,
+		Content:    "mov $0,1\nadd $0,2\n",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+
+	// First submission should succeed
+	ok, _ := server.checkSubmit(submission1)
+	assert.True(t, ok, "First submission should be accepted")
+	server.doSubmit(submission1)
+
+	// Duplicate submission with same operations should fail
+	submission2 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeAdd,
+		Type:       shared.TypeProgram,
+		Content:    "mov $0,1\nadd $0,2\n",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+	ok, result := server.checkSubmit(submission2)
+	assert.False(t, ok, "Duplicate add submission should be rejected")
+	assert.Equal(t, "Duplicate submission", result.Message)
+}
+
+func TestCheckSubmit_DuplicateRemove(t *testing.T) {
+	// Create a test server
+	server := NewProgramsServer("", nil, nil)
+
+	// Create a submission with mode "remove"
+	id1, _ := util.NewUIDFromString("A000045")
+	submission1 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeRemove,
+		Type:       shared.TypeProgram,
+		Content:    "",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+
+	// First remove submission should succeed
+	ok, _ := server.checkSubmit(submission1)
+	assert.True(t, ok, "First remove submission should be accepted")
+	server.doSubmit(submission1)
+
+	// Duplicate remove submission with same operations should also succeed
+	// because duplicate check is skipped for remove mode
+	submission2 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeRemove,
+		Type:       shared.TypeProgram,
+		Content:    "",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+	ok, _ = server.checkSubmit(submission2)
+	assert.True(t, ok, "Duplicate remove submission should be accepted (duplicate check skipped)")
+}
+
+func TestCheckSubmit_DuplicateUpdate(t *testing.T) {
+	// Create a test server
+	server := NewProgramsServer("", nil, nil)
+
+	// Create a submission with mode "update"
+	id1, _ := util.NewUIDFromString("A000045")
+	submission1 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeUpdate,
+		Type:       shared.TypeProgram,
+		Content:    "mov $0,1\nadd $0,2\n",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+
+	// First submission should succeed
+	ok, _ := server.checkSubmit(submission1)
+	assert.True(t, ok, "First update submission should be accepted")
+	server.doSubmit(submission1)
+
+	// Duplicate submission with same operations should fail
+	submission2 := shared.Submission{
+		Id:         id1,
+		Mode:       shared.ModeUpdate,
+		Type:       shared.TypeProgram,
+		Content:    "mov $0,1\nadd $0,2\n",
+		Submitter:  "alice",
+		Operations: []string{"mov", "add"},
+	}
+	ok, result := server.checkSubmit(submission2)
+	assert.False(t, ok, "Duplicate update submission should be rejected")
+	assert.Equal(t, "Duplicate submission", result.Message)
+}
