@@ -27,10 +27,10 @@ const (
 // Submission represents a submission of a program or sequence
 type Submission struct {
 	Id        util.UID
-	Submitter string
-	Content   string
 	Mode      Mode
 	Type      Type
+	Content   string
+	Submitter string
 	// Additional fields for internal use (not serialized in JSON)
 	Operations   []string // extracted operations for duplicate detection
 	MinerProfile string   // miner profile for metrics
@@ -40,16 +40,16 @@ type Submission struct {
 func (s Submission) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Id        string `json:"id"`
-		Submitter string `json:"submitter"`
-		Content   string `json:"content"`
 		Mode      string `json:"mode"`
 		Type      string `json:"type"`
+		Content   string `json:"content,omitempty"`
+		Submitter string `json:"submitter,omitempty"`
 	}{
 		Id:        s.Id.String(),
-		Submitter: s.Submitter,
-		Content:   s.Content,
 		Mode:      string(s.Mode),
 		Type:      string(s.Type),
+		Content:   s.Content,
+		Submitter: s.Submitter,
 	})
 }
 
@@ -57,10 +57,10 @@ func (s Submission) MarshalJSON() ([]byte, error) {
 func (s *Submission) UnmarshalJSON(data []byte) error {
 	var aux struct {
 		Id        string `json:"id"`
-		Submitter string `json:"submitter"`
-		Content   string `json:"content"`
 		Mode      string `json:"mode"`
 		Type      string `json:"type"`
+		Content   string `json:"content,omitempty"`
+		Submitter string `json:"submitter,omitempty"`
 	}
 	if err := json.Unmarshal(data, &aux); err != nil {
 		return err
@@ -80,10 +80,10 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 		return fmt.Errorf("invalid type: %s", aux.Type)
 	}
 	s.Id = uid
-	s.Submitter = aux.Submitter
-	s.Content = aux.Content
 	s.Mode = mode
 	s.Type = objType
+	s.Content = aux.Content
+	s.Submitter = aux.Submitter
 	// Extract operations and miner profile from programs for internal use
 	if s.Type == TypeProgram {
 		s.Operations = extractOperations(aux.Content)

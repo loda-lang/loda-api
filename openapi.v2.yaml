@@ -547,8 +547,6 @@ components:
       type: object
       required:
         - id
-        - submitter
-        - content
         - mode
         - type
       properties:
