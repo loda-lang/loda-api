@@ -555,10 +555,16 @@ components:
           pattern: '^[A-Z]\d{1,10}$'
           description: ID of the program or sequence
           example: A000045
-        submitter:
+        mode:
           type: string
-          description: Name of the person submitting
-          example: Alice
+          enum: [add, update, delete]
+          description: Type of submission operation
+          example: add
+        type:
+          type: string
+          enum: [program, sequence]
+          description: Type of object being submitted
+          example: program
         content:
           type: string
           description: Content of the submission (program code or sequence data)
@@ -571,16 +577,10 @@ components:
             lpe
             mul $0,$2
             add $0,$1
-        mode:
+        submitter:
           type: string
-          enum: [add, update, delete]
-          description: Type of submission operation
-          example: add
-        type:
-          type: string
-          enum: [program, sequence]
-          description: Type of object being submitted
-          example: program
+          description: Name of the person submitting
+          example: Alice
     SubmissionsResult:
       type: object
       properties:
