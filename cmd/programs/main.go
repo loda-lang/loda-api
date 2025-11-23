@@ -582,8 +582,8 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 					util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Missing content"})
 					return
 				}
-			case shared.ModeDelete:
-				// Deletion: content can be empty
+			case shared.ModeRemove:
+				// Removal: content can be empty
 			default:
 				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission mode for programs"})
 				return

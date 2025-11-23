@@ -203,10 +203,10 @@ paths:
       - name: mode
         in: query
         required: false
-        description: Filter submissions by mode (add, update, or delete)
+        description: Filter submissions by mode (add, update, or remove)
         schema:
           type: string
-          enum: [add, update, delete]
+          enum: [add, update, remove]
       - name: type
         in: query
         required: false
@@ -237,7 +237,7 @@ paths:
         Submission modes:
         - **add**: Add a new program or sequence
         - **update**: Update an existing program or sequence
-        - **delete**: Delete a program or sequence
+        - **remove**: Remove a program or sequence
         
         Object types:
         - **program**: LODA program submission
@@ -557,7 +557,7 @@ components:
           example: A000045
         mode:
           type: string
-          enum: [add, update, delete]
+          enum: [add, update, remove]
           description: Type of submission operation
           example: add
         type:
@@ -567,7 +567,7 @@ components:
           example: program
         content:
           type: string
-          description: Content of the submission (program code or sequence data)
+          description: Content of the submission - program code or sequence data (not required when mode is 'remove')
           example: |
             mov $2,1
             lpb $0

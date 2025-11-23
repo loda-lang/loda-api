@@ -13,7 +13,7 @@ type Mode string
 const (
 	ModeAdd    Mode = "add"
 	ModeUpdate Mode = "update"
-	ModeDelete Mode = "delete"
+	ModeRemove Mode = "remove"
 )
 
 // Type represents the type of object being submitted
@@ -69,9 +69,12 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	if err != nil {
 		return err
 	}
-	// Validate mode
+	// Validate mode (map 'delete' to 'remove' for backward compatibility)
 	mode := Mode(aux.Mode)
-	if mode != ModeAdd && mode != ModeUpdate && mode != ModeDelete {
+	if mode == "delete" {
+		mode = ModeRemove
+	}
+	if mode != ModeAdd && mode != ModeUpdate && mode != ModeRemove {
 		return fmt.Errorf("invalid mode: %s", aux.Mode)
 	}
 	// Validate type
