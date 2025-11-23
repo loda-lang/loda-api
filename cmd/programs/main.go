@@ -361,67 +361,6 @@ func newProgramExportHandler(s *ProgramsServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func newSubmitHandler(s *ProgramsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		params := mux.Vars(req)
-		idStr := params["id"]
-		id, err := util.NewUIDFromString(idStr)
-		if err != nil || id.IsZero() {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid program ID", Terms: nil})
-			return
-		}
-		program, ok := readProgramFromBody(w, req)
-		if !ok {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Invalid program format", Terms: nil})
-			return
-		}
-		submitter := program.Submitter
-		if sname := req.URL.Query().Get("submitter"); sname != "" {
-			submitter = &shared.Submitter{Name: sname}
-		}
-
-		idx := s.getDataIndex()
-		seq := shared.FindSequenceById(idx, id)
-		if seq == nil {
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Sequence not found", Terms: nil})
-			return
-		}
-		program.SetIdAndName(id, seq.Name)
-		program.SetSubmitter(submitter)
-
-		// Convert Program to Submission
-		submission := shared.NewSubmissionFromProgram(program)
-
-		if ok, res := s.checkSubmit(submission); !ok {
-			// Convert OperationResult to EvalResult
-			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
-			return
-		}
-
-		// Check that the program produces the expected terms
-		expectedTerms := seq.TermsList()
-		if len(expectedTerms) > NumTermsCheck {
-			expectedTerms = expectedTerms[:NumTermsCheck]
-		}
-		log.Printf("Checking program %v", program.Id)
-		result := s.lodaTool.Eval(program, NumTermsCheck)
-		if result.Status == "error" {
-			util.WriteJsonResponse(w, result)
-			return
-		}
-		if !slices.Equal(expectedTerms, result.Terms) {
-			log.Printf("Submission for %v produced incorrect terms; expected: %v, got: %v",
-				id.String(), expectedTerms, result.Terms)
-			util.WriteJsonResponse(w, EvalResult{Status: "error", Message: "Terms don't match", Terms: result.Terms})
-			return
-		}
-		res := s.doSubmit(submission)
-		// Convert OperationResult to EvalResult and add terms from evaluation
-		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: result.Terms})
-	}
-	return http.HandlerFunc(f)
-}
-
 func (s *ProgramsServer) writeCheckpoint() error {
 	s.submissionsMutex.Lock()
 	defer s.submissionsMutex.Unlock()
@@ -701,7 +640,6 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v1/programs/", postHandler)
 	router.Handle("/v1/programs/{index:[0-9]+}", newGetHandler(s))
 	router.Handle("/v1/checkpoint", newCheckpointHandler(s))
-	router.Handle("/v2/programs/{id:[A-Z][0-9]+}/submit", newSubmitHandler(s))
 	router.Handle("/v2/programs/{id:[A-Z][0-9]+}", newProgramByIdHandler(s))
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))

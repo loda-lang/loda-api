@@ -190,39 +190,6 @@ paths:
                 $ref: '#/components/schemas/ExportResult'
         '400':
           description: Bad request, invalid program format
-  /programs/{id}/submit:
-    post:
-      tags: [ Programs ]
-      summary: Submit a new LODA program
-      parameters:
-      - $ref: '#/components/parameters/ID'
-      - $ref: '#/components/parameters/Submitter'
-      description: Submit a LODA program in plain text format. The request body should contain the program code as text/plain. The response is a Result object, similar to the /programs/eval endpoint.
-      requestBody:
-        required: true
-        content:
-          text/plain:
-            schema:
-              type: string
-              description: LODA program code
-            example: |
-              mov $2,1
-              lpb $0
-                sub $0,2
-                add $2,$1
-                add $1,$2
-              lpe
-              mul $0,$2
-              add $0,$1
-      responses:
-        '200':
-          description: Submission result
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/EvalResult'
-        '400':
-          description: Bad request, invalid program format
   /submissions:
     get:
       tags: [ Submissions ]
