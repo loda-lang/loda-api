@@ -367,7 +367,7 @@ func (s *ProgramsServer) writeCheckpoint() error {
 	defer s.submissionsMutex.Unlock()
 	f, err := os.Create(filepath.Join(s.dataDir, CheckpointFile))
 	if err != nil {
-		return fmt.Errorf("cannot opening checkpoint file: %v", err)
+		return fmt.Errorf("cannot open checkpoint file: %v", err)
 	}
 	defer f.Close()
 	encoder := json.NewEncoder(f)
@@ -464,6 +464,7 @@ func (s *ProgramsServer) loadCheckpoint() {
 	file, err := os.Open(checkpointPath)
 	if err != nil {
 		// Try loading legacy format
+		log.Printf("Cannot load JSON checkpoint %s, attempting legacy format", checkpointPath)
 		s.loadCheckpointLegacy()
 		return
 	}
