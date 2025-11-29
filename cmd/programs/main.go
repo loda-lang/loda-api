@@ -23,19 +23,20 @@ import (
 )
 
 const (
-	NumSubmissionsLow     = 1000
-	NumSubmissionsHigh    = 2000
-	NumSubmissionsMax     = 50000
-	NumSubmissionsPerUser = 100
-	MaxProgramLength      = 100000
-	MaxNumParallelEval    = 10
-	NumTermsCheck         = 8
-	CheckpointInterval    = 10 * time.Minute
-	UpdateInterval        = 24 * time.Hour
-	CheckSessionInterval  = 24 * time.Hour
-	CheckpointFile        = "checkpoint.json"
-	CheckpointFileLegacy  = "checkpoint.txt"
-	ProgramSeparator      = "=============================="
+	NumSubmissionsLow       = 1000
+	NumSubmissionsHigh      = 2000
+	NumSubmissionsMax       = 50000
+	NumSubmissionsPerUser   = 100
+	MaxProgramLength        = 100000
+	MaxNumParallelEval      = 10
+	NumTermsCheck           = 8
+	CheckpointInterval      = 10 * time.Minute
+	UpdateInterval          = 24 * time.Hour
+	CheckSessionInterval    = 24 * time.Hour
+	BFileProtectionDuration = 24 * time.Hour
+	CheckpointFile          = "checkpoint.json"
+	CheckpointFileLegacy    = "checkpoint.txt"
+	ProgramSeparator        = "=============================="
 )
 
 type ProgramsServer struct {
@@ -47,9 +48,11 @@ type ProgramsServer struct {
 	submissions           []shared.Submission // Unified submissions (v1 and v2)
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
+	bfileRemovals         map[string]time.Time // Tracks b-file removal times for 24h protection
 	dataIndexMutex        sync.Mutex
 	submissionsMutex      sync.Mutex
 	updateMutex           sync.Mutex
+	bfileRemovalsMutex    sync.Mutex
 }
 
 func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, lodaTool *LODATool) *ProgramsServer {
@@ -61,6 +64,7 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
+		bfileRemovals:         make(map[string]time.Time),
 	}
 }
 
@@ -130,6 +134,58 @@ func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult 
 		profile, s.submissionsPerProfile[profile])
 	log.Print(msg)
 	return OperationResult{Status: "success", Message: "Accepted submission"}
+}
+
+// getBFilePath returns the path to a b-file for the given sequence ID.
+// The ID is validated using util.NewUIDFromString format (e.g., "A000045").
+func (s *ProgramsServer) getBFilePath(id util.UID) string {
+	idStr := id.String()
+	numericId := idStr[1:] // e.g., "000045"
+	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:3])
+	filename := fmt.Sprintf("b%s.txt.gz", numericId)
+	return filepath.Join(dir, filename)
+}
+
+// removeBFile removes a b-file and returns an OperationResult.
+// B-files are protected for 24 hours after removal.
+func (s *ProgramsServer) removeBFile(submission shared.Submission) OperationResult {
+	idStr := submission.Id.String()
+
+	// Check 24h protection
+	s.bfileRemovalsMutex.Lock()
+	if lastRemoval, exists := s.bfileRemovals[idStr]; exists {
+		if time.Since(lastRemoval) < BFileProtectionDuration {
+			s.bfileRemovalsMutex.Unlock()
+			remaining := BFileProtectionDuration - time.Since(lastRemoval)
+			protectionMsg := fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())
+			log.Printf("%s: %s", protectionMsg, idStr)
+			return OperationResult{Status: "error", Message: protectionMsg}
+		}
+	}
+	s.bfileRemovalsMutex.Unlock()
+
+	// Get the b-file path (ID format already validated by NewUIDFromString in submission)
+	bfilePath := s.getBFilePath(submission.Id)
+
+	// Check if the file exists
+	if !util.FileExists(bfilePath) {
+		log.Printf("B-file does not exist: %s", bfilePath)
+		return OperationResult{Status: "error", Message: "B-file does not exist"}
+	}
+
+	// Remove the file
+	if err := os.Remove(bfilePath); err != nil {
+		log.Printf("Failed to remove b-file %s: %v", bfilePath, err)
+		return OperationResult{Status: "error", Message: "Failed to remove b-file"}
+	}
+
+	// Record the removal time for 24h protection
+	s.bfileRemovalsMutex.Lock()
+	s.bfileRemovals[idStr] = time.Now()
+	s.bfileRemovalsMutex.Unlock()
+
+	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
+	return OperationResult{Status: "success", Message: "B-file removed"}
 }
 
 func newPostHandler(s *ProgramsServer) http.Handler {
@@ -599,8 +655,9 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			return
 		}
 
-		// For now, only support programs
-		if submission.Type == shared.TypeProgram {
+		// Handle different submission types
+		switch submission.Type {
+		case shared.TypeProgram:
 			switch submission.Mode {
 			case shared.ModeAdd, shared.ModeUpdate:
 				if submission.Content == "" {
@@ -613,19 +670,21 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 				util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission mode for programs"})
 				return
 			}
-		} else {
+			// Use unified check and submit functions
+			if ok, res := s.checkSubmit(submission); !ok {
+				util.WriteJsonResponse(w, res)
+				return
+			}
+			res := s.doSubmit(submission)
+			util.WriteJsonResponse(w, res)
+		case shared.TypeBFile:
+			// Only remove mode is allowed for b-files (already validated in UnmarshalJSON)
+			res := s.removeBFile(submission)
+			util.WriteJsonResponse(w, res)
+		default:
 			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission type"})
 			return
 		}
-
-		// Use unified check and submit functions
-		if ok, res := s.checkSubmit(submission); !ok {
-			util.WriteJsonResponse(w, res)
-			return
-		}
-
-		res := s.doSubmit(submission)
-		util.WriteJsonResponse(w, res)
 	}
 	return http.HandlerFunc(f)
 }

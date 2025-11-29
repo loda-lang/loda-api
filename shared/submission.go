@@ -22,6 +22,7 @@ type Type string
 const (
 	TypeProgram  Type = "program"
 	TypeSequence Type = "sequence"
+	TypeBFile    Type = "bfile"
 )
 
 // Submission represents a submission of a program or sequence
@@ -79,8 +80,12 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	}
 	// Validate type
 	objType := Type(aux.Type)
-	if objType != TypeProgram && objType != TypeSequence {
+	if objType != TypeProgram && objType != TypeSequence && objType != TypeBFile {
 		return fmt.Errorf("invalid type: %s", aux.Type)
+	}
+	// Validate mode for bfile type (only remove allowed)
+	if objType == TypeBFile && mode != ModeRemove {
+		return fmt.Errorf("only remove mode is allowed for bfile type")
 	}
 	s.Id = uid
 	s.Mode = mode
