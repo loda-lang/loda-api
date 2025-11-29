@@ -679,7 +679,15 @@ func newV2SubmissionsPostHandler(s *ProgramsServer) http.Handler {
 			util.WriteJsonResponse(w, res)
 		case shared.TypeBFile:
 			// Only remove mode is allowed for b-files (already validated in UnmarshalJSON)
+			if ok, res := s.checkSubmit(submission); !ok {
+				util.WriteJsonResponse(w, res)
+				return
+			}
 			res := s.removeBFile(submission)
+			if res.Status == "success" {
+				// Only record submission if b-file removal succeeded
+				s.doSubmit(submission)
+			}
 			util.WriteJsonResponse(w, res)
 		default:
 			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Unsupported submission type"})
