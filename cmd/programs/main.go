@@ -37,10 +37,6 @@ const (
 	CheckpointFile          = "checkpoint.json"
 	CheckpointFileLegacy    = "checkpoint.txt"
 	ProgramSeparator        = "=============================="
-	// B-file ID format constants
-	BFileIDLength    = 7  // Expected length of b-file ID (e.g., "A000045")
-	BFileIDPrefix    = 'A'
-	BFileDirPrefixLen = 3  // Number of digits used for directory prefix
 )
 
 type ProgramsServer struct {
@@ -141,15 +137,13 @@ func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult 
 }
 
 // getBFilePath returns the path to a b-file for the given sequence ID.
-// The ID should be in format "A<6digits>" (e.g., "A000045").
-func (s *ProgramsServer) getBFilePath(id string) (string, error) {
-	if len(id) != BFileIDLength || id[0] != BFileIDPrefix {
-		return "", fmt.Errorf("invalid sequence ID format: %s", id)
-	}
-	numericId := id[1:] // e.g., "000045"
-	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:BFileDirPrefixLen])
+// The ID is validated using util.NewUIDFromString format (e.g., "A000045").
+func (s *ProgramsServer) getBFilePath(id util.UID) string {
+	idStr := id.String()
+	numericId := idStr[1:] // e.g., "000045"
+	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:3])
 	filename := fmt.Sprintf("b%s.txt.gz", numericId)
-	return filepath.Join(dir, filename), nil
+	return filepath.Join(dir, filename)
 }
 
 // removeBFile removes a b-file and returns an OperationResult.
@@ -170,12 +164,8 @@ func (s *ProgramsServer) removeBFile(submission shared.Submission) OperationResu
 	}
 	s.bfileRemovalsMutex.Unlock()
 
-	// Get the b-file path
-	bfilePath, err := s.getBFilePath(idStr)
-	if err != nil {
-		log.Printf("Invalid b-file ID: %v", err)
-		return OperationResult{Status: "error", Message: "Invalid b-file ID"}
-	}
+	// Get the b-file path (ID format already validated by NewUIDFromString in submission)
+	bfilePath := s.getBFilePath(submission.Id)
 
 	// Check if the file exists
 	if !util.FileExists(bfilePath) {
