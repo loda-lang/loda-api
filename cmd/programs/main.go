@@ -37,6 +37,10 @@ const (
 	CheckpointFile          = "checkpoint.json"
 	CheckpointFileLegacy    = "checkpoint.txt"
 	ProgramSeparator        = "=============================="
+	// B-file ID format constants
+	BFileIDLength    = 7  // Expected length of b-file ID (e.g., "A000045")
+	BFileIDPrefix    = 'A'
+	BFileDirPrefixLen = 3  // Number of digits used for directory prefix
 )
 
 type ProgramsServer struct {
@@ -139,11 +143,11 @@ func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult 
 // getBFilePath returns the path to a b-file for the given sequence ID.
 // The ID should be in format "A<6digits>" (e.g., "A000045").
 func (s *ProgramsServer) getBFilePath(id string) (string, error) {
-	if len(id) != 7 || id[0] != 'A' {
+	if len(id) != BFileIDLength || id[0] != BFileIDPrefix {
 		return "", fmt.Errorf("invalid sequence ID format: %s", id)
 	}
 	numericId := id[1:] // e.g., "000045"
-	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:3])
+	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:BFileDirPrefixLen])
 	filename := fmt.Sprintf("b%s.txt.gz", numericId)
 	return filepath.Join(dir, filename), nil
 }
@@ -159,8 +163,9 @@ func (s *ProgramsServer) removeBFile(submission shared.Submission) OperationResu
 		if time.Since(lastRemoval) < BFileProtectionDuration {
 			s.bfileRemovalsMutex.Unlock()
 			remaining := BFileProtectionDuration - time.Since(lastRemoval)
-			log.Printf("B-file %s is protected for %.0f more hours", idStr, remaining.Hours())
-			return OperationResult{Status: "error", Message: fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())}
+			protectionMsg := fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())
+			log.Printf("%s: %s", protectionMsg, idStr)
+			return OperationResult{Status: "error", Message: protectionMsg}
 		}
 	}
 	s.bfileRemovalsMutex.Unlock()
