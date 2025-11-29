@@ -195,8 +195,8 @@ paths:
       tags: [ Submissions ]
       summary: Get submissions
       description: |
-        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs and sequences with support for pagination and filtering.
-        Submissions contain the ID, submitter, content, submission type (add/update/delete), and object type (program/sequence).
+        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs, sequences, and b-file removal requests with support for pagination and filtering.
+        Submissions contain the ID, submitter, content, submission type (add/update/remove), and object type (program/sequence/bfile).
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
@@ -210,10 +210,10 @@ paths:
       - name: type
         in: query
         required: false
-        description: Filter submissions by object type (program or sequence)
+        description: Filter submissions by object type (program, sequence, or bfile)
         schema:
           type: string
-          enum: [program, sequence]
+          enum: [program, sequence, bfile]
       - name: submitter
         in: query
         required: false
@@ -229,19 +229,20 @@ paths:
                 $ref: '#/components/schemas/SubmissionsResult'
     post:
       tags: [ Submissions ]
-      summary: Submit a new program or sequence
+      summary: Submit a new program, sequence, or b-file removal request
       description: |
-        Submit a new program or sequence. Currently only program submissions are supported.
+        Submit a new program, sequence, or b-file removal request. Currently program submissions and b-file removal requests are supported.
         The request body should contain a JSON object with the submission details including ID, submitter, content, mode, and type.
         
         Submission modes:
         - **add**: Add a new program or sequence
         - **update**: Update an existing program or sequence
-        - **remove**: Remove a program or sequence
+        - **remove**: Remove a program, sequence, or b-file
         
         Object types:
         - **program**: LODA program submission
         - **sequence**: Integer sequence submission (not yet supported)
+        - **bfile**: OEIS b-file removal request (only 'remove' mode is allowed). When a b-file is removed, it is protected for 24 hours during which it cannot be removed again.
       requestBody:
         required: true
         content:
@@ -553,21 +554,21 @@ components:
         id:
           type: string
           pattern: '^[A-Z]\d{1,10}$'
-          description: ID of the program or sequence
+          description: ID of the program, sequence, or b-file
           example: A000045
         mode:
           type: string
           enum: [add, update, remove]
-          description: Type of submission operation
+          description: Type of submission operation. Note that b-files only support 'remove' mode.
           example: add
         type:
           type: string
-          enum: [program, sequence]
-          description: Type of object being submitted
+          enum: [program, sequence, bfile]
+          description: Type of object being submitted. B-files are OEIS b-files that can be removed when broken.
           example: program
         content:
           type: string
-          description: Content of the submission - program code or sequence data (not required when mode is 'remove')
+          description: Content of the submission - program code or sequence data (not required when mode is 'remove' or type is 'bfile')
           example: |
             mov $2,1
             lpb $0
