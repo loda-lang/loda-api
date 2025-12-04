@@ -124,6 +124,7 @@
           },
           "custom": {},
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -214,6 +215,7 @@
           },
           "custom": {},
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -304,6 +306,7 @@
           },
           "custom": {},
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -394,6 +397,7 @@
           },
           "custom": {},
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
