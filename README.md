@@ -3,7 +3,7 @@
 This project consists of the following parts:
 
 * LODA API server implementations written in Go.
-* Monitoring of LODA miners using InfluxDB and Grafana.
+* Monitoring of LODA miners using InfluxDB, Grafana, and Perses.
 * Docker image for running everything in one container.
 
 There are separate API servers for:
@@ -11,6 +11,15 @@ There are separate API servers for:
 * OEIS cache
 * Program submissions
 * Stats
+
+## Dashboards
+
+The monitoring dashboards are available at:
+
+* Grafana: `https://dashboard.loda-lang.org/grafana/`
+* Perses: `https://dashboard.loda-lang.org/perses/`
+
+Both dashboards connect to the same InfluxDB data source and display LODA mining metrics.
 
 ## Recommended Hardware Setup
 
