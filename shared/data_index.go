@@ -381,13 +381,13 @@ func ExtractPariSeqs(path string) (map[string]struct{}, error) {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	var currentID string
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
-		
+
 		// Check if it's a continuation line (starts with 2 spaces)
 		if strings.HasPrefix(line, "  ") {
 			// This is a continuation line - use the current ID
@@ -446,13 +446,13 @@ func ExtractKeywordsFromFile(path string, separator string) (map[string]uint64, 
 	encoded := make(map[string]uint64)
 	scanner := bufio.NewScanner(file)
 	var currentID string
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
-		
+
 		// Check if it's a continuation line (starts with 2 spaces)
 		if strings.HasPrefix(line, "  ") {
 			// This is a continuation line - use the current ID

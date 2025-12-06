@@ -116,7 +116,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if len(programs) != 13 {
 		t.Errorf("expected 13 programs, got %d", len(programs))
 	}
-	
+
 	// Load operation type index for testing
 	opTypesPath := filepath.Join("../testdata/stats/operation_types.csv")
 	opTypes, err := LoadOperationTypesCSV(opTypesPath)
@@ -127,7 +127,7 @@ func TestLoadProgramsCSV(t *testing.T) {
 	if err != nil {
 		t.Fatalf("NewOpTypeIndex failed: %v", err)
 	}
-	
+
 	// Check a few known values (based on the new CSV and submitter mapping)
 	p := programs[0]
 	if p.Id.String() != "A000002" || p.Length != 10 {
@@ -214,13 +214,13 @@ func TestLoadOperationTypesCSV(t *testing.T) {
 	if opTypes[33].Name != "seq" || opTypes[33].RefId != 34 || opTypes[33].Count != 60327 {
 		t.Errorf("unexpected operation type[33]: %+v", opTypes[33])
 	}
-	
+
 	// Create an index to validate the operation types
 	opIndex, err := NewOpTypeIndex(opTypes)
 	if err != nil {
 		t.Fatalf("NewOpTypeIndex failed: %v", err)
 	}
-	
+
 	// Verify all operation types are accessible via the index
 	for _, op := range opTypes {
 		if !opIndex.IsOperationType(op.Name) {

@@ -38,11 +38,11 @@ func TestList_MultiLineFormat(t *testing.T) {
 	l.Update(fields)
 	err := l.Flush(false)
 	assert.Equal(t, nil, err, "Expected no error")
-	
+
 	// Read the file and verify format
 	content, err := os.ReadFile("test_multiline")
 	assert.Equal(t, nil, err, "Expected no error reading file")
-	
+
 	lines := string(content)
 	expected := `A000001: first entry for A000001
   second entry for A000001
@@ -52,7 +52,7 @@ A000003: first entry for A000003
   second entry for A000003
 `
 	assert.Equal(t, expected, lines, "Unexpected multi-line format")
-	
+
 	os.Remove("test_multiline")
 	os.Remove("test_multiline.gz")
 }
@@ -60,7 +60,7 @@ A000003: first entry for A000003
 func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 	// Test that we can read back a multi-line format file
 	l := NewList("T", "test_roundtrip", ".")
-	
+
 	// Create initial file with multi-line format
 	fields1 := []Field{
 		{Key: "T", SeqId: 1, Content: "entry1-a"},
@@ -70,7 +70,7 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 	l.Update(fields1)
 	err := l.Flush(false)
 	assert.Equal(t, nil, err, "Expected no error")
-	
+
 	// Now add more entries and flush again
 	fields2 := []Field{
 		{Key: "T", SeqId: 1, Content: "entry1-c"},
@@ -80,11 +80,11 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 	l.Update(fields2)
 	err = l.Flush(false)
 	assert.Equal(t, nil, err, "Expected no error")
-	
+
 	// Read the file and verify all entries are present
 	content, err := os.ReadFile("test_roundtrip")
 	assert.Equal(t, nil, err, "Expected no error reading file")
-	
+
 	lines := string(content)
 	expected := `A000001: entry1-a
   entry1-b
@@ -94,7 +94,7 @@ A000003: entry3
   entry3-b
 `
 	assert.Equal(t, expected, lines, "Unexpected multi-line format after round trip")
-	
+
 	os.Remove("test_roundtrip")
 	os.Remove("test_roundtrip.gz")
 }

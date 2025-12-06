@@ -160,12 +160,12 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	// Merges fields with old list and writes to target list
 	// If deduplicate is true, remove duplicate entries (same SeqId)
 	// Outputs in multi-line format: first line has "A000000: content", continuation lines have "  content"
-	
+
 	// Read all old entries grouped by SeqId
 	oldEntries := make(map[int][]string)
 	scanner := bufio.NewScanner(old)
 	var currentSeqId int = -1
-	
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if isContinuationLine(line) {
@@ -190,13 +190,13 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed reading old list: %w", err)
 	}
-	
+
 	// Group new fields by SeqId
 	newEntries := make(map[int][]string)
 	for _, field := range fields {
 		newEntries[field.SeqId] = append(newEntries[field.SeqId], field.Content)
 	}
-	
+
 	// Merge old and new entries
 	allSeqIds := make(map[int]bool)
 	for seqId := range oldEntries {
@@ -205,21 +205,21 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	for seqId := range newEntries {
 		allSeqIds[seqId] = true
 	}
-	
+
 	// Convert to sorted slice
 	var seqIds []int
 	for seqId := range allSeqIds {
 		seqIds = append(seqIds, seqId)
 	}
 	sort.Ints(seqIds)
-	
+
 	// Write merged entries in multi-line format
 	for _, seqId := range seqIds {
 		var entries []string
-		
+
 		// Merge old and new entries for this seqId
 		seen := make(map[string]bool)
-		
+
 		// Add old entries
 		for _, content := range oldEntries[seqId] {
 			if !seen[content] {
@@ -227,7 +227,7 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 				seen[content] = true
 			}
 		}
-		
+
 		// Add new entries
 		for _, content := range newEntries[seqId] {
 			if !seen[content] {
@@ -235,12 +235,12 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 				seen[content] = true
 			}
 		}
-		
+
 		// If deduplicate, keep only one entry
 		if deduplicate && len(entries) > 0 {
 			entries = entries[:1]
 		}
-		
+
 		// Write entries in multi-line format
 		if len(entries) > 0 {
 			// First entry with full prefix
@@ -248,7 +248,7 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 			if err != nil {
 				return fmt.Errorf("failed writing field: %w", err)
 			}
-			
+
 			// Continuation lines with 2-space indentation
 			for _, content := range entries[1:] {
 				_, err := target.WriteString(fmt.Sprintf("  %s\n", content))
@@ -258,7 +258,7 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 			}
 		}
 	}
-	
+
 	return nil
 }
 

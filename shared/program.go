@@ -15,8 +15,8 @@ type Program struct {
 	Name       string
 	Code       string
 	Submitter  *Submitter
-	Keywords   uint64   // bitmask of keywords
-	OpsMask    uint64   // bitmask of operation types
+	Keywords   uint64 // bitmask of keywords
+	OpsMask    uint64 // bitmask of operation types
 	Operations []string
 	Formula    string
 	Length     int

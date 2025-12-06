@@ -25,12 +25,12 @@ func checkProgramMeta(t *testing.T, prog Program, wantID, wantNamePrefix, wantSu
 // checkOperationTypes checks that OpsMask is initialized to 0 and verifies the extracted operation types.
 func checkOperationTypes(t *testing.T, prog Program, expectedOpTypes []string) {
 	t.Helper()
-	
+
 	// Check OpsMask is initialized to 0
 	if prog.OpsMask != 0 {
 		t.Errorf("expected OpsMask to be 0, got %d", prog.OpsMask)
 	}
-	
+
 	// Extract and verify operation types
 	opTypes := extractOperationTypes(prog.Operations)
 	if len(opTypes) != len(expectedOpTypes) {
@@ -118,5 +118,3 @@ func TestProgramMarshalUnmarshalJSON(t *testing.T) {
 		t.Errorf("Operations length mismatch after roundtrip")
 	}
 }
-
-
