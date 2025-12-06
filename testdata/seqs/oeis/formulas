@@ -1,202 +1,201 @@
 A000001: (End)
-A000001: ---------- ------------------------------------------ ---------------------
-A000001: --------------  --------------  --------------  --------
-A000001: ---------------------------------------------------------------------------
-A000001: ---------------------------------------------------------------------------
-A000001: For p, q, r primes:
-A000001: From _Mitch Harris_, Oct 25 2006: (Start)
-A000001: No              No              No            1
-A000001: No              No              Yes           2
-A000001: No              Yes             No            2
-A000001: No              Yes             Yes           4
-A000001: Yes             No              No            2
-A000001: Yes             No              Yes           3
-A000001: Yes             Yes             No           p+2
-A000001: Yes             Yes             Yes          p+4
-A000001: [Table from _Bernard Schott_, Jan 18 2022]
-A000001: [table from Derek Holt].
-A000001: a(n) = A000688(n) + A060689(n). - _R. J. Mathar_, Mar 14 2015
-A000001: a(p) = 1, a(p^2) = 2, a(p^3) = 5, a(p^4) = 14, if p = 2, otherwise 15.
-A000001: a(p*q) = 1 if gcd(p,q-1) = 1, 2 if gcd(p,q-1) = p. (p < q)
-A000001: a(p*q*r) (p < q < r) is one of the following:
-A000001: a(p*q^2) is one of the following:
-A000001: a(p^5) = 61 + 2*p + 2*gcd(p-1,3) + gcd(p-1,4), p >= 5, a(2^5)=51, a(3^5)=67.
-A000001: a(p^e) ~ p^((2/27)e^3 + O(e^(8/3))).
-A000001: q == 1 (mod p)  r == 1 (mod p)  r == 1 (mod q)  a(p*q*r)
-A000001: |    2     |  q !== +-1 (mod p) and p !== 1 (mod q)   |      A350422        |
-A000001: |    3     |       q == -1 (mod p), p and q odd       |      A350245        |
-A000001: |    4     | p == 1 (mod q), p > 3, p !== 1 (mod q^2) |      A349495        |
-A000001: |    5     |               p=2, q odd                 |      A143928        |
-A000001: |    5     |             p == 1 (mod q^2)             |      A350115        |
-A000001: |    5     |         p=3, q=2 =>  p*q^2 = 12          |Special case with A_4|
-A000001: | (p+9)/2  |          q == 1 (mod p), p odd           |      A350638        |
-A000001: | a(p*q^2) |            p*q^2 of the form             |  Sequences (p*q^2)  |
+  ---------- ------------------------------------------ ---------------------
+  --------------  --------------  --------------  --------
+  ---------------------------------------------------------------------------
+  For p, q, r primes:
+  From _Mitch Harris_, Oct 25 2006: (Start)
+  No              No              No            1
+  No              No              Yes           2
+  No              Yes             No            2
+  No              Yes             Yes           4
+  Yes             No              No            2
+  Yes             No              Yes           3
+  Yes             Yes             No           p+2
+  Yes             Yes             Yes          p+4
+  [Table from _Bernard Schott_, Jan 18 2022]
+  [table from Derek Holt].
+  a(n) = A000688(n) + A060689(n). - _R. J. Mathar_, Mar 14 2015
+  a(p) = 1, a(p^2) = 2, a(p^3) = 5, a(p^4) = 14, if p = 2, otherwise 15.
+  a(p*q) = 1 if gcd(p,q-1) = 1, 2 if gcd(p,q-1) = p. (p < q)
+  a(p*q*r) (p < q < r) is one of the following:
+  a(p*q^2) is one of the following:
+  a(p^5) = 61 + 2*p + 2*gcd(p-1,3) + gcd(p-1,4), p >= 5, a(2^5)=51, a(3^5)=67.
+  a(p^e) ~ p^((2/27)e^3 + O(e^(8/3))).
+  q == 1 (mod p)  r == 1 (mod p)  r == 1 (mod q)  a(p*q*r)
+  |    2     |  q !== +-1 (mod p) and p !== 1 (mod q)   |      A350422        |
+  |    3     |       q == -1 (mod p), p and q odd       |      A350245        |
+  |    4     | p == 1 (mod q), p > 3, p !== 1 (mod q^2) |      A349495        |
+  |    5     |               p=2, q odd                 |      A143928        |
+  |    5     |             p == 1 (mod q^2)             |      A350115        |
+  |    5     |         p=3, q=2 =>  p*q^2 = 12          |Special case with A_4|
+  | (p+9)/2  |          q == 1 (mod p), p odd           |      A350638        |
+  | a(p*q^2) |            p*q^2 of the form             |  Sequences (p*q^2)  |
 A000002: Comment from _Kevin Ryde_, Oct 07 2024: The above formulas are true: The parts identify when terms are same or different and they hold for any sequence of 1's and 2's with run lengths 1 or 2.
-A000002: Conjectures from _Boštjan Gec_, Oct 07 2024: (Start)
-A000002: These two formulas define completely the sequence: a(1)=1, a(2)=2, a(a(1) + a(2) + ... + a(k)) = (3 + (-1)^k)/2 and a(a(1) + a(2) + ... + a(k) + 1) = (3 - (-1)^k)/2. - _Benoit Cloitre_, Oct 06 2003
-A000002: a(n) = (3 + (-1)^A156253(n))/2. - _Benoit Cloitre_, Sep 17 2013
-A000002: a(n)*(a(n-1) + a(n-2) - 3) + a(n-1)*a(n-2) + 7 = 3*a(n-1) + 3*a(n-2).
-A000002: a(n)*(a(n-1) + a(n-2) - 3) = a(n-3)*(a(n-1) + a(n-2) - 3). (End)
-A000002: a(n+1) = 3 - a(n) + (a(n) - a(n-1))*(a(b(n)) - 1), where b(n) is the sequence A156253. - Jean-Marc Fedou and _Gabriele Fici_, Mar 18 2010
-A000002: a(n+2)*a(n+1)*a(n)/2 = a(n+2) + a(n+1) + a(n) - 3 (this formula doesn't define the sequence, it is just a consequence of the definition). - _Benoit Cloitre_, Nov 17 2003
+  Conjectures from _Boštjan Gec_, Oct 07 2024: (Start)
+  These two formulas define completely the sequence: a(1)=1, a(2)=2, a(a(1) + a(2) + ... + a(k)) = (3 + (-1)^k)/2 and a(a(1) + a(2) + ... + a(k) + 1) = (3 - (-1)^k)/2. - _Benoit Cloitre_, Oct 06 2003
+  a(n) = (3 + (-1)^A156253(n))/2. - _Benoit Cloitre_, Sep 17 2013
+  a(n)*(a(n-1) + a(n-2) - 3) + a(n-1)*a(n-2) + 7 = 3*a(n-1) + 3*a(n-2).
+  a(n)*(a(n-1) + a(n-2) - 3) = a(n-3)*(a(n-1) + a(n-2) - 3). (End)
+  a(n+1) = 3 - a(n) + (a(n) - a(n-1))*(a(b(n)) - 1), where b(n) is the sequence A156253. - Jean-Marc Fedou and _Gabriele Fici_, Mar 18 2010
+  a(n+2)*a(n+1)*a(n)/2 = a(n+2) + a(n+1) + a(n) - 3 (this formula doesn't define the sequence, it is just a consequence of the definition). - _Benoit Cloitre_, Nov 17 2003
 A000004: a(n) = 0 for all integer n.
 A000005: (Sum_{d|n} a(d))^2 = Sum_{d|n} a(d)^3 (J. Liouville).
-A000005: 2*Pi*a(n) = Sum_{m=1..n} Integral_{x=0..2*Pi} r^(m-n)( cos((m-n)*x)-r^m cos(n*x) )/( 1+r^(2*m)-2r^m cos(m*x) )dx, 0 < r < 1 a free parameter. This formula is obtained as the sum of the residues of the Lambert series Sum_{k>=1} x^k/(1-x^k). - _Seiichi Kirikami_, Oct 22 2015
-A000005: For n > 1, a(n) = 2 + Sum_{k=2..n-1} floor((cos(Pi*n/k))^2). And floor((cos(Pi*n/k))^2) = floor(1/4 * e^(-(2*i*Pi*n)/k) + 1/4 * e^((2*i*Pi*n)/k) + 1/2). - _Eric Desbiaux_, Mar 09 2010, corrected Apr 16 2011
-A000005: From _Richard L. Ollerton_, May 11 2021: (Start)
-A000005: From _Ridouane Oudra_, Nov 12 2021: (Start)
-A000005: From _Vladimir Shevelev_, May 22 2010: (Start)
-A000005: G.f.: 2*x/(1-x) - Sum_{k>0} x^k*(1-2*x^k)/(1-x^k). - _Mamuka Jibladze_, Aug 29 2018
-A000005: G.f.: Sum_{k>0} ((-1)^(k+1) * x^(k * (k + 1)/2) / ((1 - x^k) * Product_{i=1..k} (1 - x^i))). - _Michael Somos_, Apr 27 2003
-A000005: G.f.: Sum_{k>0} x^(k^2)*(1+x^k)/(1-x^k). Dirichlet g.f.: zeta(s)^2. - _Michael Somos_, Apr 05 2003
-A000005: G.f.: Sum_{k>=1} Sum_{j>=1} x^(j*k). - _Mats Granvik_, Jun 15 2013
-A000005: G.f.: Sum_{n >= 1} a(n) x^n = Sum_{k>0} x^k/(1-x^k). This is usually called THE Lambert series (see Knopp, Titchmarsh).
-A000005: G.f.: Sum_{n>=1} Sum_{d|n} ( -log(1 - x^(n/d)) )^d / d!. - _Paul D. Hanna_, Aug 21 2014
-A000005: If n is written as 2^z*3^y*5^x*7^w*11^v*... then a(n)=(z+1)*(y+1)*(x+1)*(w+1)*(v+1)*...
-A000005: Logarithmic g.f.: Sum_{n>=1} a(n)/n * x^n = -log( Product_{n>=1} (1-x^n)^(1/n) ). - _Joerg Arndt_, May 03 2008
-A000005: Multiplicative with a(p^e) = e+1. - _David W. Wilson_, Aug 01 2001
-A000005: Row sums of triangle A051731. - _Gary W. Adamson_, Nov 02 2007
-A000005: Sequence = M*V where M = A129372 as an infinite lower triangular matrix and V = ruler sequence A001511 as a vector: [1, 2, 1, 3, 1, 2, 1, 4, ...]. - _Gary W. Adamson_, Apr 15 2007
-A000005: Sequence = M*V, where M = A115361 is an infinite lower triangular matrix and V = A001227, the number of odd divisors of n, is a vector: [1, 1, 2, 1, 2, 2, 2, ...]. - _Gary W. Adamson_, Apr 15 2007
-A000005: Sum_{d|n} A008836(d)*a(d)^2 = A008836(n)*Sum_{d|n} a(d). (End)
-A000005: Sum_{n>0} a(n)/(n^n) = Sum_{n>0, m>0} 1/(n*m). - _Gerald McGarvey_, Dec 15 2007
-A000005: Sum_{n>=1} a(n)*q^n = (log(1-q) + psi_q(1)) / log(q), where psi_q(z) is the q-digamma function. - _Vladimir Reshetnikov_, Apr 23 2013
-A000005: The formula above is obtained by expanding the Lambert series Sum_{k>=1} x^k/(1-x^k). - _Joerg Arndt_, Mar 12 2014
-A000005: a(k*n) = a(n)*(f(k,n)+2)/(f(k,n)+1), where f(k,n) is the exponent of the highest power of k dividing n and k is prime. - _Gary Detlefs_, Feb 08 2019
-A000005: a(n) <= 2 sqrt(n) [see Mitrinovich, p. 39, also A046522].
-A000005: a(n) = (1/n) * Sum_{k=1..n} sigma(gcd(n,k)), where sigma(n) = sum of divisors of n. - _Orges Leka_, May 09 2019
-A000005: a(n) = (1/n)*Sum_{k=1..n} phi(gcd(n,k))*sigma(n/gcd(n,k))/phi(n/gcd(n,k)). (End)
-A000005: a(n) = 1 + Sum_{k=1..n} (floor(2^n/(2^k-1)) mod 2) for every n. - Fabio Civolani (civox(AT)tiscali.it), Mar 12 2010
-A000005: a(n) = 2 iff n is prime.
-A000005: a(n) = 2*A038548(n) - A010052(n). - _Reinhard Zumkeller_, Mar 08 2013
-A000005: a(n) = 2*log(p(n))/log(n), n > 1, where p(n)= the product of the factors of n = A007955(n). - _Gary Detlefs_, Feb 15 2019
-A000005: a(n) = A001227(n)*(A007814(n) + 1) = A001227(n)*A001511(n). - _Ivan N. Ianakiev_, Nov 14 2019
-A000005: a(n) = A032741(n) + 1 = A062011(n)/2 = A054519(n) - A054519(n-1) = A006218(n) - A006218(n-1) = 1 + Sum_{k=1..n-1} A051950(k+1). - _Ralf Stephan_, Mar 26 2004
-A000005: a(n) = A034296(n) - A237665(n+1) [Wang, Fokkink, Fokkink]. - _George Beck_, May 06 2017
-A000005: a(n) = A038040(n) / n = (1/n)*Sum_{d|n} phi(d)*sigma(n/d), where phi = A000010 and sigma = A000203.
-A000005: a(n) = A048691(n) - A055205(n). - _Reinhard Zumkeller_, Dec 08 2009
-A000005: a(n) = A083888(n) + A083889(n) + A083890(n) + A083891(n) + A083892(n) + A083893(n) + A083894(n) + A083895(n) + A083896(n).
-A000005: a(n) = A083910(n) + A083911(n) + A083912(n) + A083913(n) + A083914(n) + A083915(n) + A083916(n) + A083917(n) + A083918(n) + A083919(n).
-A000005: a(n) = A091220(A091202(n)) = A106737(A156552(n)). - _Antti Karttunen_, circa 2004 & Mar 06 2017
-A000005: a(n) = Product_{k = 1..A001221(n)} (A124010(n,k) + 1). - _Reinhard Zumkeller_, Jul 12 2013
-A000005: a(n) = Sum_{j=1..n} Sum_{k=1..j} (1/j)*cos(2*k*n*Pi/j);
-A000005: a(n) = Sum_{j=1..n} Sum_{k=1..j} (1/j)*e^(2*k*n*Pi*i/j), where i^2=-1. (End)
-A000005: a(n) = Sum_{k=1..n} (floor(n/k) - floor((n-1)/k)). - _Enrique Pérez Herrero_, Aug 27 2009
-A000005: a(n) = Sum_{k=1..n} 1/phi(n / gcd(n, k)). - _Daniel Suteu_, Nov 05 2018
-A000005: a(n) = Sum_{k=1..n} A238133(k)*A000041(n-k). - _Mircea Merca_, Feb 18 2013
-A000005: a(n) = Sum_{k=1..n} f(k, n) where f(k, n) = 1 if k divides n, 0 otherwise (Mobius transform of A000012). Equivalently, f(k, n) = (1/k)*Sum_{l=1..k} z(k, l)^n with z(k, l) the k-th roots of unity. - _Ralf Stephan_, Dec 25 2002
-A000005: a(n) = n - Sum_{k=1..n} (ceiling(n/k) - floor(n/k)). - _Benoit Cloitre_, May 11 2003
-A000005: a(n) = sigma_0(n) = 1 + Sum_{m>=2} Sum_{r>=1} (1/m^(r+1))*Sum_{j=1..m-1} Sum_{k=0..m^(r+1)-1} e^(2*k*Pi*i*(n+(m-j)*m^r)/m^(r+1)). - _A. Neves_, Oct 04 2010
-A000005: a(n) is odd iff n is a square. - _Reinhard Zumkeller_, Dec 29 2001
-A000005: a(s) = 2^omega(s), if s > 1 is a squarefree number (A005117) and omega(s) is: A001221. - _Enrique Pérez Herrero_, Sep 08 2009
+  2*Pi*a(n) = Sum_{m=1..n} Integral_{x=0..2*Pi} r^(m-n)( cos((m-n)*x)-r^m cos(n*x) )/( 1+r^(2*m)-2r^m cos(m*x) )dx, 0 < r < 1 a free parameter. This formula is obtained as the sum of the residues of the Lambert series Sum_{k>=1} x^k/(1-x^k). - _Seiichi Kirikami_, Oct 22 2015
+  For n > 1, a(n) = 2 + Sum_{k=2..n-1} floor((cos(Pi*n/k))^2). And floor((cos(Pi*n/k))^2) = floor(1/4 * e^(-(2*i*Pi*n)/k) + 1/4 * e^((2*i*Pi*n)/k) + 1/2). - _Eric Desbiaux_, Mar 09 2010, corrected Apr 16 2011
+  From _Richard L. Ollerton_, May 11 2021: (Start)
+  From _Ridouane Oudra_, Nov 12 2021: (Start)
+  From _Vladimir Shevelev_, May 22 2010: (Start)
+  G.f.: 2*x/(1-x) - Sum_{k>0} x^k*(1-2*x^k)/(1-x^k). - _Mamuka Jibladze_, Aug 29 2018
+  G.f.: Sum_{k>0} ((-1)^(k+1) * x^(k * (k + 1)/2) / ((1 - x^k) * Product_{i=1..k} (1 - x^i))). - _Michael Somos_, Apr 27 2003
+  G.f.: Sum_{k>0} x^(k^2)*(1+x^k)/(1-x^k). Dirichlet g.f.: zeta(s)^2. - _Michael Somos_, Apr 05 2003
+  G.f.: Sum_{k>=1} Sum_{j>=1} x^(j*k). - _Mats Granvik_, Jun 15 2013
+  G.f.: Sum_{n >= 1} a(n) x^n = Sum_{k>0} x^k/(1-x^k). This is usually called THE Lambert series (see Knopp, Titchmarsh).
+  G.f.: Sum_{n>=1} Sum_{d|n} ( -log(1 - x^(n/d)) )^d / d!. - _Paul D. Hanna_, Aug 21 2014
+  If n is written as 2^z*3^y*5^x*7^w*11^v*... then a(n)=(z+1)*(y+1)*(x+1)*(w+1)*(v+1)*...
+  Logarithmic g.f.: Sum_{n>=1} a(n)/n * x^n = -log( Product_{n>=1} (1-x^n)^(1/n) ). - _Joerg Arndt_, May 03 2008
+  Multiplicative with a(p^e) = e+1. - _David W. Wilson_, Aug 01 2001
+  Row sums of triangle A051731. - _Gary W. Adamson_, Nov 02 2007
+  Sequence = M*V where M = A129372 as an infinite lower triangular matrix and V = ruler sequence A001511 as a vector: [1, 2, 1, 3, 1, 2, 1, 4, ...]. - _Gary W. Adamson_, Apr 15 2007
+  Sequence = M*V, where M = A115361 is an infinite lower triangular matrix and V = A001227, the number of odd divisors of n, is a vector: [1, 1, 2, 1, 2, 2, 2, ...]. - _Gary W. Adamson_, Apr 15 2007
+  Sum_{d|n} A008836(d)*a(d)^2 = A008836(n)*Sum_{d|n} a(d). (End)
+  Sum_{n>0} a(n)/(n^n) = Sum_{n>0, m>0} 1/(n*m). - _Gerald McGarvey_, Dec 15 2007
+  Sum_{n>=1} a(n)*q^n = (log(1-q) + psi_q(1)) / log(q), where psi_q(z) is the q-digamma function. - _Vladimir Reshetnikov_, Apr 23 2013
+  The formula above is obtained by expanding the Lambert series Sum_{k>=1} x^k/(1-x^k). - _Joerg Arndt_, Mar 12 2014
+  a(k*n) = a(n)*(f(k,n)+2)/(f(k,n)+1), where f(k,n) is the exponent of the highest power of k dividing n and k is prime. - _Gary Detlefs_, Feb 08 2019
+  a(n) <= 2 sqrt(n) [see Mitrinovich, p. 39, also A046522].
+  a(n) = (1/n) * Sum_{k=1..n} sigma(gcd(n,k)), where sigma(n) = sum of divisors of n. - _Orges Leka_, May 09 2019
+  a(n) = (1/n)*Sum_{k=1..n} phi(gcd(n,k))*sigma(n/gcd(n,k))/phi(n/gcd(n,k)). (End)
+  a(n) = 1 + Sum_{k=1..n} (floor(2^n/(2^k-1)) mod 2) for every n. - Fabio Civolani (civox(AT)tiscali.it), Mar 12 2010
+  a(n) = 2 iff n is prime.
+  a(n) = 2*A038548(n) - A010052(n). - _Reinhard Zumkeller_, Mar 08 2013
+  a(n) = 2*log(p(n))/log(n), n > 1, where p(n)= the product of the factors of n = A007955(n). - _Gary Detlefs_, Feb 15 2019
+  a(n) = A001227(n)*(A007814(n) + 1) = A001227(n)*A001511(n). - _Ivan N. Ianakiev_, Nov 14 2019
+  a(n) = A032741(n) + 1 = A062011(n)/2 = A054519(n) - A054519(n-1) = A006218(n) - A006218(n-1) = 1 + Sum_{k=1..n-1} A051950(k+1). - _Ralf Stephan_, Mar 26 2004
+  a(n) = A034296(n) - A237665(n+1) [Wang, Fokkink, Fokkink]. - _George Beck_, May 06 2017
+  a(n) = A038040(n) / n = (1/n)*Sum_{d|n} phi(d)*sigma(n/d), where phi = A000010 and sigma = A000203.
+  a(n) = A048691(n) - A055205(n). - _Reinhard Zumkeller_, Dec 08 2009
+  a(n) = A083888(n) + A083889(n) + A083890(n) + A083891(n) + A083892(n) + A083893(n) + A083894(n) + A083895(n) + A083896(n).
+  a(n) = A083910(n) + A083911(n) + A083912(n) + A083913(n) + A083914(n) + A083915(n) + A083916(n) + A083917(n) + A083918(n) + A083919(n).
+  a(n) = A091220(A091202(n)) = A106737(A156552(n)). - _Antti Karttunen_, circa 2004 & Mar 06 2017
+  a(n) = Product_{k = 1..A001221(n)} (A124010(n,k) + 1). - _Reinhard Zumkeller_, Jul 12 2013
+  a(n) = Sum_{j=1..n} Sum_{k=1..j} (1/j)*cos(2*k*n*Pi/j);
+  a(n) = Sum_{j=1..n} Sum_{k=1..j} (1/j)*e^(2*k*n*Pi*i/j), where i^2=-1. (End)
+  a(n) = Sum_{k=1..n} (floor(n/k) - floor((n-1)/k)). - _Enrique Pérez Herrero_, Aug 27 2009
+  a(n) = Sum_{k=1..n} 1/phi(n / gcd(n, k)). - _Daniel Suteu_, Nov 05 2018
+  a(n) = Sum_{k=1..n} A238133(k)*A000041(n-k). - _Mircea Merca_, Feb 18 2013
+  a(n) = Sum_{k=1..n} f(k, n) where f(k, n) = 1 if k divides n, 0 otherwise (Mobius transform of A000012). Equivalently, f(k, n) = (1/k)*Sum_{l=1..k} z(k, l)^n with z(k, l) the k-th roots of unity. - _Ralf Stephan_, Dec 25 2002
+  a(n) = n - Sum_{k=1..n} (ceiling(n/k) - floor(n/k)). - _Benoit Cloitre_, May 11 2003
+  a(n) = sigma_0(n) = 1 + Sum_{m>=2} Sum_{r>=1} (1/m^(r+1))*Sum_{j=1..m-1} Sum_{k=0..m^(r+1)-1} e^(2*k*Pi*i*(n+(m-j)*m^r)/m^(r+1)). - _A. Neves_, Oct 04 2010
+  a(n) is odd iff n is a square. - _Reinhard Zumkeller_, Dec 29 2001
+  a(s) = 2^omega(s), if s > 1 is a squarefree number (A005117) and omega(s) is: A001221. - _Enrique Pérez Herrero_, Sep 08 2009
 A000006: a(n) = A000196(A000040(n)). - _Reinhard Zumkeller_, Mar 24 2012
 A000007: As a function of Bernoulli numbers (cf. A027641: (1, -1/2, 1/6, 0, -1/30, ...)), triangle A074909 (the beheaded Pascal's triangle) * B_n as a vector = [1, 0, 0, 0, 0, ...]. - _Gary W. Adamson_, Mar 05 2012
-A000007: Binomial transform of A033999.
-A000007: From _Ilya Gutkovskiy_, Sep 02 2016: (Start)
-A000007: Inverse binomial transform of A000012. (End)
-A000007: Multiplicative with a(p^e) = 0. - _David W. Wilson_, Sep 01 2001
-A000007: a(n) = (1-(-1)^(2^n))/2. - _Luce ETIENNE_, May 05 2015
-A000007: a(n) = 1 - A057427(n). - _Alois P. Heinz_, Jan 20 2016
-A000007: a(n) = Sum_{k = 0..n} exp(2*Pi*i*k/(n+1)) is the sum of the (n+1)th roots of unity. - _Franz Vrabec_, Nov 09 2012
-A000007: a(n) = floor(1/(n + 1)). - _Franz Vrabec_, Aug 24 2005
+  Binomial transform of A033999.
+  From _Ilya Gutkovskiy_, Sep 02 2016: (Start)
+  Inverse binomial transform of A000012. (End)
+  Multiplicative with a(p^e) = 0. - _David W. Wilson_, Sep 01 2001
+  a(n) = (1-(-1)^(2^n))/2. - _Luce ETIENNE_, May 05 2015
+  a(n) = 1 - A057427(n). - _Alois P. Heinz_, Jan 20 2016
+  a(n) = Sum_{k = 0..n} exp(2*Pi*i*k/(n+1)) is the sum of the (n+1)th roots of unity. - _Franz Vrabec_, Nov 09 2012
+  a(n) = floor(1/(n + 1)). - _Franz Vrabec_, Aug 24 2005
 A000008: G.f.: 1 / ((1 - x) * (1 - x^2) * (1 - x^5) * (1 - x^10)). - _Michael Somos_, Nov 17 1999
-A000008: a(n) - a(n-1) = A025810(n). - _Michael Somos_, Dec 15 2002
-A000008: a(n) = (q+1)*(h(n) - q*(3n-10q+7)/6) with q = floor(n/10) and h(n) = A000115(n) = round((n+4)^2/20). See link "Derivation of formulas". - _Gerhard Kirchner_, Feb 10 2017
-A000008: a(n) = -a(-18-n). - _Michael Somos_, Apr 01 2003
-A000008: a(n) = a(n-2) + a(n-5) - a(n-7) + a(n-10) - a(n-12) - a(n-15) + a(n-17) + 1. - _Michael Somos_, Apr 01 2003
+  a(n) - a(n-1) = A025810(n). - _Michael Somos_, Dec 15 2002
+  a(n) = (q+1)*(h(n) - q*(3n-10q+7)/6) with q = floor(n/10) and h(n) = A000115(n) = round((n+4)^2/20). See link "Derivation of formulas". - _Gerhard Kirchner_, Feb 10 2017
+  a(n) = -a(-18-n). - _Michael Somos_, Apr 01 2003
+  a(n) = a(n-2) + a(n-5) - a(n-7) + a(n-10) - a(n-12) - a(n-15) + a(n-17) + 1. - _Michael Somos_, Apr 01 2003
 A000009: (1 + x)*(1 + x^2)*Sum_{n >= 0} x^(n*(n+5)/2)/Product_{k = 1..n} (1 - x^k) = (1 + x)*(1 + x^2)*(1 + x^3)*Sum_{n >= 0} x^(n*(n+7)/2)/Product_{k = 1..n} (1 - x^k) = ....
-A000009: (1,0,0,1,0,0,1,0,0,1,...)*(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,...) * ...; =
-A000009: (1/2)*(1/(1 + x))*Sum_{n >= 0} x^((n-1)*(n-2)/2)/Product_{k = 1..n} (1 - x^k) = (1/2)*(1/((1 + x)*(1 + x^2)))*Sum_{n >= 0} x^((n-2)*(n-3)/2)/Product_{k = 1..n} (1 - x^k) = ....
-A000009: (End)
-A000009: ... (cf. analogous example in A000041). (End)
-A000009: 1, 1, 1, 2, 2, 2, 3, 3, 3, 4, ... = a*b
-A000009: 1, 1, 1, 2, 2, 3, 4, 4, 5, 6, ... = a*b*c
-A000009: 1, 1, 1, 2, 2, 3, 4, 5, 6, 7, ... = a*b*c*d
-A000009: 1, 1, 1, 2, 2, 3, 4, 5, 6, 8, ... = a*b*c*d*e
-A000009: 1, 1, 1, 2, 2, 3, 4, 5, 6, 8, ... = a*b*c*d*e*f
-A000009: Asymptotics: a(n) ~ exp(Pi l_n / sqrt(3)) / ( 4 3^(1/4) l_n^(3/2) ) where l_n = (n-1/24)^(1/2) (Ayoub).
-A000009: Expansion of 1 / chi(-x) = chi(x) / chi(-x^2) = f(-x) / phi(x) = f(x) / phi(-x^2) = psi(x) / f(-x^2) = f(-x^2) / f(-x) = f(-x^4) / psi(-x) in powers of x where phi(), psi(), chi(), f() are Ramanujan theta functions. - _Michael Somos_, Mar 12 2011
-A000009: Expansion of q^(-1/24) * eta(q^2) / eta(q) in powers of q.
-A000009: Expansion of q^(-1/24) 2^(-1/2) f2(t) in powers of q = exp(2 Pi i t) where f2() is a Weber function. - _Michael Somos_, Oct 18 2007
-A000009: For n > 1, a(n) = (1/n)*Sum_{k=1..n} b(k)*a(n-k), with a(0)=1, b(n) = A000593(n) = sum of odd divisors of n; cf. A000700. - _Vladeta Jovovic_, Jan 21 2002
-A000009: From Evangelos Georgiadis, Andrew V. Sutherland, Kiran S. Kedlaya (egeorg(AT)mit.edu), Mar 03 2009: (Start)
-A000009: From _Gary W. Adamson_, Jun 13 2009: (Start)
-A000009: From _Peter Bala_, Feb 02 2021: (Start)
-A000009: From _Peter Bala_, Jan 15 2021: (Start)
-A000009: From _Vaclav Kotesovec_, May 29 2016: (Start)
-A000009: G.f. is a period 1 Fourier series which satisfies f(-1 / (1152 t)) = 2^(-1/2) / f(t) where q = exp(2 Pi i t). - _Michael Somos_, Aug 16 2007
-A000009: G.f.: (1 + x)*Sum_{n >= 0} x^(n*(n+3)/2)/Product_{k = 1..n} (1 - x^k) =
-A000009: G.f.: (1/2)*Sum_{n >= 0} x^(n*(n-1)/2)/Product_{k = 1..n} (1 - x^k) =
-A000009: G.f.: 1/2 (-1; x)_{inf} where (a; q)_k is the q-Pochhammer symbol. - _Vladimir Reshetnikov_, Apr 24 2013
-A000009: G.f.: A(x) = Sum_{n >= 0} x^(n*(2*n-1))/Product_{k = 1..2*n} (1 - x^k). (Set z = x and q = x^2 in Mc Laughlin et al. (2019 ArXiv version), Section 1.3, Identity 7.)
-A000009: G.f.: A(x) = exp ( Sum_{n >= 1} x^n/(n*(1 - x^(2*n))) ) = exp ( Sum_{n >= 1} (-1)^(n+1)*x^n/(n*(1 - x^n)) ). - _Peter Bala_, Dec 23 2021
-A000009: G.f.: Product_{m>=1} (1 + x^m) = 1/Product_{m>=0} (1-x^(2m+1)) = Sum_{k>=0} Product_{i=1..k} x^i/(1-x^i) = Sum_{n>=0} x^(n*(n+1)/2) / Product_{k=1..n} (1-x^k).
-A000009: G.f.: Sum_{n >= 0} x^n/Product_{k = 1..n} (1 - x^(2*k)) = (1/(1 - x)) * Sum_{n >= 0} x^(3*n)/Product_{k = 1..n} (1 - x^(2*k)) =  (1/((1 - x)*(1 - x^3))) * Sum_{n >= 0} x^(5*n)/Product_{k = 1..n} (1 - x^(2*k)) = (1/((1 - x)*(1 - x^3)*(1 - x^5))) * Sum_{n >= 0} x^(7*n)/Product_{k = 1..n} (1 - x^(2*k)) = .... (End)
-A000009: G.f.: Sum_{n>=0} x^n*Product_{k=1..n-1} (1+x^k) = 1 + Sum_{n>=1} x^n*Product_{k>=n+1} (1+x^k). - _Joerg Arndt_, Jan 29 2011
-A000009: Given g.f. A(x), then B(x) = x * A(x^3)^8 satisfies 0 = f(B(x), B(x^2)) where f(u, v) = v - u^2 + 16*u*v^2 . - _Michael Somos_, May 31 2005
-A000009: Given g.f. A(x), then B(x) = x * A(x^8)^3 satisfies 0 = f(B(x), B(x^3)) where f(u, v) = (u^3 - v) * (u + v^3) - 9 * u^3 * v^3. - _Michael Somos_, Mar 25 2008
-A000009: More precise asymptotics: a(n) ~ exp(Pi*sqrt((n-1/24)/3)) / (4*3^(1/4)*(n-1/24)^(3/4)) * (1 + (Pi^2-27)/(24*Pi*sqrt(3*(n-1/24))) + (Pi^4-270*Pi^2-1215)/(3456*Pi^2*(n-1/24))). - _Vaclav Kotesovec_, Nov 30 2015
-A000009: Product_{k>=1} (1+x^(2k)) = Sum_{k>=0} x^(k*(k+1))/Product_{i=1..k} (1-x^(2i)) - Euler (Hardy and Wright, Theorem 346).
-A000009: Similarly, A(x) = Sum_{n >= 0} x^(n*(2*n+1))/Product_{k = 1..2*n+1} (1 - x^k). (End)
-A000009: Sum_{n>=0} a(n)/exp(Pi*n) = exp(Pi/24)/2^(1/8) = A292820. - _Simon Plouffe_, May 12 2023 [Proof: Sum_{n>=0} a(n)/exp(Pi*n) = phi(exp(-2*Pi)) / phi(exp(-Pi)), where phi(q) is the Euler modular function. We have phi(exp(-2*Pi)) = exp(Pi/12) * Gamma(1/4) / (2 * Pi^(3/4)) and phi(exp(-Pi)) = exp(Pi/24) * Gamma(1/4) / (2^(7/8) * Pi^(3/4)), see formulas (14) and (13) in I. Mező, 2013. - _Vaclav Kotesovec_, May 12 2023]
-A000009: Sum_{n>=1} 1/a(n) = A237515. - _Amiram Eldar_, Nov 15 2020
-A000009: The product g.f. = (1/(1-x))*(1/(1-x^3))*(1/(1-x^5))*...; = (1,1,1,...)*
-A000009: a(0)=1; a(n) = 2*(Sum_{k=1..floor(sqrt(n))} (-1)^(k+1) a(n-k^2)) + sigma(n) where sigma(n) = (-1)^j if (n=(j*(3*j+1))/2 OR n=(j*(3*j-1))/2) otherwise sigma(n)=0 (simpler: sigma = A010815). (End)
-A000009: a(2*n) = Sum_{j=1..n} p(n+j, 2*j) and a(2*n+1) = Sum_{j=1..n+1} p(n+j,2*j-1), where p(n, s) is the number of partitions of n having exactly s parts. - _Gregory L. Simay_, Aug 30 2023
-A000009: a(A004526(n)) = A172033(n). - _Reinhard Zumkeller_, Jan 23 2010
-A000009: a(n) = A000041(n) - A047967(n). - _R. J. Mathar_, Nov 20 2017
-A000009: a(n) = A001227(n) + A238005(n) + A238006(n). - _R. J. Mathar_, Sep 08 2021
-A000009: a(n) = A026837(n) + A026838(n) = A118301(n) + A118302(n); a(A001318(n)) = A051044(n); a(A090864(n)) = A118303(n). - _Reinhard Zumkeller_, Apr 22 2006
-A000009: a(n) = A054242(n,0) = A201377(n,0). - _Reinhard Zumkeller_, Dec 02 2011
-A000009: a(n) = A067661(n) + A067659(n). _Wolfdieter Lang_, Jan 18 2016
-A000009: a(n) = A089806(n)*A010815(floor(n/2)) + a(n-1) + a(n-2) - a(n-5) - a(n-7) + a(n-12) + ... + A057077(m-1)*a(n-A001318(m)) + ..., where n > A001318(m). - _Gevorg Hmayakyan_, Jul 07 2016
-A000009: a(n) = P(n) - P(n-2) - P(n-4) + P(n-10) + P(n-14) + ... + (-1)^m P(n-2p_m) + ..., where P(n) is the partition function (A000041) and p_m = m(3m-1)/2 is the m-th generalized pentagonal number (A001318). - _Jerome Malenfant_, Feb 16 2011
-A000009: a(n) = Sum_{k=0..n-1} A117195(n,k) = A117192(n) + A117193(n) for n>0. - _Reinhard Zumkeller_, Mar 03 2006
-A000009: a(n) = t(n, 0), t as defined in A079211.
-A000009: a(n) ~ Pi*BesselI(1, Pi*sqrt((n+1/24)/3)) / sqrt(24*n+1). - _Vaclav Kotesovec_, Nov 08 2016
-A000009: a(n) ~ exp(Pi*sqrt(n/3) + (Pi/(48*sqrt(3)) - 3*sqrt(3)/(8*Pi))/sqrt(n) - (1/32 + 9/(16*Pi^2))/n) / (4*3^(1/4)*n^(3/4)).
-A000009: a(n) ~ exp(Pi*sqrt(n/3))/(4*3^(1/4)*n^(3/4)) * (1 + (Pi/(48*sqrt(3)) - (3*sqrt(3))/(8*Pi))/sqrt(n) + (Pi^2/13824 - 5/128 - 45/(128*Pi^2))/n).
-A000009: a*b*c*... where a, a*b, a*b*c, ... converge to A000009:
+  (1,0,0,1,0,0,1,0,0,1,...)*(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,...) * ...; =
+  (1/2)*(1/(1 + x))*Sum_{n >= 0} x^((n-1)*(n-2)/2)/Product_{k = 1..n} (1 - x^k) = (1/2)*(1/((1 + x)*(1 + x^2)))*Sum_{n >= 0} x^((n-2)*(n-3)/2)/Product_{k = 1..n} (1 - x^k) = ....
+  (End)
+  ... (cf. analogous example in A000041). (End)
+  1, 1, 1, 2, 2, 2, 3, 3, 3, 4, ... = a*b
+  1, 1, 1, 2, 2, 3, 4, 4, 5, 6, ... = a*b*c
+  1, 1, 1, 2, 2, 3, 4, 5, 6, 7, ... = a*b*c*d
+  1, 1, 1, 2, 2, 3, 4, 5, 6, 8, ... = a*b*c*d*e
+  1, 1, 1, 2, 2, 3, 4, 5, 6, 8, ... = a*b*c*d*e*f
+  Asymptotics: a(n) ~ exp(Pi l_n / sqrt(3)) / ( 4 3^(1/4) l_n^(3/2) ) where l_n = (n-1/24)^(1/2) (Ayoub).
+  Expansion of 1 / chi(-x) = chi(x) / chi(-x^2) = f(-x) / phi(x) = f(x) / phi(-x^2) = psi(x) / f(-x^2) = f(-x^2) / f(-x) = f(-x^4) / psi(-x) in powers of x where phi(), psi(), chi(), f() are Ramanujan theta functions. - _Michael Somos_, Mar 12 2011
+  Expansion of q^(-1/24) * eta(q^2) / eta(q) in powers of q.
+  Expansion of q^(-1/24) 2^(-1/2) f2(t) in powers of q = exp(2 Pi i t) where f2() is a Weber function. - _Michael Somos_, Oct 18 2007
+  For n > 1, a(n) = (1/n)*Sum_{k=1..n} b(k)*a(n-k), with a(0)=1, b(n) = A000593(n) = sum of odd divisors of n; cf. A000700. - _Vladeta Jovovic_, Jan 21 2002
+  From Evangelos Georgiadis, Andrew V. Sutherland, Kiran S. Kedlaya (egeorg(AT)mit.edu), Mar 03 2009: (Start)
+  From _Gary W. Adamson_, Jun 13 2009: (Start)
+  From _Peter Bala_, Feb 02 2021: (Start)
+  From _Peter Bala_, Jan 15 2021: (Start)
+  From _Vaclav Kotesovec_, May 29 2016: (Start)
+  G.f. is a period 1 Fourier series which satisfies f(-1 / (1152 t)) = 2^(-1/2) / f(t) where q = exp(2 Pi i t). - _Michael Somos_, Aug 16 2007
+  G.f.: (1 + x)*Sum_{n >= 0} x^(n*(n+3)/2)/Product_{k = 1..n} (1 - x^k) =
+  G.f.: (1/2)*Sum_{n >= 0} x^(n*(n-1)/2)/Product_{k = 1..n} (1 - x^k) =
+  G.f.: 1/2 (-1; x)_{inf} where (a; q)_k is the q-Pochhammer symbol. - _Vladimir Reshetnikov_, Apr 24 2013
+  G.f.: A(x) = Sum_{n >= 0} x^(n*(2*n-1))/Product_{k = 1..2*n} (1 - x^k). (Set z = x and q = x^2 in Mc Laughlin et al. (2019 ArXiv version), Section 1.3, Identity 7.)
+  G.f.: A(x) = exp ( Sum_{n >= 1} x^n/(n*(1 - x^(2*n))) ) = exp ( Sum_{n >= 1} (-1)^(n+1)*x^n/(n*(1 - x^n)) ). - _Peter Bala_, Dec 23 2021
+  G.f.: Product_{m>=1} (1 + x^m) = 1/Product_{m>=0} (1-x^(2m+1)) = Sum_{k>=0} Product_{i=1..k} x^i/(1-x^i) = Sum_{n>=0} x^(n*(n+1)/2) / Product_{k=1..n} (1-x^k).
+  G.f.: Sum_{n >= 0} x^n/Product_{k = 1..n} (1 - x^(2*k)) = (1/(1 - x)) * Sum_{n >= 0} x^(3*n)/Product_{k = 1..n} (1 - x^(2*k)) =  (1/((1 - x)*(1 - x^3))) * Sum_{n >= 0} x^(5*n)/Product_{k = 1..n} (1 - x^(2*k)) = (1/((1 - x)*(1 - x^3)*(1 - x^5))) * Sum_{n >= 0} x^(7*n)/Product_{k = 1..n} (1 - x^(2*k)) = .... (End)
+  G.f.: Sum_{n>=0} x^n*Product_{k=1..n-1} (1+x^k) = 1 + Sum_{n>=1} x^n*Product_{k>=n+1} (1+x^k). - _Joerg Arndt_, Jan 29 2011
+  Given g.f. A(x), then B(x) = x * A(x^3)^8 satisfies 0 = f(B(x), B(x^2)) where f(u, v) = v - u^2 + 16*u*v^2 . - _Michael Somos_, May 31 2005
+  Given g.f. A(x), then B(x) = x * A(x^8)^3 satisfies 0 = f(B(x), B(x^3)) where f(u, v) = (u^3 - v) * (u + v^3) - 9 * u^3 * v^3. - _Michael Somos_, Mar 25 2008
+  More precise asymptotics: a(n) ~ exp(Pi*sqrt((n-1/24)/3)) / (4*3^(1/4)*(n-1/24)^(3/4)) * (1 + (Pi^2-27)/(24*Pi*sqrt(3*(n-1/24))) + (Pi^4-270*Pi^2-1215)/(3456*Pi^2*(n-1/24))). - _Vaclav Kotesovec_, Nov 30 2015
+  Product_{k>=1} (1+x^(2k)) = Sum_{k>=0} x^(k*(k+1))/Product_{i=1..k} (1-x^(2i)) - Euler (Hardy and Wright, Theorem 346).
+  Similarly, A(x) = Sum_{n >= 0} x^(n*(2*n+1))/Product_{k = 1..2*n+1} (1 - x^k). (End)
+  Sum_{n>=0} a(n)/exp(Pi*n) = exp(Pi/24)/2^(1/8) = A292820. - _Simon Plouffe_, May 12 2023 [Proof: Sum_{n>=0} a(n)/exp(Pi*n) = phi(exp(-2*Pi)) / phi(exp(-Pi)), where phi(q) is the Euler modular function. We have phi(exp(-2*Pi)) = exp(Pi/12) * Gamma(1/4) / (2 * Pi^(3/4)) and phi(exp(-Pi)) = exp(Pi/24) * Gamma(1/4) / (2^(7/8) * Pi^(3/4)), see formulas (14) and (13) in I. Mező, 2013. - _Vaclav Kotesovec_, May 12 2023]
+  Sum_{n>=1} 1/a(n) = A237515. - _Amiram Eldar_, Nov 15 2020
+  The product g.f. = (1/(1-x))*(1/(1-x^3))*(1/(1-x^5))*...; = (1,1,1,...)*
+  a(0)=1; a(n) = 2*(Sum_{k=1..floor(sqrt(n))} (-1)^(k+1) a(n-k^2)) + sigma(n) where sigma(n) = (-1)^j if (n=(j*(3*j+1))/2 OR n=(j*(3*j-1))/2) otherwise sigma(n)=0 (simpler: sigma = A010815). (End)
+  a(2*n) = Sum_{j=1..n} p(n+j, 2*j) and a(2*n+1) = Sum_{j=1..n+1} p(n+j,2*j-1), where p(n, s) is the number of partitions of n having exactly s parts. - _Gregory L. Simay_, Aug 30 2023
+  a(A004526(n)) = A172033(n). - _Reinhard Zumkeller_, Jan 23 2010
+  a(n) = A000041(n) - A047967(n). - _R. J. Mathar_, Nov 20 2017
+  a(n) = A001227(n) + A238005(n) + A238006(n). - _R. J. Mathar_, Sep 08 2021
+  a(n) = A026837(n) + A026838(n) = A118301(n) + A118302(n); a(A001318(n)) = A051044(n); a(A090864(n)) = A118303(n). - _Reinhard Zumkeller_, Apr 22 2006
+  a(n) = A054242(n,0) = A201377(n,0). - _Reinhard Zumkeller_, Dec 02 2011
+  a(n) = A067661(n) + A067659(n). _Wolfdieter Lang_, Jan 18 2016
+  a(n) = A089806(n)*A010815(floor(n/2)) + a(n-1) + a(n-2) - a(n-5) - a(n-7) + a(n-12) + ... + A057077(m-1)*a(n-A001318(m)) + ..., where n > A001318(m). - _Gevorg Hmayakyan_, Jul 07 2016
+  a(n) = P(n) - P(n-2) - P(n-4) + P(n-10) + P(n-14) + ... + (-1)^m P(n-2p_m) + ..., where P(n) is the partition function (A000041) and p_m = m(3m-1)/2 is the m-th generalized pentagonal number (A001318). - _Jerome Malenfant_, Feb 16 2011
+  a(n) = Sum_{k=0..n-1} A117195(n,k) = A117192(n) + A117193(n) for n>0. - _Reinhard Zumkeller_, Mar 03 2006
+  a(n) = t(n, 0), t as defined in A079211.
+  a(n) ~ Pi*BesselI(1, Pi*sqrt((n+1/24)/3)) / sqrt(24*n+1). - _Vaclav Kotesovec_, Nov 08 2016
+  a(n) ~ exp(Pi*sqrt(n/3) + (Pi/(48*sqrt(3)) - 3*sqrt(3)/(8*Pi))/sqrt(n) - (1/32 + 9/(16*Pi^2))/n) / (4*3^(1/4)*n^(3/4)).
+  a(n) ~ exp(Pi*sqrt(n/3))/(4*3^(1/4)*n^(3/4)) * (1 + (Pi/(48*sqrt(3)) - (3*sqrt(3))/(8*Pi))/sqrt(n) + (Pi^2/13824 - 5/128 - 45/(128*Pi^2))/n).
+  a*b*c*... where a, a*b, a*b*c, ... converge to A000009:
 A000010: Conjecture: Sum_{i>=2} (-1)^i/(i*phi(i)) exists and is approximately 0.558 (A335319). - Orges Leka (oleka(AT)students.uni-mainz.de), Dec 23 2004
-A000010: Conjecture: a(n) = Sum_{a=1..n} Sum_{b=1..n} Sum_{c=1..n} 1 for n > 1. The sum is over a,b,c such that n*c - a*b = 1. - _Benedict W. J. Irwin_, Apr 03 2017
-A000010: Conjecture: a(n) = lim_{k->oo} (n^(k + 1))/A000203(n^k). - _Velin Yanev_, Dec 04 2024 [A000010(p) = p-1, A000203(p^k) = (p^(k+1)-1)/(p-1), so the conjecture is true if n is prime. - _Vaclav Kotesovec_, Dec 19 2024]
-A000010: Dirichlet generating function Sum_{n>=1} phi(n)/n^s = zeta(s-1)/zeta(s). Also Sum_{n >= 1} phi(n)*x^n/(1 - x^n) = x/(1 - x)^2.
-A000010: For n > 1, Sum_{k=1..n} a(gcd(n,k))*mu(rad(gcd(n,k)))*rad(gcd(n,k))/gcd(n,k) = 0.
-A000010: For n > 1, Sum_{k=1..n} a(gcd(n,k))*mu(rad(n/gcd(n,k)))*rad(n/gcd(n,k))*gcd(n,k) = 0.
-A000010: For n > 1, Sum_{k=1..n} phi^{(-1)}(n/gcd(n,k))*a(gcd(n,k))/a(n/gcd(n,k)) = 0, where phi^{(-1)} = A023900.
-A000010: For odd n, a(n) = 2*A135303((n-1)/2)*A003558((n-1)/2) or phi(n) = 2*c*k; the Coach theorem of Pedersen et al. Cf. A135303. - _Gary W. Adamson_, Aug 15 2012
-A000010: From _Bernard Schott_, Nov 28 2020: (Start)
-A000010: From _Enrique Pérez Herrero_, Sep 07 2010: (Start)
-A000010: From _Richard L. Ollerton_, May 09 2021: (Start)
-A000010: G.f. A(x) satisfies: A(x) = x/(1 - x)^2 - Sum_{k>=2} A(x^k). - _Ilya Gutkovskiy_, Sep 06 2019
-A000010: G.f.: Sum_{n>=1} mu(n)*x^n/(1 - x^n)^2, where mu(n) = A008683(n). - _Mamuka Jibladze_, Apr 05 2015
-A000010: G.f.: x*d/dx(x*d/dx(log(Product_{k>=1} (1 - x^k)^(-mu(k)/k^2)))), where mu(n) = A008683(n). - _Mamuka Jibladze_, Sep 20 2018
-A000010: It is a classical result (certainly known to Landau, 1909) that lim inf n/phi(n) = 1 (taking n to be primes), lim sup n/(phi(n)*log(log(n))) = e^gamma, with gamma = Euler's constant (taking n to be products of consecutive primes starting from 2 and applying Mertens' theorem). See e.g. Ribenboim, pp. 319-320. - Pieter Moree, Sep 10 2004
-A000010: Multiplicative with a(p^e) = (p - 1)*p^(e-1). - _David W. Wilson_, Aug 01 2001
-A000010: Sum_{d divides n} phi(d) = n.
-A000010: Sum_{k=1..n} a(gcd(n,k))/a(n/gcd(n,k)) = n. (End)
-A000010: Sum_{m=1..n} 1/a(m) = A028415(n)/A048049(n) -> oo when n->oo.
-A000010: Sum_{n >= 1} 1/a(n)^2 = A109695.
-A000010: Sum_{n >= 1} 1/a(n)^3 = A335818.
-A000010: Sum_{n >= 1} 1/a(n)^k is convergent iff k > 1.
-A000010: Sum_{n >= 1} phi(n)*x^n/(1 + x^n) = x + 3*x^3 + 5*x^5 + 7*x^7 + ... = Sum_{n >= 1} phi(2*n-1)*x^(2*n-1)/(1 - x^(4*n-2)). For the first equality see Pólya and Szegő, problem 71, p. 126. - _Peter Bala_, Feb 29 2024
-A000010: Sum_{n>=1} (phi(n)*log(1 - x^n)/n) = -x/(1 - x) for -1 < x < 1 (cf. A002088) - _Henry Bottomley_, Nov 16 2001
-A000010: a(2n) = a(n) iff n is odd, and, a(2n) > a(n) iff n is even. (End) [Actually, a(2n) = 2*a(n) for even n. - _Jianing Song_, Sep 18 2022]
-A000010: a(n) = 2*A023896(n)/n, n > 1. - _Richard R. Forberg_, Feb 03 2021
-A000010: a(n) = A096396(n) + A096397(n). - _Reinhard Zumkeller_, Mar 24 2012
-A000010: a(n) = A173557(n)*A003557(n). - _R. J. Mathar_, Mar 30 2011
-A000010: a(n) = Sum_{d|n, e|n} gcd(d, e)*mobius(n/d)*mobius(n/e) (the sum is a multiplicative function of n by Tóth, and takes the value p^e - p^(e-1) for n = p^e, a prime power). - _Peter Bala_, Jan 22 2024
-A000010: a(n) = Sum_{d|n} A007431(d). - _Steven Foster Clark_, May 29 2019
-A000010: a(n) = Sum_{i=1..n} floor(rad(i*n)/rad(i)*rad(n)), where rad is A007947. (End)
-A000010: a(n) = Sum_{i=1..n} floor(sigma_k(i*n)/sigma_k(i)*sigma_k(n)), where sigma_2 is A001157.
-A000010: a(n) = Sum_{i=1..n} floor(tau_k(i*n)/tau_k(i)*tau_k(n)), where tau_3 is A007425.
-A000010: a(n) = Sum_{i=1..n} |k(n, i)| where k(n, i) is the Kronecker symbol. Also a(n) = n - #{1 <= i <= n : k(n, i) = 0}. - _Benoit Cloitre_, Aug 06 2004 [Corrected by _Jianing Song_, Sep 25 2018]
-A000010: a(n) = Sum_{j=1..n} gcd(j, n) cos(2*Pi*j/n) = Sum_{j=1..n} gcd(j, n) exp(2*Pi*i*j/n) where i is the imaginary unit. Notice that the Ramanujan's sum c_n(k) := Sum_{j=1..n, gcd(j, n) = 1} exp(2*Pi*i*j*k/n) gives a(n) = Sum_{k|n} k*c_(n/k)(1) = Sum_{k|n} k*mu(n/k). - _Michael Somos_, May 13 2018
-A000010: a(n) = binomial(n+1, 2) - Sum_{i=1..n-1} a(i)*floor(n/i) (see A000217 for inverse). - _Jon Perry_, Mar 02 2004
-A000010: a(n) = lim_{s->1} n*zeta(s)*(Sum_{d divides n} A008683(d)/(e^(1/d))^(s-1)), for n > 1. - _Mats Granvik_, Jan 26 2017
-A000010: a(n) = n - cototient(n) = n - A051953(n). - _Omar E. Pol_, May 14 2016
-A000010: a(n) > n/(exp(gamma)*log(log(n)) + 5/(2*log(log(n)))), except for n=223092870 (Rosser, Schoenfeld). - _Hugo Pfoertner_, Jun 02 2020
-A000010: a(n) >= sqrt(n/2) (Nicolas). - _Hugo Pfoertner_, Jun 01 2020
-A000010: phi(n) = Sum_{d divides n} mu(d)*n/d, i.e., the Moebius transform of the natural numbers; mu() = Moebius function A008683().
-A000010: phi(n) = n*Product_{distinct primes p dividing n} (1 - 1/p).
-A000010: phi(p*n) = phi(n)*(floor(((n + p - 1) mod p)/(p - 1)) + p - 1), for primes p. - _Gary Detlefs_, Apr 21 2012
+  Conjecture: a(n) = Sum_{a=1..n} Sum_{b=1..n} Sum_{c=1..n} 1 for n > 1. The sum is over a,b,c such that n*c - a*b = 1. - _Benedict W. J. Irwin_, Apr 03 2017
+  Conjecture: a(n) = lim_{k->oo} (n^(k + 1))/A000203(n^k). - _Velin Yanev_, Dec 04 2024 [A000010(p) = p-1, A000203(p^k) = (p^(k+1)-1)/(p-1), so the conjecture is true if n is prime. - _Vaclav Kotesovec_, Dec 19 2024]
+  Dirichlet generating function Sum_{n>=1} phi(n)/n^s = zeta(s-1)/zeta(s). Also Sum_{n >= 1} phi(n)*x^n/(1 - x^n) = x/(1 - x)^2.
+  For n > 1, Sum_{k=1..n} a(gcd(n,k))*mu(rad(gcd(n,k)))*rad(gcd(n,k))/gcd(n,k) = 0.
+  For n > 1, Sum_{k=1..n} a(gcd(n,k))*mu(rad(n/gcd(n,k)))*rad(n/gcd(n,k))*gcd(n,k) = 0.
+  For n > 1, Sum_{k=1..n} phi^{(-1)}(n/gcd(n,k))*a(gcd(n,k))/a(n/gcd(n,k)) = 0, where phi^{(-1)} = A023900.
+  For odd n, a(n) = 2*A135303((n-1)/2)*A003558((n-1)/2) or phi(n) = 2*c*k; the Coach theorem of Pedersen et al. Cf. A135303. - _Gary W. Adamson_, Aug 15 2012
+  From _Bernard Schott_, Nov 28 2020: (Start)
+  From _Enrique Pérez Herrero_, Sep 07 2010: (Start)
+  From _Richard L. Ollerton_, May 09 2021: (Start)
+  G.f. A(x) satisfies: A(x) = x/(1 - x)^2 - Sum_{k>=2} A(x^k). - _Ilya Gutkovskiy_, Sep 06 2019
+  G.f.: Sum_{n>=1} mu(n)*x^n/(1 - x^n)^2, where mu(n) = A008683(n). - _Mamuka Jibladze_, Apr 05 2015
+  G.f.: x*d/dx(x*d/dx(log(Product_{k>=1} (1 - x^k)^(-mu(k)/k^2)))), where mu(n) = A008683(n). - _Mamuka Jibladze_, Sep 20 2018
+  It is a classical result (certainly known to Landau, 1909) that lim inf n/phi(n) = 1 (taking n to be primes), lim sup n/(phi(n)*log(log(n))) = e^gamma, with gamma = Euler's constant (taking n to be products of consecutive primes starting from 2 and applying Mertens' theorem). See e.g. Ribenboim, pp. 319-320. - Pieter Moree, Sep 10 2004
+  Multiplicative with a(p^e) = (p - 1)*p^(e-1). - _David W. Wilson_, Aug 01 2001
+  Sum_{d divides n} phi(d) = n.
+  Sum_{k=1..n} a(gcd(n,k))/a(n/gcd(n,k)) = n. (End)
+  Sum_{m=1..n} 1/a(m) = A028415(n)/A048049(n) -> oo when n->oo.
+  Sum_{n >= 1} 1/a(n)^2 = A109695.
+  Sum_{n >= 1} 1/a(n)^3 = A335818.
+  Sum_{n >= 1} 1/a(n)^k is convergent iff k > 1.
+  Sum_{n >= 1} phi(n)*x^n/(1 + x^n) = x + 3*x^3 + 5*x^5 + 7*x^7 + ... = Sum_{n >= 1} phi(2*n-1)*x^(2*n-1)/(1 - x^(4*n-2)). For the first equality see Pólya and Szegő, problem 71, p. 126. - _Peter Bala_, Feb 29 2024
+  Sum_{n>=1} (phi(n)*log(1 - x^n)/n) = -x/(1 - x) for -1 < x < 1 (cf. A002088) - _Henry Bottomley_, Nov 16 2001
+  a(2n) = a(n) iff n is odd, and, a(2n) > a(n) iff n is even. (End) [Actually, a(2n) = 2*a(n) for even n. - _Jianing Song_, Sep 18 2022]
+  a(n) = 2*A023896(n)/n, n > 1. - _Richard R. Forberg_, Feb 03 2021
+  a(n) = A096396(n) + A096397(n). - _Reinhard Zumkeller_, Mar 24 2012
+  a(n) = A173557(n)*A003557(n). - _R. J. Mathar_, Mar 30 2011
+  a(n) = Sum_{d|n, e|n} gcd(d, e)*mobius(n/d)*mobius(n/e) (the sum is a multiplicative function of n by Tóth, and takes the value p^e - p^(e-1) for n = p^e, a prime power). - _Peter Bala_, Jan 22 2024
+  a(n) = Sum_{d|n} A007431(d). - _Steven Foster Clark_, May 29 2019
+  a(n) = Sum_{i=1..n} floor(rad(i*n)/rad(i)*rad(n)), where rad is A007947. (End)
+  a(n) = Sum_{i=1..n} floor(sigma_k(i*n)/sigma_k(i)*sigma_k(n)), where sigma_2 is A001157.
+  a(n) = Sum_{i=1..n} floor(tau_k(i*n)/tau_k(i)*tau_k(n)), where tau_3 is A007425.
+  a(n) = Sum_{i=1..n} |k(n, i)| where k(n, i) is the Kronecker symbol. Also a(n) = n - #{1 <= i <= n : k(n, i) = 0}. - _Benoit Cloitre_, Aug 06 2004 [Corrected by _Jianing Song_, Sep 25 2018]
+  a(n) = Sum_{j=1..n} gcd(j, n) cos(2*Pi*j/n) = Sum_{j=1..n} gcd(j, n) exp(2*Pi*i*j/n) where i is the imaginary unit. Notice that the Ramanujan's sum c_n(k) := Sum_{j=1..n, gcd(j, n) = 1} exp(2*Pi*i*j*k/n) gives a(n) = Sum_{k|n} k*c_(n/k)(1) = Sum_{k|n} k*mu(n/k). - _Michael Somos_, May 13 2018
+  a(n) = binomial(n+1, 2) - Sum_{i=1..n-1} a(i)*floor(n/i) (see A000217 for inverse). - _Jon Perry_, Mar 02 2004
+  a(n) = lim_{s->1} n*zeta(s)*(Sum_{d divides n} A008683(d)/(e^(1/d))^(s-1)), for n > 1. - _Mats Granvik_, Jan 26 2017
+  a(n) = n - cototient(n) = n - A051953(n). - _Omar E. Pol_, May 14 2016
+  a(n) > n/(exp(gamma)*log(log(n)) + 5/(2*log(log(n)))), except for n=223092870 (Rosser, Schoenfeld). - _Hugo Pfoertner_, Jun 02 2020
+  a(n) >= sqrt(n/2) (Nicolas). - _Hugo Pfoertner_, Jun 01 2020
+  phi(n) = Sum_{d divides n} mu(d)*n/d, i.e., the Moebius transform of the natural numbers; mu() = Moebius function A008683().
+  phi(n) = n*Product_{distinct primes p dividing n} (1 - 1/p).
+  phi(p*n) = phi(n)*(floor(((n + p - 1) mod p)/(p - 1)) + p - 1), for primes p. - _Gary Detlefs_, Apr 21 2012

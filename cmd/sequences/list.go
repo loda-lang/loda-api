@@ -17,7 +17,8 @@ import (
 )
 
 var (
-	lineRegexp = regexp.MustCompile(`A([0-9]+): (.+)`)
+	lineRegexp       = regexp.MustCompile(`A([0-9]+): (.+)`)
+	continuationLine = regexp.MustCompile(`^  (.+)`)
 )
 
 type List struct {
@@ -143,51 +144,121 @@ func parseLine(line string) (Field, error) {
 	}, nil
 }
 
+func isContinuationLine(line string) bool {
+	return continuationLine.MatchString(line)
+}
+
+func parseContinuationLine(line string) (string, error) {
+	matches := continuationLine.FindStringSubmatch(line)
+	if len(matches) != 2 {
+		return "", fmt.Errorf("failed parsing continuation line: %s", line)
+	}
+	return matches[1], nil
+}
+
 func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	// Merges fields with old list and writes to target list
 	// If deduplicate is true, remove duplicate entries (same SeqId)
-	i := 0
+	// Outputs in multi-line format: first line has "A000000: content", continuation lines have "  content"
+	
+	// Read all old entries grouped by SeqId
+	oldEntries := make(map[int][]string)
 	scanner := bufio.NewScanner(old)
-	var lastSeqId int = -1
+	var currentSeqId int = -1
+	
 	for scanner.Scan() {
-		// Read and parse old line
 		line := scanner.Text()
-		f, err := parseLine(line)
-		if err != nil {
-			return err
-		}
-		// Write all new fields with smaller seqId
-		for i < len(fields) && (fields[i].SeqId < f.SeqId || (fields[i].SeqId == f.SeqId && (deduplicate || fields[i].Content < f.Content))) {
-			_, err := target.WriteString(formatField(fields[i]) + "\n")
-			if err != nil {
-				return fmt.Errorf("failed writing field: %w", err)
+		if isContinuationLine(line) {
+			// This is a continuation line
+			if currentSeqId >= 0 {
+				content, err := parseContinuationLine(line)
+				if err != nil {
+					return err
+				}
+				oldEntries[currentSeqId] = append(oldEntries[currentSeqId], content)
 			}
-			lastSeqId = fields[i].SeqId
-			i++
-		}
-		// Write old line if it is not the same as the new field
-		if (i >= len(fields) || fields[i].SeqId != f.SeqId || fields[i].Content != f.Content) && (!deduplicate || f.SeqId != lastSeqId) {
-			_, err = target.WriteString(line + "\n")
+		} else {
+			// This is a new entry
+			f, err := parseLine(line)
 			if err != nil {
-				return fmt.Errorf("failed writing line: %w", err)
+				return err
 			}
-			lastSeqId = f.SeqId
+			currentSeqId = f.SeqId
+			oldEntries[currentSeqId] = append(oldEntries[currentSeqId], f.Content)
 		}
 	}
 	if err := scanner.Err(); err != nil {
 		return fmt.Errorf("failed reading old list: %w", err)
 	}
-	// Write remaining new fields
-	for i < len(fields) {
-		if !deduplicate || fields[i].SeqId != lastSeqId {
-			_, err := target.WriteString(formatField(fields[i]) + "\n")
+	
+	// Group new fields by SeqId
+	newEntries := make(map[int][]string)
+	for _, field := range fields {
+		newEntries[field.SeqId] = append(newEntries[field.SeqId], field.Content)
+	}
+	
+	// Merge old and new entries
+	allSeqIds := make(map[int]bool)
+	for seqId := range oldEntries {
+		allSeqIds[seqId] = true
+	}
+	for seqId := range newEntries {
+		allSeqIds[seqId] = true
+	}
+	
+	// Convert to sorted slice
+	var seqIds []int
+	for seqId := range allSeqIds {
+		seqIds = append(seqIds, seqId)
+	}
+	sort.Ints(seqIds)
+	
+	// Write merged entries in multi-line format
+	for _, seqId := range seqIds {
+		var entries []string
+		
+		// Merge old and new entries for this seqId
+		seen := make(map[string]bool)
+		
+		// Add old entries
+		for _, content := range oldEntries[seqId] {
+			if !seen[content] {
+				entries = append(entries, content)
+				seen[content] = true
+			}
+		}
+		
+		// Add new entries
+		for _, content := range newEntries[seqId] {
+			if !seen[content] {
+				entries = append(entries, content)
+				seen[content] = true
+			}
+		}
+		
+		// If deduplicate, keep only one entry
+		if deduplicate && len(entries) > 0 {
+			entries = entries[:1]
+		}
+		
+		// Write entries in multi-line format
+		if len(entries) > 0 {
+			// First entry with full prefix
+			_, err := target.WriteString(fmt.Sprintf("A%06d: %s\n", seqId, entries[0]))
 			if err != nil {
 				return fmt.Errorf("failed writing field: %w", err)
 			}
-			lastSeqId = fields[i].SeqId
+			
+			// Continuation lines with 2-space indentation
+			for _, content := range entries[1:] {
+				_, err := target.WriteString(fmt.Sprintf("  %s\n", content))
+				if err != nil {
+					return fmt.Errorf("failed writing continuation: %w", err)
+				}
+			}
 		}
-		i++
 	}
+	
 	return nil
 }
 
@@ -198,6 +269,10 @@ func findMissingIds(file *os.File, maxId int, maxNumIds int) ([]int, int, error)
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		line := scanner.Text()
+		// Skip continuation lines
+		if isContinuationLine(line) {
+			continue
+		}
 		f, err := parseLine(line)
 		if err != nil {
 			return nil, 0, err

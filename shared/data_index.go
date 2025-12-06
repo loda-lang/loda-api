@@ -380,16 +380,34 @@ func ExtractPariSeqs(path string) (map[string]struct{}, error) {
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
+	var currentID string
+	
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
-		if strings.Contains(line, "(PARI)") {
-			parts := strings.SplitN(line, ":", 2)
-			if len(parts) == 2 {
-				id := strings.TrimSpace(parts[0])
-				idsWithPari[id] = struct{}{}
+		
+		// Check if it's a continuation line (starts with 2 spaces)
+		if strings.HasPrefix(line, "  ") {
+			// This is a continuation line - use the current ID
+			if currentID != "" && strings.Contains(line, "(PARI)") {
+				idsWithPari[currentID] = struct{}{}
+			}
+		} else {
+			// This is a new entry line
+			if strings.Contains(line, "(PARI)") {
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					currentID = strings.TrimSpace(parts[0])
+					idsWithPari[currentID] = struct{}{}
+				}
+			} else {
+				// Update currentID even if no (PARI) found
+				parts := strings.SplitN(line, ":", 2)
+				if len(parts) == 2 {
+					currentID = strings.TrimSpace(parts[0])
+				}
 			}
 		}
 	}
@@ -427,18 +445,34 @@ func ExtractKeywordsFromFile(path string, separator string) (map[string]uint64, 
 	defer file.Close()
 	encoded := make(map[string]uint64)
 	scanner := bufio.NewScanner(file)
+	var currentID string
+	
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) == 0 || line[0] == '#' {
 			continue
 		}
-		parts := strings.SplitN(line, separator, 2)
-		if len(parts) == 2 {
-			id := strings.TrimSpace(parts[0])
-			text := strings.ToLower(strings.TrimSpace(parts[1]))
-			bits := extractKeywordBitsFromComment(text)
-			if bits != 0 {
-				encoded[id] |= bits
+		
+		// Check if it's a continuation line (starts with 2 spaces)
+		if strings.HasPrefix(line, "  ") {
+			// This is a continuation line - use the current ID
+			if currentID != "" {
+				text := strings.ToLower(strings.TrimSpace(line))
+				bits := extractKeywordBitsFromComment(text)
+				if bits != 0 {
+					encoded[currentID] |= bits
+				}
+			}
+		} else {
+			// This is a new entry line
+			parts := strings.SplitN(line, separator, 2)
+			if len(parts) == 2 {
+				currentID = strings.TrimSpace(parts[0])
+				text := strings.ToLower(strings.TrimSpace(parts[1]))
+				bits := extractKeywordBitsFromComment(text)
+				if bits != 0 {
+					encoded[currentID] |= bits
+				}
 			}
 		}
 	}
