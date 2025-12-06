@@ -1,0 +1,20 @@
+{
+  "kind": "Datasource",
+  "metadata": {
+    "name": "InfluxDB"
+  },
+  "spec": {
+    "default": true,
+    "plugin": {
+      "kind": "InfluxDBDatasource",
+      "spec": {
+        "proxy": {
+          "kind": "HTTPProxy",
+          "spec": {
+            "url": "http://localhost:8086"
+          }
+        }
+      }
+    }
+  }
+}

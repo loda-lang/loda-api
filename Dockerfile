@@ -74,6 +74,8 @@ COPY image/profile /root/.profile
 COPY image/influxdb.conf /etc/influxdb/influxdb.conf
 COPY image/grafana.ini /etc/grafana/grafana.ini
 COPY image/perses.yaml /etc/perses/config.yaml
+COPY image/perses-datasource.json /root/perses-datasource.json
+COPY image/perses-home.json /root/perses-home.json
 COPY image/nginx.conf /etc/nginx/nginx.conf
 COPY image/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY image/run.sh /run.sh
