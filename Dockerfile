@@ -26,6 +26,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
       armel) ARCH='armel';; \
       *)     echo "Unsupported architecture: ${dpkgArch}"; exit 1;; \
     esac && \
+    PERSES_ARCH="${ARCH}" && \
+    case "${ARCH}" in \
+      armhf|armel) PERSES_ARCH='armv6';; \
+    esac && \
     rm /var/lib/apt/lists/* -vf \
     # Base dependencies
     && apt-get -y update \
@@ -58,11 +62,11 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
     && curl -fsSLO https://dl.grafana.com/oss/release/grafana_${GRAFANA_VERSION}_${ARCH}.deb \
     && dpkg -i grafana_${GRAFANA_VERSION}_${ARCH}.deb \
     && rm grafana_${GRAFANA_VERSION}_${ARCH}.deb \
-    && curl -fsSLO https://github.com/perses/perses/releases/download/v${PERSES_VERSION}/perses_${PERSES_VERSION}_linux_${ARCH}.tar.gz \
-    && tar -xzf perses_${PERSES_VERSION}_linux_${ARCH}.tar.gz \
+    && curl -fsSLO https://github.com/perses/perses/releases/download/v${PERSES_VERSION}/perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
+    && tar -xzf perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
     && mv perses /usr/local/bin/ \
     && chmod +x /usr/local/bin/perses \
-    && rm perses_${PERSES_VERSION}_linux_${ARCH}.tar.gz \
+    && rm perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
     && mkdir -p /etc/perses /var/lib/perses \
     && curl -fsSLO https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz \
     && tar -C /opt -xzf go${GO_VERSION}.linux-amd64.tar.gz \
