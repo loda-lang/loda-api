@@ -1,0 +1,17 @@
+# Perses configuration file
+database:
+  file:
+    folder: /var/lib/perses
+    extension: json
+
+security:
+  # Enable anonymous access for read-only operations
+  enable_auth: false
+  authorization:
+    guest_permissions:
+      - read:*
+
+http:
+  port: 8084
+  # Configure to run under a subpath
+  base_path: /perses

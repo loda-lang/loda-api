@@ -6,6 +6,7 @@ ENV LANG C.UTF-8
 # Default versions
 ENV INFLUXDB_VERSION=1.8.2
 ENV GRAFANA_VERSION=7.2.0
+ENV PERSES_VERSION=0.52.0
 ENV GO_VERSION=1.23.0
 
 # Grafana database type
@@ -24,6 +25,10 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
       armhf) ARCH='armhf';; \
       armel) ARCH='armel';; \
       *)     echo "Unsupported architecture: ${dpkgArch}"; exit 1;; \
+    esac && \
+    PERSES_ARCH="${ARCH}" && \
+    case "${ARCH}" in \
+      armhf|armel) PERSES_ARCH='armv6';; \
     esac && \
     rm /var/lib/apt/lists/* -vf \
     # Base dependencies
@@ -47,6 +52,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
         nginx \
         procps \
         lsof \
+        tar \
     && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
     && apt-get install -y nodejs npm \
     && mkdir -p /var/log/supervisor \
@@ -56,6 +62,12 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
     && curl -fsSLO https://dl.grafana.com/oss/release/grafana_${GRAFANA_VERSION}_${ARCH}.deb \
     && dpkg -i grafana_${GRAFANA_VERSION}_${ARCH}.deb \
     && rm grafana_${GRAFANA_VERSION}_${ARCH}.deb \
+    && curl -fsSLO https://github.com/perses/perses/releases/download/v${PERSES_VERSION}/perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
+    && tar -xzf perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
+    && mv perses /usr/local/bin/ \
+    && chmod +x /usr/local/bin/perses \
+    && rm perses_${PERSES_VERSION}_linux_${PERSES_ARCH}.tar.gz \
+    && mkdir -p /etc/perses /var/lib/perses \
     && curl -fsSLO https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz \
     && tar -C /opt -xzf go${GO_VERSION}.linux-amd64.tar.gz \
     && rm go${GO_VERSION}.linux-amd64.tar.gz \
@@ -65,6 +77,9 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
 COPY image/profile /root/.profile
 COPY image/influxdb.conf /etc/influxdb/influxdb.conf
 COPY image/grafana.ini /etc/grafana/grafana.ini
+COPY image/perses.yaml /etc/perses/config.yaml
+COPY image/perses-datasource.json /root/perses-datasource.json
+COPY image/perses-home.json /root/perses-home.json
 COPY image/nginx.conf /etc/nginx/nginx.conf
 COPY image/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 COPY image/run.sh /run.sh
