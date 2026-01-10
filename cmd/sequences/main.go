@@ -200,11 +200,11 @@ func (s *SequencesServer) SequenceHandler() http.Handler {
 		case http.MethodPost:
 			// Check if request body is empty
 			if req.ContentLength > 0 {
+				w.WriteHeader(http.StatusBadRequest)
 				util.WriteJsonResponse(w, map[string]string{
 					"status":  "error",
 					"message": "Request body must be empty",
 				})
-				w.WriteHeader(http.StatusBadRequest)
 				return
 			}
 			// Add the sequence ID to the crawler's next IDs queue
