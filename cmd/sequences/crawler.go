@@ -6,6 +6,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -14,9 +15,10 @@ type Crawler struct {
 	currentId  int
 	stepSize   int
 	numFetched int
-	missingIds []int
+	nextIds    []int
 	rand       *rand.Rand
 	httpClient *http.Client
+	mutex      sync.Mutex
 }
 
 func NewCrawler(httpClient *http.Client) *Crawler {
@@ -79,13 +81,16 @@ func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, int, error) {
 }
 
 func (c *Crawler) FetchNext() ([]Field, int, error) {
-	// Fetch missing sequences first
-	if len(c.missingIds) > 0 {
-		id := c.missingIds[0]
-		c.missingIds = c.missingIds[1:]
+	c.mutex.Lock()
+	// Fetch next sequences first
+	if len(c.nextIds) > 0 {
+		id := c.nextIds[0]
+		c.nextIds = c.nextIds[1:]
+		c.mutex.Unlock()
 		c.numFetched++
 		return c.FetchSeq(id, false)
 	}
+	c.mutex.Unlock()
 	// Fetch the next sequence
 	if c.maxId == 0 || c.numFetched == c.maxId {
 		err := c.Init()
@@ -97,6 +102,13 @@ func (c *Crawler) FetchNext() ([]Field, int, error) {
 	}
 	c.numFetched++
 	return c.FetchSeq(c.currentId, false)
+}
+
+// AddNextId adds an ID to the crawler's next IDs queue in a thread-safe manner
+func (c *Crawler) AddNextId(id int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.nextIds = append(c.nextIds, id)
 }
 
 func (c *Crawler) findMaxId() (int, error) {

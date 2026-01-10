@@ -32,6 +32,29 @@ paths:
                 $ref: '#/components/schemas/SequenceDetails'
         '404':
           description: Sequence not found
+    post:
+      tags: [ Sequences ]
+      summary: Trigger sequence data refresh
+      description: |
+        Add the OEIS sequence ID to the crawler's queue of IDs to fetch next. This allows users to trigger an update (refresh) of the data for a given sequence. The data will be fetched asynchronously from the OEIS website.
+        
+        **Important**: The request body must be empty. If a non-empty request body is provided, a 400 Bad Request error will be returned.
+      parameters:
+      - $ref: '#/components/parameters/ID'
+      requestBody:
+        description: Request body must be empty
+        required: false
+      responses:
+        '200':
+          description: Sequence ID successfully added to the crawler's next IDs queue
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResult'
+        '400':
+          description: Bad request - request body must be empty or invalid sequence ID
+        '404':
+          description: Sequence not found
   /sequences/search:
     get:
       tags: [ Sequences ]
