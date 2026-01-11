@@ -88,6 +88,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SearchResult'
+  /sequences/data/oeis/{filename}:
+    get:
+      tags: [ Sequences ]
+      summary: Get OEIS data file
+      description: Retrieve gzip-compressed OEIS data files including names, stripped data, b-files, and various lists (authors, comments, formulas, keywords, offsets, programs).
+      parameters:
+      - name: filename
+        in: path
+        required: true
+        description: OEIS data filename. Can be names.gz, stripped.gz, authors.gz, comments.gz, formulas.gz, keywords.gz, offsets.gz, programs.gz, or b{xxxxxx}.txt.gz where {xxxxxx} is a 6-digit sequence number.
+        schema:
+          type: string
+          pattern: '^(names|stripped|authors|comments|formulas|keywords|offsets|programs)\.gz|b\d{6}\.txt\.gz$'
+      responses:
+        '200':
+          description: Gzip-compressed OEIS data
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Bad request - invalid filename format
   /programs/{id}:
     get:
       tags: [ Programs ]
