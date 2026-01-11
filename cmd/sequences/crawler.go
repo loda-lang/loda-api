@@ -104,11 +104,16 @@ func (c *Crawler) FetchNext() ([]Field, int, error) {
 	return c.FetchSeq(c.currentId, false)
 }
 
-// AddNextId adds an ID to the crawler's next IDs queue in a thread-safe manner
-func (c *Crawler) AddNextId(id int) {
+// AddNextId adds an ID to the crawler's next IDs queue in a thread-safe manner.
+// Returns false if the queue has reached the maximum size, true otherwise.
+func (c *Crawler) AddNextId(id int, maxQueueSize int) bool {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
+	if len(c.nextIds) >= maxQueueSize {
+		return false
+	}
 	c.nextIds = append(c.nextIds, id)
+	return true
 }
 
 func (c *Crawler) findMaxId() (int, error) {

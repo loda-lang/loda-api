@@ -31,6 +31,7 @@ type SequencesServer struct {
 	crawlerReinitInterval int
 	crawlerIdsCacheSize   int
 	crawlerIdsFetchRatio  float64
+	crawlerMaxQueueSize   int
 	crawlerStopped        chan bool
 	crawler               *Crawler
 	dataIndex             *shared.DataIndex
@@ -81,6 +82,7 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 		crawlerReinitInterval: 2000,
 		crawlerIdsCacheSize:   1000,
 		crawlerIdsFetchRatio:  0.5,
+		crawlerMaxQueueSize:   10000,
 		crawlerStopped:        make(chan bool),
 		crawler:               NewCrawler(httpClient),
 		dataIndex:             nil,
@@ -207,8 +209,16 @@ func (s *SequencesServer) SequenceHandler() http.Handler {
 				})
 				return
 			}
-			// Add the sequence ID to the crawler's next IDs queue
-			s.crawler.AddNextId(int(uid.Number()))
+			// Add the sequence ID to the crawler's next IDs queue if within limit
+			success := s.crawler.AddNextId(int(uid.Number()), s.crawlerMaxQueueSize)
+			if !success {
+				w.WriteHeader(http.StatusServiceUnavailable)
+				util.WriteJsonResponse(w, map[string]string{
+					"status":  "error",
+					"message": "Crawler queue is full, please retry later",
+				})
+				return
+			}
 			log.Printf("Added sequence %s to crawler queue", idStr)
 			util.WriteJsonResponse(w, map[string]string{
 				"status":  "success",
