@@ -337,6 +337,7 @@ func (s *StatsServer) Run(port int) {
 	router.Handle("/v2/stats/keywords", newKeywordsHandler(s))
 	router.Handle("/v2/stats/programs/numUsages", newProgramsNumUsagesHandler(s))
 	router.Handle("/v2/stats/submitters", newSubmittersHandler(s))
+	router.Handle("/v2/stats/cpuhours", newCpuHourHandler(s))
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
