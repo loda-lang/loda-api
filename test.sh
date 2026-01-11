@@ -10,6 +10,8 @@ if [ "$local_mode" = true ]; then
     sequences_host_v2=http://localhost:8080/v2
     programs_host_v1=http://localhost:8081/v1
     programs_host_v2=http://localhost:8081/v2
+    submissions_host_v1=http://localhost:8084/v1
+    submissions_host_v2=http://localhost:8084/v2
     stats_host_v1=http://localhost:8082/v1
     stats_host_v2=http://localhost:8082/v2
 else
@@ -18,6 +20,8 @@ else
     sequences_host_v2=http://localhost/v2
     programs_host_v1=http://localhost/v1/miner
     programs_host_v2=http://localhost/v2
+    submissions_host_v1=http://localhost/v1/miner
+    submissions_host_v2=http://localhost/v2
     stats_host_v1=http://localhost/v1/miner
     stats_host_v2=http://localhost/v2
 fi
@@ -43,23 +47,23 @@ curl -fsS ${sequences_host_v2}/sequences/search?q=Fibonacci
 curl -X POST --data-binary @testdata/programs/A000042.asm -H "Content-Type: text/plain" ${programs_host_v2}/programs/eval
 
 echo
-echo "### PROGRAMS V1 ###"
-curl -fsS ${programs_host_v1}/count
-curl -fsS ${programs_host_v1}/session
-curl -fsS ${programs_host_v1}/programs --data-binary $'; Test program 1\nmov $0,26\nadd $0,2\n'
-curl -fsS ${programs_host_v1}/count
-curl -fsS ${programs_host_v1}/programs/0
-curl -fsS ${programs_host_v1}/programs --data-binary $'; Test program 2\nadd $0,17\nsub $0,3\nmul $1,7\n'
-curl -fsS ${programs_host_v1}/count
-curl -fsS ${programs_host_v1}/programs/1
-curl -fsS ${programs_host_v1}/programs --data-binary $'; Test program 3\npow $0,3\n'
-curl -fsS ${programs_host_v1}/count
-curl -fsS ${programs_host_v1}/programs/2
-curl -fsS -X POST ${programs_host_v1}/checkpoint
-curl -fsS ${programs_host_v1}/count
-curl -fsS ${programs_host_v1}/programs/0
-curl -fsS ${programs_host_v1}/programs/1
-curl -fsS ${programs_host_v1}/programs/2
+echo "### SUBMISSIONS V1 ###"
+curl -fsS ${submissions_host_v1}/count
+curl -fsS ${submissions_host_v1}/session
+curl -fsS ${submissions_host_v1}/programs --data-binary $'; Test program 1\nmov $0,26\nadd $0,2\n'
+curl -fsS ${submissions_host_v1}/count
+curl -fsS ${submissions_host_v1}/programs/0
+curl -fsS ${submissions_host_v1}/programs --data-binary $'; Test program 2\nadd $0,17\nsub $0,3\nmul $1,7\n'
+curl -fsS ${submissions_host_v1}/count
+curl -fsS ${submissions_host_v1}/programs/1
+curl -fsS ${submissions_host_v1}/programs --data-binary $'; Test program 3\npow $0,3\n'
+curl -fsS ${submissions_host_v1}/count
+curl -fsS ${submissions_host_v1}/programs/2
+curl -fsS -X POST ${submissions_host_v1}/checkpoint
+curl -fsS ${submissions_host_v1}/count
+curl -fsS ${submissions_host_v1}/programs/0
+curl -fsS ${submissions_host_v1}/programs/1
+curl -fsS ${submissions_host_v1}/programs/2
 
 echo
 echo "### PROGRAMS V2 ###"

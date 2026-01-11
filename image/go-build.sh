@@ -12,6 +12,10 @@ pushd programs
 go build -o /programs
 popd
 
+pushd submissions
+go build -o /submissions
+popd
+
 pushd sequences
 go build -o /sequences
 popd
