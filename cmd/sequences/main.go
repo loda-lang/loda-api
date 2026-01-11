@@ -180,10 +180,6 @@ func newListHandler(l *List) http.Handler {
 
 func (s *SequencesServer) SequenceHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
 		params := mux.Vars(req)
 		idStr := params["id"]
 		uid, err := util.NewUIDFromString(idStr)
@@ -191,12 +187,37 @@ func (s *SequencesServer) SequenceHandler() http.Handler {
 			util.WriteHttpBadRequest(w)
 			return
 		}
-		seq := shared.FindSequenceById(GetIndex(s), uid)
-		if seq == nil {
-			w.WriteHeader(http.StatusNotFound)
-			return
+
+		switch req.Method {
+		case http.MethodGet:
+			seq := shared.FindSequenceById(GetIndex(s), uid)
+			if seq == nil {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+			util.WriteJsonResponse(w, seq)
+
+		case http.MethodPost:
+			// Check if request body is empty
+			if req.ContentLength > 0 {
+				w.WriteHeader(http.StatusBadRequest)
+				util.WriteJsonResponse(w, map[string]string{
+					"status":  "error",
+					"message": "Request body must be empty",
+				})
+				return
+			}
+			// Add the sequence ID to the crawler's next IDs queue
+			s.crawler.AddNextId(int(uid.Number()))
+			log.Printf("Added sequence %s to crawler queue", idStr)
+			util.WriteJsonResponse(w, map[string]string{
+				"status":  "success",
+				"message": fmt.Sprintf("Sequence %s added to crawler queue", idStr),
+			})
+
+		default:
+			util.WriteHttpMethodNotAllowed(w)
 		}
-		util.WriteJsonResponse(w, seq)
 	})
 }
 
@@ -341,7 +362,7 @@ func (s *SequencesServer) handleCrawlerTick() {
 					s.StopCrawler()
 					return
 				}
-				s.crawler.missingIds = ids
+				s.crawler.nextIds = ids
 				break
 			}
 		}
