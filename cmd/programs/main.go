@@ -68,33 +68,6 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 	}
 }
 
-func newCountHandler(s *ProgramsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		util.WriteHttpOK(w, fmt.Sprint(len(s.submissions)))
-	}
-	return http.HandlerFunc(f)
-}
-
-func newSessionHandler(s *ProgramsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		s.checkSession()
-		util.WriteHttpOK(w, fmt.Sprint(s.session.Unix()))
-	}
-	return http.HandlerFunc(f)
-}
-
 // Returns (ok, OperationResult)
 func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, OperationResult) {
 	s.submissionsMutex.Lock()
@@ -186,49 +159,6 @@ func (s *ProgramsServer) removeBFile(submission shared.Submission) OperationResu
 
 	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
 	return OperationResult{Status: "success", Message: "B-file removed"}
-}
-
-func newPostHandler(s *ProgramsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		program, ok := readProgramFromBody(w, req)
-		if !ok {
-			return
-		}
-		// Convert Program to Submission
-		submission := shared.NewSubmissionFromProgram(program)
-		if ok, res := s.checkSubmit(submission); !ok {
-			// Convert OperationResult to EvalResult for v1 API
-			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
-			return
-		}
-		res := s.doSubmit(submission)
-		// Convert OperationResult to EvalResult for v1 API
-		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
-	}
-	return http.HandlerFunc(f)
-}
-
-func newGetHandler(s *ProgramsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		// check request
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		params := mux.Vars(req)
-		index, _ := strconv.Atoi(params["index"])
-
-		// main work
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		s.checkSession()
-		if index < 0 || index >= len(s.submissions) {
-			util.WriteHttpNotFound(w)
-			return
-		}
-		util.WriteHttpOK(w, s.submissions[index].Content)
-	}
-	return http.HandlerFunc(f)
 }
 
 func newCheckpointHandler(s *ProgramsServer) http.Handler {
@@ -725,19 +655,13 @@ func (s *ProgramsServer) Run(port int) {
 
 	// start web server
 	router := mux.NewRouter()
-	router.Handle("/v1/count", newCountHandler(s))
-	router.Handle("/v1/session", newSessionHandler(s))
-	postHandler := newPostHandler(s)
-	router.Handle("/v1/programs", postHandler)
-	router.Handle("/v1/programs/", postHandler)
-	router.Handle("/v1/programs/{index:[0-9]+}", newGetHandler(s))
-	router.Handle("/v1/checkpoint", newCheckpointHandler(s))
 	router.Handle("/v2/programs/{id:[A-Z][0-9]+}", newProgramByIdHandler(s))
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
 	router.Handle("/v2/programs/export", newProgramExportHandler(s))
 	router.Handle("/v2/submissions", newV2SubmissionsGetHandler(s)).Methods(http.MethodGet)
 	router.Handle("/v2/submissions", newV2SubmissionsPostHandler(s)).Methods(http.MethodPost)
+	router.Handle("/v2/submissions/checkpoint", newCheckpointHandler(s)).Methods(http.MethodPost)
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))

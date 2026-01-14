@@ -330,7 +330,6 @@ func (s *StatsServer) Run(port int) {
 
 	// start web server
 	router := mux.NewRouter()
-	router.Handle("/v1/cpuhours", newCpuHourHandler(s))
 	router.Handle("/v2/openapi", newOpenAPIHandler(s))
 	router.Handle("/v2/openapi.yaml", newOpenAPIYAMLHandler(s))
 	router.Handle("/v2/stats/summary", newSummaryHandler(s))

@@ -85,7 +85,7 @@ gssh $target_host "docker exec loda-api /usr/bin/influx -username=root -password
 echo
 
 echo "=== Creating LODA checkpoint on $source_host ==="
-gssh $source_host "curl -X POST localhost/miner/v1/checkpoint"
+gssh $source_host "curl -X POST localhost/v2/submissions/checkpoint"
 ensure_file $source_host data/checkpoint.txt
 echo
 
