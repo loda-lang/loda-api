@@ -4,14 +4,11 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -40,12 +37,6 @@ type OperationResult struct {
 	Message string `json:"message"`
 }
 
-type EvalResult struct {
-	Status  string   `json:"status"`
-	Message string   `json:"message"`
-	Terms   []string `json:"terms"`
-}
-
 type SubmissionsServer struct {
 	dataDir               string
 	influxDbClient        *util.InfluxDbClient
@@ -68,33 +59,6 @@ func NewSubmissionsServer(dataDir string, influxDbClient *util.InfluxDbClient) *
 		submissionsPerUser:    make(map[string]int),
 		bfileRemovals:         make(map[string]time.Time),
 	}
-}
-
-func newCountHandler(s *SubmissionsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		util.WriteHttpOK(w, fmt.Sprint(len(s.submissions)))
-	}
-	return http.HandlerFunc(f)
-}
-
-func newSessionHandler(s *SubmissionsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		s.checkSession()
-		util.WriteHttpOK(w, fmt.Sprint(s.session.Unix()))
-	}
-	return http.HandlerFunc(f)
 }
 
 // Returns (ok, OperationResult)
@@ -188,108 +152,6 @@ func (s *SubmissionsServer) removeBFile(submission shared.Submission) OperationR
 
 	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
 	return OperationResult{Status: "success", Message: "B-file removed"}
-}
-
-func newPostHandler(s *SubmissionsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		program, ok := readProgramFromBody(w, req)
-		if !ok {
-			return
-		}
-		// Convert Program to Submission
-		submission := shared.NewSubmissionFromProgram(program)
-		if ok, res := s.checkSubmit(submission); !ok {
-			// Convert OperationResult to EvalResult for v1 API
-			util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
-			return
-		}
-		res := s.doSubmit(submission)
-		// Convert OperationResult to EvalResult for v1 API
-		util.WriteJsonResponse(w, EvalResult{Status: res.Status, Message: res.Message, Terms: nil})
-	}
-	return http.HandlerFunc(f)
-}
-
-func newGetHandler(s *SubmissionsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		// check request
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		params := mux.Vars(req)
-		index, _ := strconv.Atoi(params["index"])
-
-		// main work
-		s.submissionsMutex.Lock()
-		defer s.submissionsMutex.Unlock()
-		s.checkSession()
-		if index < 0 || index >= len(s.submissions) {
-			util.WriteHttpNotFound(w)
-			return
-		}
-		util.WriteHttpOK(w, s.submissions[index].Content)
-	}
-	return http.HandlerFunc(f)
-}
-
-func newCheckpointHandler(s *SubmissionsServer) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		// check request
-		if req.Method != http.MethodPost {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-
-		// main work
-		err := s.writeCheckpoint()
-		if err != nil {
-			log.Print(err)
-			util.WriteHttpInternalServerError(w)
-		} else {
-			msg := "Checkpoint created"
-			util.WriteHttpCreated(w, msg)
-			log.Print(msg)
-		}
-	}
-	return http.HandlerFunc(f)
-}
-
-func readProgramFromBody(w http.ResponseWriter, req *http.Request) (shared.Program, bool) {
-	var p shared.Program
-	if req.Method != http.MethodPost {
-		util.WriteHttpMethodNotAllowed(w)
-		return p, false
-	}
-	if req.ContentLength <= 0 || req.ContentLength > MaxProgramLength {
-		util.WriteHttpBadRequest(w)
-		return p, false
-	}
-	// Read program code from body
-	defer req.Body.Close()
-	content, err := io.ReadAll(req.Body)
-	if err != nil || len(content) == 0 {
-		util.WriteHttpBadRequest(w)
-		return p, false
-	}
-	code := strings.TrimSpace(string(content))
-	if len(code) == 0 {
-		util.WriteHttpBadRequest(w)
-		return p, false
-	}
-	code = strings.ReplaceAll(code, "\r\n", "\n") + "\n"
-	p, err = shared.NewProgramFromCode(code)
-	if err != nil {
-		log.Printf("Invalid program: %v", err)
-		util.WriteHttpBadRequest(w)
-		return p, false
-	}
-	if len(p.Operations) == 0 {
-		log.Printf("Invalid program (no operations): %s", code)
-		util.WriteHttpBadRequest(w)
-		return p, false
-	}
-	return p, true
 }
 
 func (s *SubmissionsServer) writeCheckpoint() error {
@@ -537,13 +399,6 @@ func (s *SubmissionsServer) Run(port int) {
 
 	// start web server
 	router := mux.NewRouter()
-	router.Handle("/v1/count", newCountHandler(s))
-	router.Handle("/v1/session", newSessionHandler(s))
-	postHandler := newPostHandler(s)
-	router.Handle("/v1/programs", postHandler)
-	router.Handle("/v1/programs/", postHandler)
-	router.Handle("/v1/programs/{index:[0-9]+}", newGetHandler(s))
-	router.Handle("/v1/checkpoint", newCheckpointHandler(s))
 	router.Handle("/v2/submissions", newV2SubmissionsGetHandler(s)).Methods(http.MethodGet)
 	router.Handle("/v2/submissions", newV2SubmissionsPostHandler(s)).Methods(http.MethodPost)
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
