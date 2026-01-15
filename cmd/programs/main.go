@@ -43,6 +43,124 @@ func NewProgramsServer(dataDir string, influxDbClient *util.InfluxDbClient, loda
 	}
 }
 
+<<<<<<< HEAD
+=======
+// Returns (ok, OperationResult)
+func (s *ProgramsServer) checkSubmit(submission shared.Submission) (bool, OperationResult) {
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
+	s.checkSession()
+	if len(s.submissions) > NumSubmissionsMax {
+		log.Print("Maximum number of submissions exceeded")
+		return false, OperationResult{Status: "error", Message: "Too many total submissions"}
+	}
+	if s.submissionsPerUser[submission.Submitter] >= NumSubmissionsPerUser {
+		log.Printf("Rejected submission from %s", submission.Submitter)
+		return false, OperationResult{Status: "error", Message: "Too many user submissions"}
+	}
+	// Skip duplicate check for remove mode
+	if submission.Mode != shared.ModeRemove {
+		for _, p := range s.submissions {
+			if slices.Equal(p.Operations, submission.Operations) {
+				return false, OperationResult{Status: "error", Message: "Duplicate submission"}
+			}
+		}
+	}
+	return true, OperationResult{}
+}
+
+func (s *ProgramsServer) doSubmit(submission shared.Submission) OperationResult {
+	profile := submission.MinerProfile
+	if len(profile) == 0 {
+		profile = "unknown"
+	}
+	s.submissionsMutex.Lock()
+	defer s.submissionsMutex.Unlock()
+	s.submissions = append(s.submissions, submission)
+	s.submissionsPerUser[submission.Submitter]++
+	s.submissionsPerProfile[profile]++
+	msg := fmt.Sprintf("Accepted submission from %s (%d/%d); profile %s (%d)",
+		submission.Submitter, s.submissionsPerUser[submission.Submitter], NumSubmissionsPerUser,
+		profile, s.submissionsPerProfile[profile])
+	log.Print(msg)
+	return OperationResult{Status: "success", Message: "Accepted submission"}
+}
+
+// getBFilePath returns the path to a b-file for the given sequence ID.
+// The ID is validated using util.NewUIDFromString format (e.g., "A000045").
+func (s *ProgramsServer) getBFilePath(id util.UID) string {
+	idStr := id.String()
+	numericId := idStr[1:] // e.g., "000045"
+	dir := filepath.Join(s.dataDir, "seqs", "oeis", "b", numericId[0:3])
+	filename := fmt.Sprintf("b%s.txt.gz", numericId)
+	return filepath.Join(dir, filename)
+}
+
+// removeBFile removes a b-file and returns an OperationResult.
+// B-files are protected for 24 hours after removal.
+func (s *ProgramsServer) removeBFile(submission shared.Submission) OperationResult {
+	idStr := submission.Id.String()
+
+	// Check 24h protection
+	s.bfileRemovalsMutex.Lock()
+	if lastRemoval, exists := s.bfileRemovals[idStr]; exists {
+		if time.Since(lastRemoval) < BFileProtectionDuration {
+			s.bfileRemovalsMutex.Unlock()
+			remaining := BFileProtectionDuration - time.Since(lastRemoval)
+			protectionMsg := fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())
+			log.Printf("%s: %s", protectionMsg, idStr)
+			return OperationResult{Status: "error", Message: protectionMsg}
+		}
+	}
+	s.bfileRemovalsMutex.Unlock()
+
+	// Get the b-file path (ID format already validated by NewUIDFromString in submission)
+	bfilePath := s.getBFilePath(submission.Id)
+
+	// Check if the file exists
+	if !util.FileExists(bfilePath) {
+		log.Printf("B-file does not exist: %s", bfilePath)
+		return OperationResult{Status: "error", Message: "B-file does not exist"}
+	}
+
+	// Remove the file
+	if err := os.Remove(bfilePath); err != nil {
+		log.Printf("Failed to remove b-file %s: %v", bfilePath, err)
+		return OperationResult{Status: "error", Message: "Failed to remove b-file"}
+	}
+
+	// Record the removal time for 24h protection
+	s.bfileRemovalsMutex.Lock()
+	s.bfileRemovals[idStr] = time.Now()
+	s.bfileRemovalsMutex.Unlock()
+
+	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
+	return OperationResult{Status: "success", Message: "B-file removed"}
+}
+
+func newCheckpointHandler(s *ProgramsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		// check request
+		if req.Method != http.MethodPost {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+
+		// main work
+		err := s.writeCheckpoint()
+		if err != nil {
+			log.Print(err)
+			util.WriteHttpInternalServerError(w)
+		} else {
+			msg := "Checkpoint created"
+			util.WriteHttpCreated(w, msg)
+			log.Print(msg)
+		}
+	}
+	return http.HandlerFunc(f)
+}
+
+>>>>>>> main
 func newProgramByIdHandler(s *ProgramsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
 		if req.Method != http.MethodGet {
@@ -279,6 +397,12 @@ func (s *ProgramsServer) Run(port int) {
 	router.Handle("/v2/programs/search", newProgramSearchHandler(s))
 	router.Handle("/v2/programs/eval", newProgramEvalHandler(s))
 	router.Handle("/v2/programs/export", newProgramExportHandler(s))
+<<<<<<< HEAD
+=======
+	router.Handle("/v2/submissions", newV2SubmissionsGetHandler(s)).Methods(http.MethodGet)
+	router.Handle("/v2/submissions", newV2SubmissionsPostHandler(s)).Methods(http.MethodPost)
+	router.Handle("/v2/submissions/checkpoint", newCheckpointHandler(s)).Methods(http.MethodPost)
+>>>>>>> main
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))

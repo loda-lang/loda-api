@@ -32,7 +32,7 @@ docker exec -w /root/git/loda-mcp loda-api npm run build
 
 echo
 echo "### CREATE CHECKPOINT ###"
-docker exec loda-api curl -sX POST localhost/miner/v1/checkpoint
+docker exec loda-api curl -sX POST localhost/v2/submissions/checkpoint
 
 echo
 echo "### RESTART SERVICES ###"

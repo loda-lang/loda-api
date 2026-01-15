@@ -256,14 +256,14 @@ func (s *SequencesServer) SequenceSearchHandler() http.Handler {
 
 func (s *SequencesServer) Run(port int) {
 	router := mux.NewRouter()
-	router.Handle("/v1/oeis/names.gz", newSummaryHandler(s, "names.gz"))
-	router.Handle("/v1/oeis/stripped.gz", newSummaryHandler(s, "stripped.gz"))
-	router.Handle("/v1/oeis/b{id:[0-9]+}.txt.gz", newBFileHandler(s))
-	for _, l := range s.lists {
-		router.Handle(fmt.Sprintf("/v1/oeis/%s.gz", l.name), newListHandler(l))
-	}
 	router.Handle("/v2/sequences/search", s.SequenceSearchHandler())
 	router.Handle("/v2/sequences/{id:[A-Z][0-9]+}", s.SequenceHandler())
+	router.Handle("/v2/sequences/data/oeis/names.gz", newSummaryHandler(s, "names.gz"))
+	router.Handle("/v2/sequences/data/oeis/stripped.gz", newSummaryHandler(s, "stripped.gz"))
+	router.Handle("/v2/sequences/data/oeis/b{id:[0-9]+}.txt.gz", newBFileHandler(s))
+	for _, l := range s.lists {
+		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", l.name), newListHandler(l))
+	}
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 
 	// Start goroutine to reset dataIndex to nil at summaryUpdateInterval
