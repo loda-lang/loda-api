@@ -130,6 +130,18 @@ func newBFileHandler(s *SequencesServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+// newSequenceListHandler creates a handler that serves pre-generated OEIS list files
+func newSequenceListHandler(s *SequencesServer, key, name string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		path := filepath.Join(s.oeisDir, fmt.Sprintf("%s.gz", name))
+		util.ServeBinary(w, req, path)
+	})
+}
+
 func (s *SequencesServer) SequenceHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -187,7 +199,7 @@ func (s *SequencesServer) Run(port int) {
 	router.Handle("/v2/sequences/data/oeis/b{id:[0-9]+}.txt.gz", newBFileHandler(s))
 	// List handlers for OEIS data files
 	for key, name := range shared.ListNames {
-		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", name), newOeisListHandler(s, key, name))
+		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", name), newSequenceListHandler(s, key, name))
 	}
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 
@@ -207,18 +219,6 @@ func (s *SequencesServer) Run(port int) {
 	log.Printf("Using data dir %s", s.oeisDir)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
-}
-
-// newOeisListHandler creates a handler that serves pre-generated OEIS list files
-func newOeisListHandler(s *SequencesServer, key, name string) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		path := filepath.Join(s.oeisDir, fmt.Sprintf("%s.gz", name))
-		util.ServeBinary(w, req, path)
-	})
 }
 
 func main() {
