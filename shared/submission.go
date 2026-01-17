@@ -84,9 +84,13 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	if objType != TypeProgram && objType != TypeSequence && objType != TypeBFile {
 		return fmt.Errorf("invalid type: %s", aux.Type)
 	}
-	// Validate mode for bfile type (only remove allowed)
-	if objType == TypeBFile && mode != ModeRemove {
-		return fmt.Errorf("only remove mode is allowed for bfile type")
+	// Validate mode for program type (add, update, remove only - no refresh)
+	if objType == TypeProgram && mode == ModeRefresh {
+		return fmt.Errorf("refresh mode is not allowed for program type")
+	}
+	// Validate mode for bfile type (only remove and refresh allowed)
+	if objType == TypeBFile && mode != ModeRemove && mode != ModeRefresh {
+		return fmt.Errorf("only remove and refresh modes are allowed for bfile type")
 	}
 	// Validate mode for sequence type (only refresh allowed)
 	if objType == TypeSequence && mode != ModeRefresh {

@@ -405,7 +405,8 @@ func newV2SubmissionsPostHandler(s *SubmissionsServer) http.Handler {
 			}
 			util.WriteJsonResponse(w, res)
 		case shared.TypeBFile:
-			// Only remove mode is allowed for b-files (already validated in UnmarshalJSON)
+			// Only remove and refresh modes are allowed for b-files (already validated in UnmarshalJSON)
+			// Both modes behave the same - they remove the b-file
 			if ok, res := s.checkSubmit(submission); !ok {
 				util.WriteJsonResponse(w, res)
 				return
