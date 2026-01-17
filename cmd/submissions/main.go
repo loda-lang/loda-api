@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -28,8 +27,6 @@ const (
 	CheckSessionInterval    = 24 * time.Hour
 	BFileProtectionDuration = 24 * time.Hour
 	CheckpointFile          = "checkpoint.json"
-	CheckpointFileLegacy    = "checkpoint.txt"
-	ProgramSeparator        = "=============================="
 )
 
 type OperationResult struct {
@@ -208,9 +205,7 @@ func (s *SubmissionsServer) loadCheckpoint() {
 	checkpointPath := filepath.Join(s.dataDir, CheckpointFile)
 	file, err := os.Open(checkpointPath)
 	if err != nil {
-		// Try loading legacy format
-		log.Printf("Cannot load JSON checkpoint %s, attempting legacy format", checkpointPath)
-		s.loadCheckpointLegacy()
+		log.Printf("Cannot load checkpoint %s", checkpointPath)
 		return
 	}
 	defer file.Close()
@@ -218,42 +213,10 @@ func (s *SubmissionsServer) loadCheckpoint() {
 	s.submissions = []shared.Submission{}
 	decoder := json.NewDecoder(file)
 	if err := decoder.Decode(&s.submissions); err != nil {
-		log.Printf("Cannot decode checkpoint JSON: %v, trying legacy format", err)
-		s.loadCheckpointLegacy()
+		log.Printf("Cannot decode checkpoint JSON: %v", err)
 		return
 	}
 	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
-}
-
-func (s *SubmissionsServer) loadCheckpointLegacy() {
-	checkpointPath := filepath.Join(s.dataDir, CheckpointFileLegacy)
-	file, err := os.Open(checkpointPath)
-	if err != nil {
-		log.Printf("Cannot load checkpoint %s", checkpointPath)
-		return
-	}
-	defer file.Close()
-	log.Printf("Loading legacy checkpoint %s", checkpointPath)
-	s.submissions = []shared.Submission{}
-	scanner := bufio.NewScanner(file)
-	program := ""
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == ProgramSeparator {
-			if len(program) > 0 {
-				sub, err := shared.NewSubmissionFromCode(program)
-				if err == nil && len(sub.Operations) > 0 {
-					s.submissions = append(s.submissions, sub)
-				} else {
-					log.Printf("Invalid program in checkpoint: %v", err)
-				}
-			}
-			program = ""
-		} else {
-			program = program + line + "\n"
-		}
-	}
-	log.Printf("Loaded %v submissions from legacy checkpoint", len(s.submissions))
 }
 
 // newV2SubmissionsGetHandler handles GET requests for v2/submissions
