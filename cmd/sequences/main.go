@@ -25,6 +25,7 @@ type SequencesServer struct {
 	summaryUpdateInterval time.Duration
 	dataIndex             *shared.DataIndex
 	httpClient            *http.Client
+	lists                 []*List
 	dataIndexMutex        sync.Mutex
 }
 
@@ -42,6 +43,12 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 			return nil
 		},
 	}
+	i := 0
+	lists := make([]*List, len(shared.ListNames))
+	for key, name := range shared.ListNames {
+		lists[i] = NewList(key, name, oeisDir)
+		i++
+	}
 	return &SequencesServer{
 		dataDir:               dataDir,
 		oeisDir:               oeisDir,
@@ -50,6 +57,7 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 		dataIndex:             nil,
 		dataIndexMutex:        sync.Mutex{},
 		httpClient:            httpClient,
+		lists:                 lists,
 	}
 }
 
@@ -130,6 +138,17 @@ func newBFileHandler(s *SequencesServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
+func newListHandler(l *List) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		l.ServeGzip(w, req)
+	}
+	return http.HandlerFunc(f)
+}
+
 func (s *SequencesServer) SequenceHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -185,6 +204,9 @@ func (s *SequencesServer) Run(port int) {
 	router.Handle("/v2/sequences/data/oeis/names.gz", newSummaryHandler(s, "names.gz"))
 	router.Handle("/v2/sequences/data/oeis/stripped.gz", newSummaryHandler(s, "stripped.gz"))
 	router.Handle("/v2/sequences/data/oeis/b{id:[0-9]+}.txt.gz", newBFileHandler(s))
+	for _, l := range s.lists {
+		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", l.name), newListHandler(l))
+	}
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 
 	// Start goroutine to reset dataIndex to nil at summaryUpdateInterval

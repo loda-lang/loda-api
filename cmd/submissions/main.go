@@ -32,17 +32,6 @@ const (
 	CheckpointFile          = "checkpoint.json"
 )
 
-var (
-	ListNames = map[string]string{
-		"A": "authors",
-		"C": "comments",
-		"F": "formulas",
-		"K": "keywords",
-		"O": "offsets",
-		"o": "programs",
-	}
-)
-
 type OperationResult struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
@@ -83,8 +72,8 @@ func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.I
 		},
 	}
 	i := 0
-	lists := make([]*List, len(ListNames))
-	for key, name := range ListNames {
+	lists := make([]*List, len(shared.ListNames))
+	for key, name := range shared.ListNames {
 		lists[i] = NewList(key, name, oeisDir)
 		i++
 	}
