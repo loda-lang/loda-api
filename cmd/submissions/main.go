@@ -195,8 +195,20 @@ func (s *SubmissionsServer) removeBFile(submission shared.Submission) OperationR
 }
 
 // refreshSequence adds a sequence ID to the crawler's next IDs queue
+// and deletes the b-file if it exists
 func (s *SubmissionsServer) refreshSequence(submission shared.Submission) OperationResult {
 	idStr := submission.Id.String()
+
+	// Delete the b-file if it exists
+	bfilePath := s.getBFilePath(submission.Id)
+	if util.FileExists(bfilePath) {
+		if err := os.Remove(bfilePath); err != nil {
+			log.Printf("Warning: Failed to remove b-file %s during refresh: %v", bfilePath, err)
+			// Continue with refresh even if b-file deletion fails
+		} else {
+			log.Printf("Deleted b-file for sequence %s during refresh", idStr)
+		}
+	}
 
 	// Add to crawler queue
 	success := s.crawler.AddNextId(int(submission.Id.Number()), s.crawlerMaxQueueSize)

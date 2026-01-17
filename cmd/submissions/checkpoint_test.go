@@ -123,3 +123,71 @@ ok, result := server.checkSubmit(submission2)
 assert.False(t, ok, "Duplicate add submission should be rejected")
 assert.Equal(t, "Duplicate submission", result.Message)
 }
+
+func TestRefreshSequence_DeletesBFile(t *testing.T) {
+// Create a temporary directory for testing
+tmpDir, err := os.MkdirTemp("", "refresh-test-*")
+assert.NoError(t, err)
+defer os.RemoveAll(tmpDir)
+
+// Create OEIS directory structure
+oeisDir := filepath.Join(tmpDir, "seqs", "oeis")
+os.MkdirAll(oeisDir, os.ModePerm)
+
+// Create a test server
+server := NewSubmissionsServer(tmpDir, oeisDir, nil)
+
+// Create a test b-file
+id, _ := util.NewUIDFromString("A000045")
+bfilePath := server.getBFilePath(id)
+os.MkdirAll(filepath.Dir(bfilePath), os.ModePerm)
+err = os.WriteFile(bfilePath, []byte("test content"), 0644)
+assert.NoError(t, err)
+
+// Verify b-file exists
+_, err = os.Stat(bfilePath)
+assert.NoError(t, err, "B-file should exist before refresh")
+
+// Create a refresh submission
+submission := shared.Submission{
+Id:        id,
+Mode:      shared.ModeRefresh,
+Type:      shared.TypeSequence,
+Submitter: "tester",
+}
+
+// Execute refresh
+result := server.refreshSequence(submission)
+assert.Equal(t, "success", result.Status)
+
+// Verify b-file was deleted
+_, err = os.Stat(bfilePath)
+assert.True(t, os.IsNotExist(err), "B-file should be deleted after refresh")
+}
+
+func TestRefreshSequence_NoBFile(t *testing.T) {
+// Create a temporary directory for testing
+tmpDir, err := os.MkdirTemp("", "refresh-nobfile-test-*")
+assert.NoError(t, err)
+defer os.RemoveAll(tmpDir)
+
+// Create OEIS directory structure
+oeisDir := filepath.Join(tmpDir, "seqs", "oeis")
+os.MkdirAll(oeisDir, os.ModePerm)
+
+// Create a test server
+server := NewSubmissionsServer(tmpDir, oeisDir, nil)
+
+// Create a refresh submission (no b-file exists)
+id, _ := util.NewUIDFromString("A000045")
+submission := shared.Submission{
+Id:        id,
+Mode:      shared.ModeRefresh,
+Type:      shared.TypeSequence,
+Submitter: "tester",
+}
+
+// Execute refresh - should succeed even without b-file
+result := server.refreshSequence(submission)
+assert.Equal(t, "success", result.Status)
+}
