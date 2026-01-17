@@ -139,6 +139,65 @@ func TestSubmission_UnmarshalJSON_BFileUpdateNotAllowed(t *testing.T) {
 	assert.Contains(t, err.Error(), "only remove mode is allowed for bfile type")
 }
 
+func TestSubmission_UnmarshalJSON_SequenceRefresh(t *testing.T) {
+	jsonData := `{
+		"id": "A000045",
+		"submitter": "charlie",
+		"mode": "refresh",
+		"type": "sequence"
+	}`
+
+	var sub Submission
+	err := json.Unmarshal([]byte(jsonData), &sub)
+	assert.NoError(t, err)
+	assert.Equal(t, "A000045", sub.Id.String())
+	assert.Equal(t, "charlie", sub.Submitter)
+	assert.Equal(t, ModeRefresh, sub.Mode)
+	assert.Equal(t, TypeSequence, sub.Type)
+}
+
+func TestSubmission_UnmarshalJSON_SequenceAddNotAllowed(t *testing.T) {
+	jsonData := `{
+		"id": "A000045",
+		"submitter": "charlie",
+		"mode": "add",
+		"type": "sequence"
+	}`
+
+	var sub Submission
+	err := json.Unmarshal([]byte(jsonData), &sub)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "only refresh mode is allowed for sequence type")
+}
+
+func TestSubmission_UnmarshalJSON_SequenceUpdateNotAllowed(t *testing.T) {
+	jsonData := `{
+		"id": "A000045",
+		"submitter": "charlie",
+		"mode": "update",
+		"type": "sequence"
+	}`
+
+	var sub Submission
+	err := json.Unmarshal([]byte(jsonData), &sub)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "only refresh mode is allowed for sequence type")
+}
+
+func TestSubmission_UnmarshalJSON_SequenceRemoveNotAllowed(t *testing.T) {
+	jsonData := `{
+		"id": "A000045",
+		"submitter": "charlie",
+		"mode": "remove",
+		"type": "sequence"
+	}`
+
+	var sub Submission
+	err := json.Unmarshal([]byte(jsonData), &sub)
+	assert.Error(t, err)
+	assert.Contains(t, err.Error(), "only refresh mode is allowed for sequence type")
+}
+
 func TestSubmissionsResult_JSON(t *testing.T) {
 	id1, _ := util.NewUIDFromString("A000045")
 	id2, _ := util.NewUIDFromString("A000142")

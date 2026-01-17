@@ -37,6 +37,7 @@ type SequencesServer struct {
 	dataIndex             *shared.DataIndex
 	httpClient            *http.Client
 	lists                 []*List
+	refreshQueue          *shared.RefreshQueue
 	dataIndexMutex        sync.Mutex
 }
 
@@ -89,6 +90,7 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 		dataIndexMutex:        sync.Mutex{},
 		httpClient:            httpClient,
 		lists:                 lists,
+		refreshQueue:          shared.NewRefreshQueue(dataDir),
 	}
 }
 
@@ -198,32 +200,6 @@ func (s *SequencesServer) SequenceHandler() http.Handler {
 				return
 			}
 			util.WriteJsonResponse(w, seq)
-
-		case http.MethodPost:
-			// Check if request body is empty
-			if req.ContentLength > 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				util.WriteJsonResponse(w, map[string]string{
-					"status":  "error",
-					"message": "Request body must be empty",
-				})
-				return
-			}
-			// Add the sequence ID to the crawler's next IDs queue if within limit
-			success := s.crawler.AddNextId(int(uid.Number()), s.crawlerMaxQueueSize)
-			if !success {
-				w.WriteHeader(http.StatusServiceUnavailable)
-				util.WriteJsonResponse(w, map[string]string{
-					"status":  "error",
-					"message": "Crawler queue is full, please retry later",
-				})
-				return
-			}
-			log.Printf("Added sequence %s to crawler queue", idStr)
-			util.WriteJsonResponse(w, map[string]string{
-				"status":  "success",
-				"message": fmt.Sprintf("Sequence %s added to crawler queue", idStr),
-			})
 
 		default:
 			util.WriteHttpMethodNotAllowed(w)
@@ -340,6 +316,22 @@ func (s *SequencesServer) StartCrawler() {
 
 // handleCrawlerTick contains the logic for each fetchTicker tick in StartCrawler
 func (s *SequencesServer) handleCrawlerTick() {
+	// Check for refresh requests from the queue
+	refreshIds, err := s.refreshQueue.DequeueAll()
+	if err != nil {
+		log.Printf("Error reading refresh queue: %v", err)
+	} else if len(refreshIds) > 0 {
+		// Add refresh IDs to crawler queue
+		for _, id := range refreshIds {
+			success := s.crawler.AddNextId(id, s.crawlerMaxQueueSize)
+			if success {
+				log.Printf("Added sequence A%06d to crawler queue from refresh request", id)
+			} else {
+				log.Printf("Failed to add sequence A%06d to crawler queue (queue full)", id)
+			}
+		}
+	}
+
 	if s.crawler.numFetched > 0 {
 		// Regularly flush the lists
 		if s.crawler.numFetched%s.crawlerFlushInterval == 0 {

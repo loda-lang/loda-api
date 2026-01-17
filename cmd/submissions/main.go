@@ -42,6 +42,7 @@ type SubmissionsServer struct {
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
 	bfileRemovals         map[string]time.Time // Tracks b-file removal times for 24h protection
+	refreshQueue          *shared.RefreshQueue // Queue for sequence refresh requests
 	submissionsMutex      sync.Mutex
 	bfileRemovalsMutex    sync.Mutex
 }
@@ -55,6 +56,7 @@ func NewSubmissionsServer(dataDir string, influxDbClient *util.InfluxDbClient) *
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
 		bfileRemovals:         make(map[string]time.Time),
+		refreshQueue:          shared.NewRefreshQueue(dataDir),
 	}
 }
 
@@ -150,6 +152,21 @@ func (s *SubmissionsServer) removeBFile(submission shared.Submission) OperationR
 	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
 	return OperationResult{Status: "success", Message: "B-file removed"}
 }
+
+// refreshSequence adds a sequence ID to the refresh queue
+func (s *SubmissionsServer) refreshSequence(submission shared.Submission) OperationResult {
+	idStr := submission.Id.String()
+
+	// Add to refresh queue
+	if err := s.refreshQueue.Enqueue(submission.Id); err != nil {
+		log.Printf("Failed to enqueue refresh for %s: %v", idStr, err)
+		return OperationResult{Status: "error", Message: "Failed to enqueue refresh request"}
+	}
+
+	log.Printf("Enqueued refresh for sequence %s by %s", idStr, submission.Submitter)
+	return OperationResult{Status: "success", Message: fmt.Sprintf("Sequence %s added to refresh queue", idStr)}
+}
+
 
 func (s *SubmissionsServer) writeCheckpoint() error {
 	s.submissionsMutex.Lock()
@@ -325,6 +342,14 @@ func newV2SubmissionsPostHandler(s *SubmissionsServer) http.Handler {
 				return
 			}
 			res := s.doSubmit(submission)
+			util.WriteJsonResponse(w, res)
+		case shared.TypeSequence:
+			// Only refresh mode is allowed for sequences (already validated in UnmarshalJSON)
+			res := s.refreshSequence(submission)
+			if res.Status == "success" {
+				// Record submission if refresh was successful
+				s.doSubmit(submission)
+			}
 			util.WriteJsonResponse(w, res)
 		case shared.TypeBFile:
 			// Only remove mode is allowed for b-files (already validated in UnmarshalJSON)
