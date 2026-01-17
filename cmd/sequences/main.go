@@ -4,13 +4,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strings"
 	"sync"
 	"time"
 
@@ -25,35 +23,13 @@ type SequencesServer struct {
 	oeisDir               string
 	bfileUpdateInterval   time.Duration
 	summaryUpdateInterval time.Duration
-	crawlerFetchInterval  time.Duration
-	crawlerRestartPause   time.Duration
-	crawlerFlushInterval  int
-	crawlerReinitInterval int
-	crawlerIdsCacheSize   int
-	crawlerIdsFetchRatio  float64
-	crawlerMaxQueueSize   int
-	crawlerStopped        chan bool
-	crawler               *Crawler
-	dataIndex             *shared.DataIndex
 	httpClient            *http.Client
-	lists                 []*List
-	refreshQueue          *shared.RefreshQueue
+	dataIndex             *shared.DataIndex
 	dataIndexMutex        sync.Mutex
 }
 
 const (
 	OeisWebsite string = "https://oeis.org/"
-)
-
-var (
-	ListNames = map[string]string{
-		"A": "authors",
-		"C": "comments",
-		"F": "formulas",
-		"K": "keywords",
-		"O": "offsets",
-		"o": "programs",
-	}
 )
 
 func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Duration) *SequencesServer {
@@ -66,31 +42,14 @@ func NewSequencesServer(dataDir string, oeisDir string, updateInterval time.Dura
 			return nil
 		},
 	}
-	i := 0
-	lists := make([]*List, len(ListNames))
-	for key, name := range ListNames {
-		lists[i] = NewList(key, name, oeisDir)
-		i++
-	}
 	return &SequencesServer{
 		dataDir:               dataDir,
 		oeisDir:               oeisDir,
 		bfileUpdateInterval:   180 * 24 * time.Hour, // 6 months
 		summaryUpdateInterval: updateInterval,
-		crawlerFetchInterval:  1 * time.Minute,
-		crawlerRestartPause:   24 * time.Hour,
-		crawlerFlushInterval:  100,
-		crawlerReinitInterval: 2000,
-		crawlerIdsCacheSize:   1000,
-		crawlerIdsFetchRatio:  0.5,
-		crawlerMaxQueueSize:   10000,
-		crawlerStopped:        make(chan bool),
-		crawler:               NewCrawler(httpClient),
+		httpClient:            httpClient,
 		dataIndex:             nil,
 		dataIndexMutex:        sync.Mutex{},
-		httpClient:            httpClient,
-		lists:                 lists,
-		refreshQueue:          shared.NewRefreshQueue(dataDir),
 	}
 }
 
@@ -171,17 +130,6 @@ func newBFileHandler(s *SequencesServer) http.Handler {
 	return http.HandlerFunc(f)
 }
 
-func newListHandler(l *List) http.Handler {
-	f := func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodGet {
-			util.WriteHttpMethodNotAllowed(w)
-			return
-		}
-		l.ServeGzip(w, req)
-	}
-	return http.HandlerFunc(f)
-}
-
 func (s *SequencesServer) SequenceHandler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		params := mux.Vars(req)
@@ -237,8 +185,9 @@ func (s *SequencesServer) Run(port int) {
 	router.Handle("/v2/sequences/data/oeis/names.gz", newSummaryHandler(s, "names.gz"))
 	router.Handle("/v2/sequences/data/oeis/stripped.gz", newSummaryHandler(s, "stripped.gz"))
 	router.Handle("/v2/sequences/data/oeis/b{id:[0-9]+}.txt.gz", newBFileHandler(s))
-	for _, l := range s.lists {
-		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", l.name), newListHandler(l))
+	// List handlers for OEIS data files
+	for key, name := range shared.ListNames {
+		router.Handle(fmt.Sprintf("/v2/sequences/data/oeis/%s.gz", name), newOeisListHandler(s, key, name))
 	}
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 
@@ -260,127 +209,16 @@ func (s *SequencesServer) Run(port int) {
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))
 }
 
-func (s *SequencesServer) StopCrawler() {
-	log.Print("Stopping crawler")
-	s.crawlerStopped <- true
-	restartTimer := time.NewTimer(s.crawlerRestartPause)
-	go func() {
-		<-restartTimer.C
-		s.StartCrawler()
-	}()
-}
-
-// filterValidKeywordsFields filters out unknown keywords from fields with key 'K'.
-func filterValidKeywordsFields(fields []Field) []Field {
-	filteredFields := make([]Field, 0, len(fields))
-	for _, field := range fields {
-		if field.Key == "K" {
-			var validKeywords []string
-			for _, kw := range strings.Split(field.Content, ",") {
-				kw = strings.TrimSpace(kw)
-				if shared.IsKeyword(kw) {
-					validKeywords = append(validKeywords, kw)
-				}
-			}
-			if len(validKeywords) > 0 {
-				field.Content = strings.Join(validKeywords, ",")
-				filteredFields = append(filteredFields, field)
-			}
-			// If no valid keywords, skip this field
-		} else {
-			filteredFields = append(filteredFields, field)
+// newOeisListHandler creates a handler that serves pre-generated OEIS list files
+func newOeisListHandler(s *SequencesServer, key, name string) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodGet {
+			util.WriteHttpMethodNotAllowed(w)
+			return
 		}
-	}
-	return filteredFields
-}
-
-func (s *SequencesServer) StartCrawler() {
-	err := s.crawler.Init()
-	if err != nil {
-		log.Printf("Error initializing crawler: %v", err)
-		return
-	}
-	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
-	s.crawlerStopped = make(chan bool)
-	go func() {
-		for {
-			select {
-			case <-s.crawlerStopped:
-				return
-			case <-fetchTicker.C:
-				s.handleCrawlerTick()
-			}
-		}
-	}()
-}
-
-// handleCrawlerTick contains the logic for each fetchTicker tick in StartCrawler
-func (s *SequencesServer) handleCrawlerTick() {
-	// Check for refresh requests from the queue
-	refreshIds, err := s.refreshQueue.DequeueAll()
-	if err != nil {
-		log.Printf("Error reading refresh queue: %v", err)
-	} else if len(refreshIds) > 0 {
-		// Add refresh IDs to crawler queue
-		for _, id := range refreshIds {
-			success := s.crawler.AddNextId(id, s.crawlerMaxQueueSize)
-			if success {
-				log.Printf("Added sequence A%06d to crawler queue from refresh request", id)
-			} else {
-				log.Printf("Failed to add sequence A%06d to crawler queue (queue full)", id)
-			}
-		}
-	}
-
-	if s.crawler.numFetched > 0 {
-		// Regularly flush the lists
-		if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
-			for _, l := range s.lists {
-				deduplicate := l.name == "offsets"
-				err := l.Flush(deduplicate)
-				if err != nil {
-					log.Printf("Error flushing list %s: %v", l.name, err)
-					s.StopCrawler()
-					continue
-				}
-			}
-		}
-		// Regularly re-initialize the crawler
-		if s.crawler.numFetched%s.crawlerReinitInterval == 0 {
-			err := s.crawler.Init()
-			if err != nil {
-				log.Printf("Error re-initializing crawler: %v", err)
-				s.StopCrawler()
-				return
-			}
-		}
-	}
-	if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
-		// Find the missing ids
-		for _, l := range s.lists {
-			if l.name == "offsets" {
-				ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
-				if err != nil {
-					s.StopCrawler()
-					return
-				}
-				s.crawler.nextIds = ids
-				break
-			}
-		}
-	}
-	// Fetch the next sequence
-	fields, _, err := s.crawler.FetchNext()
-	if err != nil {
-		log.Printf("Error fetching fields: %v", err)
-		s.StopCrawler()
-		return
-	}
-	// Update the lists with the new fields
-	filteredFields := filterValidKeywordsFields(fields)
-	for _, l := range s.lists {
-		l.Update(filteredFields)
-	}
+		path := filepath.Join(s.oeisDir, fmt.Sprintf("%s.gz", name))
+		util.ServeBinary(w, req, path)
+	})
 }
 
 func main() {
@@ -389,6 +227,5 @@ func main() {
 	oeisDir := filepath.Join(setup.DataDir, "seqs", "oeis")
 	os.MkdirAll(oeisDir, os.ModePerm)
 	s := NewSequencesServer(setup.DataDir, oeisDir, setup.UpdateInterval)
-	s.StartCrawler()
 	s.Run(8080)
 }
