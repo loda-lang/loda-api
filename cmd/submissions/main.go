@@ -519,6 +519,23 @@ func (s *SubmissionsServer) handleCrawlerTick() {
 	}
 }
 
+// newV2SubmissionsCheckpointPostHandler handles POST requests for v2/submissions/checkpoint
+func newV2SubmissionsCheckpointPostHandler(s *SubmissionsServer) http.Handler {
+	f := func(w http.ResponseWriter, req *http.Request) {
+		if req.Method != http.MethodPost {
+			util.WriteHttpMethodNotAllowed(w)
+			return
+		}
+		if err := s.writeCheckpoint(); err != nil {
+			log.Printf("Checkpoint failed: %v", err)
+			util.WriteJsonResponse(w, OperationResult{Status: "error", Message: "Checkpoint failed"})
+			return
+		}
+		util.WriteJsonResponse(w, OperationResult{Status: "success", Message: "Checkpoint created"})
+	}
+	return http.HandlerFunc(f)
+}
+
 func (s *SubmissionsServer) Run(port int) {
 	s.loadCheckpoint()
 
@@ -537,6 +554,7 @@ func (s *SubmissionsServer) Run(port int) {
 	router := mux.NewRouter()
 	router.Handle("/v2/submissions", newV2SubmissionsGetHandler(s)).Methods(http.MethodGet)
 	router.Handle("/v2/submissions", newV2SubmissionsPostHandler(s)).Methods(http.MethodPost)
+	router.Handle("/v2/submissions/checkpoint", newV2SubmissionsCheckpointPostHandler(s)).Methods(http.MethodPost)
 	router.NotFoundHandler = http.HandlerFunc(util.HandleNotFound)
 	log.Printf("Listening on port %d", port)
 	http.ListenAndServe(fmt.Sprintf(":%d", port), util.CORSHandler(router))

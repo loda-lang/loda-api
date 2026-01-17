@@ -220,16 +220,16 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 		// Merge old and new entries for this seqId
 		seen := make(map[string]bool)
 
-		// Add old entries
-		for _, content := range oldEntries[seqId] {
+		// Add new entries first (so they take precedence when deduplicating)
+		for _, content := range newEntries[seqId] {
 			if !seen[content] {
 				entries = append(entries, content)
 				seen[content] = true
 			}
 		}
 
-		// Add new entries
-		for _, content := range newEntries[seqId] {
+		// Add old entries
+		for _, content := range oldEntries[seqId] {
 			if !seen[content] {
 				entries = append(entries, content)
 				seen[content] = true
