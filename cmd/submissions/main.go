@@ -1,13 +1,16 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +32,17 @@ const (
 	CheckpointFile          = "checkpoint.json"
 )
 
+var (
+	ListNames = map[string]string{
+		"A": "authors",
+		"C": "comments",
+		"F": "formulas",
+		"K": "keywords",
+		"O": "offsets",
+		"o": "programs",
+	}
+)
+
 type OperationResult struct {
 	Status  string `json:"status"`
 	Message string `json:"message"`
@@ -36,6 +50,7 @@ type OperationResult struct {
 
 type SubmissionsServer struct {
 	dataDir               string
+	oeisDir               string
 	influxDbClient        *util.InfluxDbClient
 	session               time.Time
 	submissions           []shared.Submission // Unified submissions (v1 and v2)
@@ -44,17 +59,55 @@ type SubmissionsServer struct {
 	bfileRemovals         map[string]time.Time // Tracks b-file removal times for 24h protection
 	submissionsMutex      sync.Mutex
 	bfileRemovalsMutex    sync.Mutex
+	crawlerFetchInterval  time.Duration
+	crawlerRestartPause   time.Duration
+	crawlerFlushInterval  int
+	crawlerReinitInterval int
+	crawlerIdsCacheSize   int
+	crawlerIdsFetchRatio  float64
+	crawlerMaxQueueSize   int
+	crawlerStopped        chan bool
+	crawler               *Crawler
+	httpClient            *http.Client
+	lists                 []*List
 }
 
-func NewSubmissionsServer(dataDir string, influxDbClient *util.InfluxDbClient) *SubmissionsServer {
+func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.InfluxDbClient) *SubmissionsServer {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+			r.URL.Opaque = r.URL.Path
+			return nil
+		},
+	}
+	i := 0
+	lists := make([]*List, len(ListNames))
+	for key, name := range ListNames {
+		lists[i] = NewList(key, name, oeisDir)
+		i++
+	}
 	return &SubmissionsServer{
 		dataDir:               dataDir,
+		oeisDir:               oeisDir,
 		influxDbClient:        influxDbClient,
 		session:               time.Now(),
 		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
 		bfileRemovals:         make(map[string]time.Time),
+		crawlerFetchInterval:  1 * time.Minute,
+		crawlerRestartPause:   24 * time.Hour,
+		crawlerFlushInterval:  100,
+		crawlerReinitInterval: 2000,
+		crawlerIdsCacheSize:   1000,
+		crawlerIdsFetchRatio:  0.5,
+		crawlerMaxQueueSize:   10000,
+		crawlerStopped:        make(chan bool),
+		crawler:               NewCrawler(httpClient),
+		httpClient:            httpClient,
+		lists:                 lists,
 	}
 }
 
@@ -219,6 +272,113 @@ func (s *SubmissionsServer) loadCheckpoint() {
 	log.Printf("Loaded %v submissions from checkpoint", len(s.submissions))
 }
 
+func (s *SubmissionsServer) StopCrawler() {
+	log.Print("Stopping crawler")
+	s.crawlerStopped <- true
+	restartTimer := time.NewTimer(s.crawlerRestartPause)
+	go func() {
+		<-restartTimer.C
+		s.StartCrawler()
+	}()
+}
+
+// filterValidKeywordsFields filters out unknown keywords from fields with key 'K'.
+func filterValidKeywordsFields(fields []Field) []Field {
+	filteredFields := make([]Field, 0, len(fields))
+	for _, field := range fields {
+		if field.Key == "K" {
+			var validKeywords []string
+			for _, kw := range strings.Split(field.Content, ",") {
+				kw = strings.TrimSpace(kw)
+				if shared.IsKeyword(kw) {
+					validKeywords = append(validKeywords, kw)
+				}
+			}
+			if len(validKeywords) > 0 {
+				field.Content = strings.Join(validKeywords, ",")
+				filteredFields = append(filteredFields, field)
+			}
+			// If no valid keywords, skip this field
+		} else {
+			filteredFields = append(filteredFields, field)
+		}
+	}
+	return filteredFields
+}
+
+func (s *SubmissionsServer) StartCrawler() {
+	err := s.crawler.Init()
+	if err != nil {
+		log.Printf("Error initializing crawler: %v", err)
+		return
+	}
+	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
+	s.crawlerStopped = make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-s.crawlerStopped:
+				return
+			case <-fetchTicker.C:
+				s.handleCrawlerTick()
+			}
+		}
+	}()
+}
+
+// handleCrawlerTick contains the logic for each fetchTicker tick in StartCrawler
+func (s *SubmissionsServer) handleCrawlerTick() {
+	if s.crawler.numFetched > 0 {
+		// Regularly flush the lists
+		if s.crawler.numFetched%s.crawlerFlushInterval == 0 {
+			for _, l := range s.lists {
+				deduplicate := l.name == "offsets"
+				err := l.Flush(deduplicate)
+				if err != nil {
+					log.Printf("Error flushing list %s: %v", l.name, err)
+					s.StopCrawler()
+					continue
+				}
+			}
+		}
+		// Regularly re-initialize the crawler
+		if s.crawler.numFetched%s.crawlerReinitInterval == 0 {
+			err := s.crawler.Init()
+			if err != nil {
+				log.Printf("Error re-initializing crawler: %v", err)
+				s.StopCrawler()
+				return
+			}
+		}
+	}
+	if s.crawler.numFetched%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
+		// Find the missing ids
+		for _, l := range s.lists {
+			if l.name == "offsets" {
+				ids, _, err := l.FindMissingIds(s.crawler.maxId, s.crawlerIdsCacheSize)
+				if err != nil {
+					s.StopCrawler()
+					return
+				}
+				s.crawler.nextIds = ids
+				break
+			}
+		}
+	}
+	// Fetch the next sequence
+	fields, _, err := s.crawler.FetchNext()
+	if err != nil {
+		log.Printf("Error fetching fields: %v", err)
+		s.StopCrawler()
+		return
+	}
+	// Update the lists with the new fields
+	filteredFields := filterValidKeywordsFields(fields)
+	for _, l := range s.lists {
+		l.Update(filteredFields)
+	}
+}
+
 // newV2SubmissionsGetHandler handles GET requests for v2/submissions
 func newV2SubmissionsGetHandler(s *SubmissionsServer) http.Handler {
 	f := func(w http.ResponseWriter, req *http.Request) {
@@ -371,8 +531,12 @@ func (s *SubmissionsServer) Run(port int) {
 
 func main() {
 	setup := cmd.GetSetup("submissions")
+	util.MustDirExist(setup.DataDir)
+	oeisDir := filepath.Join(setup.DataDir, "seqs", "oeis")
+	os.MkdirAll(oeisDir, os.ModePerm)
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
-	s := NewSubmissionsServer(setup.DataDir, i)
+	s := NewSubmissionsServer(setup.DataDir, oeisDir, i)
+	s.StartCrawler()
 	s.Run(8084)
 }

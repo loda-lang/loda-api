@@ -17,7 +17,9 @@ assert.NoError(t, err)
 defer os.RemoveAll(tmpDir)
 
 // Create a test server
-server := NewSubmissionsServer(tmpDir, nil)
+oeisDir := filepath.Join(tmpDir, "oeis")
+os.MkdirAll(oeisDir, os.ModePerm)
+server := NewSubmissionsServer(tmpDir, oeisDir, nil)
 
 // Add some test submissions
 id1, _ := util.NewUIDFromString("A000045")
@@ -50,7 +52,7 @@ _, err = os.Stat(checkpointPath)
 assert.NoError(t, err)
 
 // Create a new server and load the checkpoint
-server2 := NewSubmissionsServer(tmpDir, nil)
+server2 := NewSubmissionsServer(tmpDir, oeisDir, nil)
 server2.loadCheckpoint()
 
 // Verify the loaded submissions match
@@ -75,7 +77,9 @@ assert.NoError(t, err)
 defer os.RemoveAll(tmpDir)
 
 // Create a server and try to load a non-existent checkpoint
-server := NewSubmissionsServer(tmpDir, nil)
+oeisDir := filepath.Join(tmpDir, "oeis")
+os.MkdirAll(oeisDir, os.ModePerm)
+server := NewSubmissionsServer(tmpDir, oeisDir, nil)
 server.loadCheckpoint()
 
 // Should not crash, just have empty submissions
@@ -84,7 +88,7 @@ assert.Equal(t, 0, len(server.submissions))
 
 func TestCheckSubmit_DuplicateAdd(t *testing.T) {
 // Create a test server
-server := NewSubmissionsServer("", nil)
+server := NewSubmissionsServer("", "", nil)
 
 // Create a submission with mode "add"
 id1, _ := util.NewUIDFromString("A000045")
