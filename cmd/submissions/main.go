@@ -21,16 +21,16 @@ import (
 )
 
 const (
-	NumSubmissionsLow       = 1000
-	NumSubmissionsHigh      = 2000
-	NumSubmissionsMax       = 50000
-	NumSubmissionsPerUser   = 100
-	MaxProgramLength        = 100000
-	CheckpointInterval      = 10 * time.Minute
-	CheckSessionInterval    = 24 * time.Hour
-	BFileProtectionDuration = 24 * time.Hour
-	CheckpointFile          = "checkpoint.json"
-	OeisWebsite             = "https://oeis.org/"
+	NumSubmissionsLow           = 1000
+	NumSubmissionsHigh          = 2000
+	NumSubmissionsMax           = 50000
+	NumSubmissionsPerUser       = 100
+	MaxProgramLength            = 100000
+	CheckpointInterval          = 10 * time.Minute
+	CheckSessionInterval        = 24 * time.Hour
+	CheckpointFile              = "checkpoint.json"
+	OeisWebsite                 = "https://oeis.org/"
+	SequenceRefreshLimitPerHour = 200
 )
 
 type OperationResult struct {
@@ -46,7 +46,7 @@ type SubmissionsServer struct {
 	submissions           []shared.Submission // Unified submissions (v1 and v2)
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
-	bfileRemovals         map[string]time.Time // Tracks b-file removal times for 24h protection
+	refreshSubmissions    []time.Time // Tracks sequence refresh submission timestamps for rate limiting
 	httpClient            *http.Client
 	crawler               *shared.Crawler
 	lists                 []*shared.List
@@ -59,7 +59,6 @@ type SubmissionsServer struct {
 	crawlerMaxQueueSize   int
 	crawlerStopped        chan bool
 	submissionsMutex      sync.Mutex
-	bfileRemovalsMutex    sync.Mutex
 }
 
 func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.InfluxDbClient) *SubmissionsServer {
@@ -86,7 +85,7 @@ func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.I
 		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
-		bfileRemovals:         make(map[string]time.Time),
+		refreshSubmissions:    []time.Time{},
 		httpClient:            httpClient,
 		crawler:               shared.NewCrawler(httpClient),
 		lists:                 lists,
@@ -152,52 +151,38 @@ func (s *SubmissionsServer) getBFilePath(id util.UID) string {
 	return filepath.Join(dir, filename)
 }
 
-// removeBFile removes a b-file and returns an OperationResult.
-// B-files are protected for 24 hours after removal.
-func (s *SubmissionsServer) removeBFile(submission shared.Submission) OperationResult {
-	idStr := submission.Id.String()
-
-	// Check 24h protection
-	s.bfileRemovalsMutex.Lock()
-	if lastRemoval, exists := s.bfileRemovals[idStr]; exists {
-		if time.Since(lastRemoval) < BFileProtectionDuration {
-			s.bfileRemovalsMutex.Unlock()
-			remaining := BFileProtectionDuration - time.Since(lastRemoval)
-			protectionMsg := fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())
-			log.Printf("%s: %s", protectionMsg, idStr)
-			return OperationResult{Status: "error", Message: protectionMsg}
-		}
-	}
-	s.bfileRemovalsMutex.Unlock()
-
-	// Get the b-file path (ID format already validated by NewUIDFromString in submission)
-	bfilePath := s.getBFilePath(submission.Id)
-
-	// Check if the file exists
-	if !util.FileExists(bfilePath) {
-		log.Printf("B-file does not exist: %s", bfilePath)
-		return OperationResult{Status: "error", Message: "B-file does not exist"}
-	}
-
-	// Remove the file
-	if err := os.Remove(bfilePath); err != nil {
-		log.Printf("Failed to remove b-file %s: %v", bfilePath, err)
-		return OperationResult{Status: "error", Message: "Failed to remove b-file"}
-	}
-
-	// Record the removal time for 24h protection
-	s.bfileRemovalsMutex.Lock()
-	s.bfileRemovals[idStr] = time.Now()
-	s.bfileRemovalsMutex.Unlock()
-
-	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
-	return OperationResult{Status: "success", Message: "B-file removed"}
-}
-
 // refreshSequence adds a sequence ID to the crawler's next IDs queue
 // and deletes the b-file if it exists
 func (s *SubmissionsServer) refreshSequence(submission shared.Submission) OperationResult {
 	idStr := submission.Id.String()
+
+	// Check rate limit (200 per hour)
+	s.submissionsMutex.Lock()
+	now := time.Now()
+	oneHourAgo := now.Add(-1 * time.Hour)
+
+	// Remove timestamps older than 1 hour
+	validRefreshes := []time.Time{}
+	for _, ts := range s.refreshSubmissions {
+		if ts.After(oneHourAgo) {
+			validRefreshes = append(validRefreshes, ts)
+		}
+	}
+	s.refreshSubmissions = validRefreshes
+
+	// Check if we've exceeded the limit
+	if len(s.refreshSubmissions) >= SequenceRefreshLimitPerHour {
+		s.submissionsMutex.Unlock()
+		remaining := s.refreshSubmissions[0].Add(1 * time.Hour).Sub(now)
+		remainingSeconds := int(remaining.Seconds())
+		msg := fmt.Sprintf("Rate limit exceeded: maximum %d sequence refreshes per hour. Please try again in %d seconds.", SequenceRefreshLimitPerHour, remainingSeconds)
+		log.Printf("%s: %s", msg, submission.Submitter)
+		return OperationResult{Status: "error", Message: msg}
+	}
+
+	// Record the refresh submission
+	s.refreshSubmissions = append(s.refreshSubmissions, now)
+	s.submissionsMutex.Unlock()
 
 	// Delete the b-file if it exists
 	bfilePath := s.getBFilePath(submission.Id)
@@ -401,19 +386,6 @@ func newV2SubmissionsPostHandler(s *SubmissionsServer) http.Handler {
 			res := s.refreshSequence(submission)
 			if res.Status == "success" {
 				// Record submission if refresh was successful
-				s.doSubmit(submission)
-			}
-			util.WriteJsonResponse(w, res)
-		case shared.TypeBFile:
-			// Only remove and refresh modes are allowed for b-files (already validated in UnmarshalJSON)
-			// Both modes behave the same - they remove the b-file
-			if ok, res := s.checkSubmit(submission); !ok {
-				util.WriteJsonResponse(w, res)
-				return
-			}
-			res := s.removeBFile(submission)
-			if res.Status == "success" {
-				// Only record submission if b-file removal succeeded
 				s.doSubmit(submission)
 			}
 			util.WriteJsonResponse(w, res)

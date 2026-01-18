@@ -218,8 +218,8 @@ paths:
       tags: [ Submissions ]
       summary: Get submissions
       description: |
-        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs, sequence refresh requests, and b-file removal requests with support for pagination and filtering.
-        Submissions contain the ID, submitter, content, submission type (add/update/remove/refresh), and object type (program/sequence/bfile).
+        Retrieve a paginated list of submissions. This endpoint returns all submissions including programs and sequence refresh requests with support for pagination and filtering.
+        Submissions contain the ID, submitter, content, submission type (add/update/remove/refresh), and object type (program/sequence).
       parameters:
       - $ref: '#/components/parameters/Limit'
       - $ref: '#/components/parameters/Skip'
@@ -233,10 +233,10 @@ paths:
       - name: type
         in: query
         required: false
-        description: Filter submissions by object type (program, sequence, or bfile)
+        description: Filter submissions by object type (program or sequence)
         schema:
           type: string
-          enum: [program, sequence, bfile]
+          enum: [program, sequence]
       - name: submitter
         in: query
         required: false
@@ -252,21 +252,20 @@ paths:
                 $ref: '#/components/schemas/SubmissionsResult'
     post:
       tags: [ Submissions ]
-      summary: Submit a new program, sequence refresh request, or b-file removal/refresh request
+      summary: Submit a new program or sequence refresh request
       description: |
-        Submit a new program, sequence refresh request, or b-file removal/refresh request.
+        Submit a new program or sequence refresh request.
         The request body should contain a JSON object with the submission details including ID, submitter, content, mode, and type.
         
         Submission modes:
         - **add**: Add a new program
         - **update**: Update an existing program
-        - **remove**: Remove a program or b-file
-        - **refresh**: Trigger a sequence data refresh (for sequence type) or remove a b-file (for bfile type)
+        - **remove**: Remove a program
+        - **refresh**: Trigger a sequence data refresh (for sequence type)
         
         Object types:
         - **program**: LODA program submission (supports add, update, and remove modes only - refresh is not allowed)
         - **sequence**: Integer sequence refresh request (only 'refresh' mode is allowed). This triggers an update of the sequence data from the OEIS website and deletes the existing b-file.
-        - **bfile**: OEIS b-file removal/refresh request (only 'remove' and 'refresh' modes are allowed). Both modes remove the b-file. When a b-file is removed, it is protected for 24 hours during which it cannot be removed again.
       requestBody:
         required: true
         content:
@@ -297,13 +296,6 @@ paths:
                   submitter: Bob
                   mode: refresh
                   type: sequence
-              bfileRefresh:
-                summary: B-file refresh/removal example
-                value:
-                  id: A000045
-                  submitter: Charlie
-                  mode: refresh
-                  type: bfile
       responses:
         '200':
           description: Submission result
@@ -604,20 +596,18 @@ components:
             Type of submission operation. 
             - Programs support: add, update, remove (refresh is NOT allowed)
             - Sequences support: refresh (only)
-            - B-files support: remove, refresh (both behave the same - they remove the b-file)
           example: add
         type:
           type: string
-          enum: [program, sequence, bfile]
+          enum: [program, sequence]
           description: |
             Type of object being submitted.
             - **program**: LODA program submission (refresh mode not allowed)
             - **sequence**: Sequence refresh request (only 'refresh' mode allowed)
-            - **bfile**: OEIS b-file removal/refresh request (only 'remove' and 'refresh' modes allowed)
           example: program
         content:
           type: string
-          description: Content of the submission - program code (not required when mode is 'remove' or 'refresh', or type is 'bfile')
+          description: Content of the submission - program code (not required when mode is 'remove' or 'refresh')
           example: |
             mov $2,1
             lpb $0
