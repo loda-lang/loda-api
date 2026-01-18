@@ -1,4 +1,4 @@
-package main
+package shared
 
 /* Disabled tests for crawler, because they are flaky and depend on external service.
 import (

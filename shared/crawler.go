@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"bufio"
@@ -114,6 +114,23 @@ func (c *Crawler) AddNextId(id int, maxQueueSize int) bool {
 	}
 	c.nextIds = append(c.nextIds, id)
 	return true
+}
+
+// NumFetched returns the number of sequences fetched
+func (c *Crawler) NumFetched() int {
+	return c.numFetched
+}
+
+// MaxId returns the maximum sequence ID
+func (c *Crawler) MaxId() int {
+	return c.maxId
+}
+
+// SetNextIds sets the next IDs to fetch
+func (c *Crawler) SetNextIds(ids []int) {
+	c.mutex.Lock()
+	defer c.mutex.Unlock()
+	c.nextIds = ids
 }
 
 func (c *Crawler) findMaxId() (int, error) {

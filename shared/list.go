@@ -1,4 +1,4 @@
-package main
+package shared
 
 import (
 	"bufio"
@@ -35,6 +35,11 @@ func NewList(key, name, dataDir string) *List {
 		name:    name,
 		dataDir: dataDir,
 	}
+}
+
+// Name returns the name of the list
+func (l *List) Name() string {
+	return l.name
 }
 
 func (l *List) Len() int {

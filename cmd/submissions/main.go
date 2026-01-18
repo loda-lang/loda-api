@@ -1,13 +1,16 @@
 package main
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -18,15 +21,16 @@ import (
 )
 
 const (
-	NumSubmissionsLow       = 1000
-	NumSubmissionsHigh      = 2000
-	NumSubmissionsMax       = 50000
-	NumSubmissionsPerUser   = 100
-	MaxProgramLength        = 100000
-	CheckpointInterval      = 10 * time.Minute
-	CheckSessionInterval    = 24 * time.Hour
-	BFileProtectionDuration = 24 * time.Hour
-	CheckpointFile          = "checkpoint.json"
+	NumSubmissionsLow           = 1000
+	NumSubmissionsHigh          = 2000
+	NumSubmissionsMax           = 50000
+	NumSubmissionsPerUser       = 100
+	MaxProgramLength            = 100000
+	CheckpointInterval          = 10 * time.Minute
+	CheckSessionInterval        = 24 * time.Hour
+	CheckpointFile              = "checkpoint.json"
+	OeisWebsite                 = "https://oeis.org/"
+	SequenceRefreshLimitPerHour = 200
 )
 
 type OperationResult struct {
@@ -36,25 +40,63 @@ type OperationResult struct {
 
 type SubmissionsServer struct {
 	dataDir               string
+	oeisDir               string
 	influxDbClient        *util.InfluxDbClient
 	session               time.Time
 	submissions           []shared.Submission // Unified submissions (v1 and v2)
 	submissionsPerProfile map[string]int
 	submissionsPerUser    map[string]int
-	bfileRemovals         map[string]time.Time // Tracks b-file removal times for 24h protection
+	refreshSubmissions    []time.Time // Tracks sequence refresh submission timestamps for rate limiting
+	httpClient            *http.Client
+	crawler               *shared.Crawler
+	lists                 []*shared.List
+	crawlerFetchInterval  time.Duration
+	crawlerRestartPause   time.Duration
+	crawlerFlushInterval  int
+	crawlerReinitInterval int
+	crawlerIdsCacheSize   int
+	crawlerIdsFetchRatio  float64
+	crawlerMaxQueueSize   int
+	crawlerStopped        chan bool
 	submissionsMutex      sync.Mutex
-	bfileRemovalsMutex    sync.Mutex
 }
 
-func NewSubmissionsServer(dataDir string, influxDbClient *util.InfluxDbClient) *SubmissionsServer {
+func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.InfluxDbClient) *SubmissionsServer {
+	httpClient := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+		CheckRedirect: func(r *http.Request, via []*http.Request) error {
+			r.URL.Opaque = r.URL.Path
+			return nil
+		},
+	}
+	i := 0
+	lists := make([]*shared.List, len(shared.ListNames))
+	for key, name := range shared.ListNames {
+		lists[i] = shared.NewList(key, name, oeisDir)
+		i++
+	}
 	return &SubmissionsServer{
 		dataDir:               dataDir,
+		oeisDir:               oeisDir,
 		influxDbClient:        influxDbClient,
 		session:               time.Now(),
 		submissions:           []shared.Submission{},
 		submissionsPerProfile: make(map[string]int),
 		submissionsPerUser:    make(map[string]int),
-		bfileRemovals:         make(map[string]time.Time),
+		refreshSubmissions:    []time.Time{},
+		httpClient:            httpClient,
+		crawler:               shared.NewCrawler(httpClient),
+		lists:                 lists,
+		crawlerFetchInterval:  1 * time.Minute,
+		crawlerRestartPause:   24 * time.Hour,
+		crawlerFlushInterval:  100,
+		crawlerReinitInterval: 2000,
+		crawlerIdsCacheSize:   1000,
+		crawlerIdsFetchRatio:  0.5,
+		crawlerMaxQueueSize:   10000,
+		crawlerStopped:        make(chan bool),
 	}
 }
 
@@ -109,46 +151,59 @@ func (s *SubmissionsServer) getBFilePath(id util.UID) string {
 	return filepath.Join(dir, filename)
 }
 
-// removeBFile removes a b-file and returns an OperationResult.
-// B-files are protected for 24 hours after removal.
-func (s *SubmissionsServer) removeBFile(submission shared.Submission) OperationResult {
+// refreshSequence adds a sequence ID to the crawler's next IDs queue
+// and deletes the b-file if it exists
+func (s *SubmissionsServer) refreshSequence(submission shared.Submission) OperationResult {
 	idStr := submission.Id.String()
 
-	// Check 24h protection
-	s.bfileRemovalsMutex.Lock()
-	if lastRemoval, exists := s.bfileRemovals[idStr]; exists {
-		if time.Since(lastRemoval) < BFileProtectionDuration {
-			s.bfileRemovalsMutex.Unlock()
-			remaining := BFileProtectionDuration - time.Since(lastRemoval)
-			protectionMsg := fmt.Sprintf("B-file is protected for %.0f more hours", remaining.Hours())
-			log.Printf("%s: %s", protectionMsg, idStr)
-			return OperationResult{Status: "error", Message: protectionMsg}
+	// Check rate limit (200 per hour)
+	s.submissionsMutex.Lock()
+	now := time.Now()
+	oneHourAgo := now.Add(-1 * time.Hour)
+
+	// Remove timestamps older than 1 hour
+	validRefreshes := []time.Time{}
+	for _, ts := range s.refreshSubmissions {
+		if ts.After(oneHourAgo) {
+			validRefreshes = append(validRefreshes, ts)
 		}
 	}
-	s.bfileRemovalsMutex.Unlock()
+	s.refreshSubmissions = validRefreshes
 
-	// Get the b-file path (ID format already validated by NewUIDFromString in submission)
+	// Check if we've exceeded the limit
+	if len(s.refreshSubmissions) >= SequenceRefreshLimitPerHour {
+		s.submissionsMutex.Unlock()
+		remaining := s.refreshSubmissions[0].Add(1 * time.Hour).Sub(now)
+		remainingSeconds := int(remaining.Seconds())
+		msg := fmt.Sprintf("Rate limit exceeded: maximum %d sequence refreshes per hour. Please try again in %d seconds.", SequenceRefreshLimitPerHour, remainingSeconds)
+		log.Printf("%s: %s", msg, submission.Submitter)
+		return OperationResult{Status: "error", Message: msg}
+	}
+
+	// Record the refresh submission
+	s.refreshSubmissions = append(s.refreshSubmissions, now)
+	s.submissionsMutex.Unlock()
+
+	// Delete the b-file if it exists
 	bfilePath := s.getBFilePath(submission.Id)
-
-	// Check if the file exists
-	if !util.FileExists(bfilePath) {
-		log.Printf("B-file does not exist: %s", bfilePath)
-		return OperationResult{Status: "error", Message: "B-file does not exist"}
+	if util.FileExists(bfilePath) {
+		if err := os.Remove(bfilePath); err != nil {
+			log.Printf("Warning: Failed to remove b-file %s during refresh: %v", bfilePath, err)
+			// Continue with refresh even if b-file deletion fails
+		} else {
+			log.Printf("Deleted b-file for sequence %s during refresh", idStr)
+		}
 	}
 
-	// Remove the file
-	if err := os.Remove(bfilePath); err != nil {
-		log.Printf("Failed to remove b-file %s: %v", bfilePath, err)
-		return OperationResult{Status: "error", Message: "Failed to remove b-file"}
+	// Add to crawler queue
+	success := s.crawler.AddNextId(int(submission.Id.Number()), s.crawlerMaxQueueSize)
+	if !success {
+		log.Printf("Failed to add sequence %s to crawler queue (queue full)", idStr)
+		return OperationResult{Status: "error", Message: "Crawler queue is full, please retry later"}
 	}
 
-	// Record the removal time for 24h protection
-	s.bfileRemovalsMutex.Lock()
-	s.bfileRemovals[idStr] = time.Now()
-	s.bfileRemovalsMutex.Unlock()
-
-	log.Printf("Removed b-file %s by %s", idStr, submission.Submitter)
-	return OperationResult{Status: "success", Message: "B-file removed"}
+	log.Printf("Added sequence %s to crawler queue by %s", idStr, submission.Submitter)
+	return OperationResult{Status: "success", Message: fmt.Sprintf("Sequence %s added to crawler queue", idStr)}
 }
 
 func (s *SubmissionsServer) writeCheckpoint() error {
@@ -326,15 +381,11 @@ func newV2SubmissionsPostHandler(s *SubmissionsServer) http.Handler {
 			}
 			res := s.doSubmit(submission)
 			util.WriteJsonResponse(w, res)
-		case shared.TypeBFile:
-			// Only remove mode is allowed for b-files (already validated in UnmarshalJSON)
-			if ok, res := s.checkSubmit(submission); !ok {
-				util.WriteJsonResponse(w, res)
-				return
-			}
-			res := s.removeBFile(submission)
+		case shared.TypeSequence:
+			// Only refresh mode is allowed for sequences (already validated in UnmarshalJSON)
+			res := s.refreshSequence(submission)
 			if res.Status == "success" {
-				// Only record submission if b-file removal succeeded
+				// Record submission if refresh was successful
 				s.doSubmit(submission)
 			}
 			util.WriteJsonResponse(w, res)
@@ -344,6 +395,113 @@ func newV2SubmissionsPostHandler(s *SubmissionsServer) http.Handler {
 		}
 	}
 	return http.HandlerFunc(f)
+}
+
+func (s *SubmissionsServer) StopCrawler() {
+	log.Print("Stopping crawler")
+	s.crawlerStopped <- true
+	restartTimer := time.NewTimer(s.crawlerRestartPause)
+	go func() {
+		<-restartTimer.C
+		s.StartCrawler()
+	}()
+}
+
+// filterValidKeywordsFields filters out unknown keywords from fields with key 'K'.
+func filterValidKeywordsFields(fields []shared.Field) []shared.Field {
+	filteredFields := make([]shared.Field, 0, len(fields))
+	for _, field := range fields {
+		if field.Key == "K" {
+			var validKeywords []string
+			for _, kw := range strings.Split(field.Content, ",") {
+				kw = strings.TrimSpace(kw)
+				if shared.IsKeyword(kw) {
+					validKeywords = append(validKeywords, kw)
+				}
+			}
+			if len(validKeywords) > 0 {
+				field.Content = strings.Join(validKeywords, ",")
+				filteredFields = append(filteredFields, field)
+			}
+			// If no valid keywords, skip this field
+		} else {
+			filteredFields = append(filteredFields, field)
+		}
+	}
+	return filteredFields
+}
+
+func (s *SubmissionsServer) StartCrawler() {
+	err := s.crawler.Init()
+	if err != nil {
+		log.Printf("Error initializing crawler: %v", err)
+		return
+	}
+	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
+	s.crawlerStopped = make(chan bool)
+	go func() {
+		for {
+			select {
+			case <-s.crawlerStopped:
+				return
+			case <-fetchTicker.C:
+				s.handleCrawlerTick()
+			}
+		}
+	}()
+}
+
+// handleCrawlerTick contains the logic for each fetchTicker tick in StartCrawler
+func (s *SubmissionsServer) handleCrawlerTick() {
+	if s.crawler.NumFetched() > 0 {
+		// Regularly flush the lists
+		if s.crawler.NumFetched()%s.crawlerFlushInterval == 0 {
+			for _, l := range s.lists {
+				deduplicate := l.Name() == "offsets"
+				err := l.Flush(deduplicate)
+				if err != nil {
+					log.Printf("Error flushing list %s: %v", l.Name(), err)
+					s.StopCrawler()
+					continue
+				}
+			}
+		}
+		// Regularly re-initialize the crawler
+		if s.crawler.NumFetched()%s.crawlerReinitInterval == 0 {
+			err := s.crawler.Init()
+			if err != nil {
+				log.Printf("Error re-initializing crawler: %v", err)
+				s.StopCrawler()
+				return
+			}
+		}
+	}
+	if s.crawler.NumFetched()%s.crawlerIdsCacheSize == 0 && rand.Float64() < s.crawlerIdsFetchRatio {
+		// Find the missing ids
+		for _, l := range s.lists {
+			if l.Name() == "offsets" {
+				ids, _, err := l.FindMissingIds(s.crawler.MaxId(), s.crawlerIdsCacheSize)
+				if err != nil {
+					s.StopCrawler()
+					return
+				}
+				s.crawler.SetNextIds(ids)
+				break
+			}
+		}
+	}
+	// Fetch the next sequence
+	fields, _, err := s.crawler.FetchNext()
+	if err != nil {
+		log.Printf("Error fetching fields: %v", err)
+		s.StopCrawler()
+		return
+	}
+	// Update the lists with the new fields
+	filteredFields := filterValidKeywordsFields(fields)
+	for _, l := range s.lists {
+		l.Update(filteredFields)
+	}
 }
 
 // newV2SubmissionsCheckpointPostHandler handles POST requests for v2/submissions/checkpoint
@@ -389,8 +547,12 @@ func (s *SubmissionsServer) Run(port int) {
 
 func main() {
 	setup := cmd.GetSetup("submissions")
+	util.MustDirExist(setup.DataDir)
+	oeisDir := filepath.Join(setup.DataDir, "seqs", "oeis")
+	os.MkdirAll(oeisDir, os.ModePerm)
 	u, p := util.ParseAuthInfo(setup.InfluxDbAuth)
 	i := util.NewInfluxDbClient(setup.InfluxDbHost, u, p)
-	s := NewSubmissionsServer(setup.DataDir, i)
+	s := NewSubmissionsServer(setup.DataDir, oeisDir, i)
+	s.StartCrawler()
 	s.Run(8084)
 }
