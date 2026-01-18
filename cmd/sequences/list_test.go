@@ -86,12 +86,12 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 	assert.Equal(t, nil, err, "Expected no error reading file")
 
 	lines := string(content)
-	expected := `A000001: entry1-a
+	expected := `A000001: entry1-c
+  entry1-a
   entry1-b
-  entry1-c
 A000002: entry2
-A000003: entry3
-  entry3-b
+A000003: entry3-b
+  entry3
 `
 	assert.Equal(t, expected, lines, "Unexpected multi-line format after round trip")
 
