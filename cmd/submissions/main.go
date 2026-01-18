@@ -457,8 +457,7 @@ func (s *SubmissionsServer) handleCrawlerTick() {
 		// Regularly flush the lists
 		if s.crawler.NumFetched()%s.crawlerFlushInterval == 0 {
 			for _, l := range s.lists {
-				deduplicate := l.Name() == "offsets"
-				err := l.Flush(deduplicate)
+				err := l.Flush()
 				if err != nil {
 					log.Printf("Error flushing list %s: %v", l.Name(), err)
 					s.StopCrawler()

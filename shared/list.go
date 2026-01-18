@@ -58,7 +58,7 @@ func (l *List) Update(fields []Field) {
 	}
 }
 
-func (l *List) Flush(deduplicate bool) error {
+func (l *List) Flush() error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 	log.Printf("Flushing %s", l.name)
@@ -91,7 +91,7 @@ func (l *List) Flush(deduplicate bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	err = mergeLists(l.fields, old, target, deduplicate)
+	err = mergeLists(l.fields, old, target)
 	target.Close()
 	old.Close()
 	os.Remove(oldPath)
@@ -161,9 +161,9 @@ func parseContinuationLine(line string) (string, error) {
 	return matches[1], nil
 }
 
-func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
+func mergeLists(fields []Field, old, target *os.File) error {
 	// Merges fields with old list and writes to target list
-	// If deduplicate is true, remove duplicate entries (same SeqId)
+	// New entries for a sequence ID completely replace all old entries for that ID
 	// Outputs in multi-line format: first line has "A000000: content", continuation lines have "  content"
 
 	// Read all old entries grouped by SeqId
@@ -202,7 +202,7 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 		newEntries[field.SeqId] = append(newEntries[field.SeqId], field.Content)
 	}
 
-	// Merge old and new entries
+	// Merge old and new entries: new entries completely replace old entries
 	allSeqIds := make(map[int]bool)
 	for seqId := range oldEntries {
 		allSeqIds[seqId] = true
@@ -222,28 +222,12 @@ func mergeLists(fields []Field, old, target *os.File, deduplicate bool) error {
 	for _, seqId := range seqIds {
 		var entries []string
 
-		// Merge old and new entries for this seqId
-		seen := make(map[string]bool)
-
-		// Add new entries first (so they take precedence when deduplicating)
-		for _, content := range newEntries[seqId] {
-			if !seen[content] {
-				entries = append(entries, content)
-				seen[content] = true
-			}
-		}
-
-		// Add old entries
-		for _, content := range oldEntries[seqId] {
-			if !seen[content] {
-				entries = append(entries, content)
-				seen[content] = true
-			}
-		}
-
-		// If deduplicate, keep only one entry
-		if deduplicate && len(entries) > 0 {
-			entries = entries[:1]
+		// If there are new entries for this seqId, use only those (completely replace old entries)
+		if len(newEntries[seqId]) > 0 {
+			entries = newEntries[seqId]
+		} else {
+			// Otherwise use old entries
+			entries = oldEntries[seqId]
 		}
 
 		// Write entries in multi-line format

@@ -36,7 +36,7 @@ func TestList_MultiLineFormat(t *testing.T) {
 		{Key: "T", SeqId: 3, Content: "second entry for A000003"},
 	}
 	l.Update(fields)
-	err := l.Flush(false)
+	err := l.Flush()
 	assert.Equal(t, nil, err, "Expected no error")
 
 	// Read the file and verify format
@@ -68,7 +68,7 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 		{Key: "T", SeqId: 3, Content: "entry3"},
 	}
 	l.Update(fields1)
-	err := l.Flush(false)
+	err := l.Flush()
 	assert.Equal(t, nil, err, "Expected no error")
 
 	// Now add more entries and flush again
@@ -78,7 +78,7 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 		{Key: "T", SeqId: 3, Content: "entry3-b"},
 	}
 	l.Update(fields2)
-	err = l.Flush(false)
+	err = l.Flush()
 	assert.Equal(t, nil, err, "Expected no error")
 
 	// Read the file and verify all entries are present
@@ -87,11 +87,8 @@ func TestList_MultiLineFormatRoundTrip(t *testing.T) {
 
 	lines := string(content)
 	expected := `A000001: entry1-c
-  entry1-a
-  entry1-b
 A000002: entry2
 A000003: entry3-b
-  entry3
 `
 	assert.Equal(t, expected, lines, "Unexpected multi-line format after round trip")
 
@@ -102,7 +99,7 @@ A000003: entry3-b
 func TestList_Flush(t *testing.T) {
 	l := NewList("T", "test1", ".")
 	l.Update(testFields)
-	err := l.Flush(false)
+	err := l.Flush()
 	assert.Equal(t, nil, err, "Expected no error")
 	assert.Equal(t, 0, l.Len(), "Unexpected length")
 	assert.True(t, util.FileExists("test1"), "Expected file to exist")
@@ -121,7 +118,7 @@ func testFindMissingIds(t *testing.T, l *List, maxId, maxNumIds, expectedNumMiss
 func TestList_FindMissingIds(t *testing.T) {
 	l := NewList("T", "test2", ".")
 	l.Update(testFields)
-	l.Flush(false)
+	l.Flush()
 	testFindMissingIds(t, l, 5, 2, 3, []int{1, 3})
 	testFindMissingIds(t, l, 6, 2, 4, []int{1, 3})
 	testFindMissingIds(t, l, 6, 3, 4, []int{1, 3, 4})
