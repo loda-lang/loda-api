@@ -96,7 +96,7 @@ func NewSubmissionsServer(dataDir string, oeisDir string, influxDbClient *util.I
 		crawlerIdsCacheSize:   1000,
 		crawlerIdsFetchRatio:  0.5,
 		crawlerMaxQueueSize:   10000,
-		crawlerStopped:        make(chan bool),
+		crawlerStopped:        make(chan bool, 1),
 	}
 }
 
@@ -403,6 +403,7 @@ func (s *SubmissionsServer) StopCrawler() {
 	restartTimer := time.NewTimer(s.crawlerRestartPause)
 	go func() {
 		<-restartTimer.C
+		log.Printf("Restarting crawler after %v pause", s.crawlerRestartPause)
 		s.StartCrawler()
 	}()
 }
@@ -437,8 +438,9 @@ func (s *SubmissionsServer) StartCrawler() {
 		log.Printf("Error initializing crawler: %v", err)
 		return
 	}
+	log.Print("Crawler started successfully")
 	fetchTicker := time.NewTicker(s.crawlerFetchInterval)
-	s.crawlerStopped = make(chan bool)
+	s.crawlerStopped = make(chan bool, 1)
 	go func() {
 		for {
 			select {
