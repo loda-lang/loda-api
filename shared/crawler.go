@@ -54,30 +54,65 @@ func (c *Crawler) FetchSeq(id int, silent bool) ([]Field, int, error) {
 		log.Printf("Fetching A%06d", id)
 	}
 	url := fmt.Sprintf("https://oeis.org/search?q=id:A%06d&fmt=text", id)
-	resp, err := c.httpClient.Get(url)
-	if err != nil {
-		return nil, 0, err
-	}
-	status := resp.StatusCode
-	if status >= 400 {
-		return nil, status, fmt.Errorf("HTTP error: %s", resp.Status)
-	}
-	scanner := bufio.NewScanner(resp.Body)
-	var fields []Field
-	for scanner.Scan() {
-		line := scanner.Text()
-		field, err := ParseField(line)
-		if err == nil {
-			fields = append(fields, field)
+
+	const maxRetries = 3
+	const baseDelay = 2 * time.Second
+
+	var lastErr error
+	var lastStatus int
+
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if attempt > 0 {
+			delay := baseDelay * time.Duration(1<<uint(attempt-1)) // Exponential backoff: 2s, 4s, 8s
+			log.Printf("Retrying A%06d (attempt %d/%d) after %v", id, attempt+1, maxRetries+1, delay)
+			time.Sleep(delay)
 		}
+
+		resp, err := c.httpClient.Get(url)
+		if err != nil {
+			lastErr = err
+			lastStatus = 0
+			continue
+		}
+
+		status := resp.StatusCode
+		lastStatus = status
+
+		// For server errors (5xx), retry
+		if status >= 500 && status < 600 && attempt < maxRetries {
+			lastErr = fmt.Errorf("HTTP error: %s", resp.Status)
+			resp.Body.Close()
+			continue
+		}
+
+		// For client errors (4xx) or success, don't retry
+		if status >= 400 {
+			resp.Body.Close()
+			return nil, status, fmt.Errorf("HTTP error: %s", resp.Status)
+		}
+
+		scanner := bufio.NewScanner(resp.Body)
+		var fields []Field
+		for scanner.Scan() {
+			line := scanner.Text()
+			field, err := ParseField(line)
+			if err == nil {
+				fields = append(fields, field)
+			}
+		}
+		resp.Body.Close()
+
+		if err := scanner.Err(); err != nil {
+			return nil, 0, err
+		}
+		if len(fields) == 0 {
+			return nil, status, fmt.Errorf("no fields found")
+		}
+		return fields, status, nil
 	}
-	if err := scanner.Err(); err != nil {
-		return nil, 0, err
-	}
-	if len(fields) == 0 {
-		return nil, status, fmt.Errorf("no fields found")
-	}
-	return fields, status, nil
+
+	// All retries exhausted
+	return nil, lastStatus, fmt.Errorf("failed after %d retries: %v", maxRetries+1, lastErr)
 }
 
 func (c *Crawler) FetchNext() ([]Field, int, error) {
