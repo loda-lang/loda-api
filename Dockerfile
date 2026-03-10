@@ -1,7 +1,7 @@
 FROM debian:bookworm-slim
 
-ENV DEBIAN_FRONTEND noninteractive
-ENV LANG C.UTF-8
+ENV DEBIAN_FRONTEND=noninteractive
+ENV LANG=C.UTF-8
 
 # Default versions
 ENV INFLUXDB_VERSION=1.8.2
@@ -29,7 +29,7 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
     # Base dependencies
     && apt-get -y update \
     && apt-get -y dist-upgrade \
-    && apt-get -y --force-yes install \
+    && apt-get -y install \
         apt-utils \
         ca-certificates \
         certbot \
@@ -47,8 +47,8 @@ RUN ARCH= && dpkgArch="$(dpkg --print-architecture)" && \
         nginx \
         procps \
         lsof \
-    && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
-    && apt-get install -y nodejs npm \
+    && curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y nodejs \
     && mkdir -p /var/log/supervisor \
     && curl -fsSLO https://dl.influxdata.com/influxdb/releases/influxdb_${INFLUXDB_VERSION}_${ARCH}.deb \
     && dpkg -i influxdb_${INFLUXDB_VERSION}_${ARCH}.deb \
@@ -87,4 +87,4 @@ RUN mkdir -p /var/log/loda
 RUN rm /etc/grafana/provisioning/dashboards/sample.yaml
 RUN chmod +x /run.sh
 
-CMD /run.sh
+CMD ["/run.sh"]
