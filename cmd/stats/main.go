@@ -78,6 +78,8 @@ func (s *StatsServer) loadStatsFromIndex() {
 	if err != nil {
 		log.Fatalf("Failed to load data index: %v", err)
 	}
+	s.numProgsPerKeyword = make(map[uint64]int)
+	s.numSeqsPerKeyword = make(map[uint64]int)
 	for _, p := range idx.Programs {
 		shared.CountKeywordsInBits(p.Keywords, &s.numProgsPerKeyword)
 	}
