@@ -12,6 +12,6 @@ security:
       - read:*
 
 http:
-  port: 8084
+  port: 3004
   # Configure to run under a subpath
   base_path: /perses
