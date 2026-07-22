@@ -52,10 +52,11 @@ func NewLODATool(dataDir string, maxNumParallelEval int) *LODATool {
 }
 
 func (t *LODATool) Install() error {
-	// Ensure that the setup.txt file exists
-	setupFile := filepath.Join(t.dataDir, "setup.txt")
-	if !util.FileExists(setupFile) {
-		return fmt.Errorf("setup.txt file not found in data directory: %s", t.dataDir)
+	// Ensure that either setup.json or setup.txt exists
+	setupJSON := filepath.Join(t.dataDir, "setup.json")
+	setupTxt := filepath.Join(t.dataDir, "setup.txt")
+	if !util.FileExists(setupJSON) && !util.FileExists(setupTxt) {
+		return fmt.Errorf("setup.json or setup.txt file not found in data directory: %s", t.dataDir)
 	}
 	// Install the "loda" executable in $HOME/bin
 	homeDir, err := os.UserHomeDir()

@@ -32,11 +32,11 @@ docker exec -w /root/git/loda-mcp loda-api npm run build
 
 echo
 echo "### CREATE CHECKPOINT ###"
-docker exec loda-api curl -sX POST localhost/miner/v1/checkpoint
+docker exec loda-api curl -sX POST localhost/v2/submissions/checkpoint
 
 echo
 echo "### RESTART SERVICES ###"
-docker exec loda-api /usr/bin/supervisorctl restart grafana programs sequences stats mcp
+docker exec loda-api /usr/bin/supervisorctl restart grafana programs sequences submissions stats mcp
 sleep 1
 docker exec loda-api /usr/bin/supervisorctl status
 

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"encoding/json"
 	"log"
 	"os"
 	"path/filepath"
@@ -18,6 +19,13 @@ type LodaSetup struct {
 	InfluxDbAuth   string
 }
 
+type setupJSON struct {
+	LogDir         string `json:"logDir"`
+	UpdateInterval string `json:"updateInterval"`
+	InfluxDbHost   string `json:"influxdbHost"`
+	InfluxDbAuth   string `json:"influxdbAuth"`
+}
+
 func GetSetup(app string) LodaSetup {
 	if len(os.Args) != 2 {
 		log.Fatal("Invalid command-line arguments. Please pass the data directory as argument.")
@@ -27,6 +35,38 @@ func GetSetup(app string) LodaSetup {
 		DataDir:        dataDir,
 		UpdateInterval: 24 * time.Hour, // default value
 	}
+
+	// Try to load from setup.json first
+	jsonPath := filepath.Join(dataDir, "setup.json")
+	if jsonData, err := os.ReadFile(jsonPath); err == nil {
+		var config setupJSON
+		if err := json.Unmarshal(jsonData, &config); err != nil {
+			log.Fatalf("Failed to parse setup.json: %v", err)
+		}
+
+		// Initialize log if logDir is specified
+		if config.LogDir != "" {
+			util.InitLog(filepath.Join(config.LogDir, app))
+		}
+
+		// Parse update interval
+		if config.UpdateInterval != "" {
+			d, err := time.ParseDuration(config.UpdateInterval)
+			if err != nil {
+				log.Printf("Invalid duration in setup.json: %s", config.UpdateInterval)
+			} else {
+				setup.UpdateInterval = d
+			}
+		}
+
+		// Set InfluxDB settings
+		setup.InfluxDbHost = config.InfluxDbHost
+		setup.InfluxDbAuth = config.InfluxDbAuth
+
+		return setup
+	}
+
+	// Fall back to setup.txt
 	setupPath := filepath.Join(dataDir, "setup.txt")
 	file, err := os.Open(setupPath)
 	if err != nil {

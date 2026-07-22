@@ -11,9 +11,10 @@ import (
 type Mode string
 
 const (
-	ModeAdd    Mode = "add"
-	ModeUpdate Mode = "update"
-	ModeRemove Mode = "remove"
+	ModeAdd     Mode = "add"
+	ModeUpdate  Mode = "update"
+	ModeRemove  Mode = "remove"
+	ModeRefresh Mode = "refresh"
 )
 
 // Type represents the type of object being submitted
@@ -22,7 +23,6 @@ type Type string
 const (
 	TypeProgram  Type = "program"
 	TypeSequence Type = "sequence"
-	TypeBFile    Type = "bfile"
 )
 
 // Submission represents a submission of a program or sequence
@@ -75,17 +75,21 @@ func (s *Submission) UnmarshalJSON(data []byte) error {
 	if mode == "delete" {
 		mode = ModeRemove
 	}
-	if mode != ModeAdd && mode != ModeUpdate && mode != ModeRemove {
+	if mode != ModeAdd && mode != ModeUpdate && mode != ModeRemove && mode != ModeRefresh {
 		return fmt.Errorf("invalid mode: %s", aux.Mode)
 	}
 	// Validate type
 	objType := Type(aux.Type)
-	if objType != TypeProgram && objType != TypeSequence && objType != TypeBFile {
+	if objType != TypeProgram && objType != TypeSequence {
 		return fmt.Errorf("invalid type: %s", aux.Type)
 	}
-	// Validate mode for bfile type (only remove allowed)
-	if objType == TypeBFile && mode != ModeRemove {
-		return fmt.Errorf("only remove mode is allowed for bfile type")
+	// Validate mode for program type (add, update, remove only - no refresh)
+	if objType == TypeProgram && mode == ModeRefresh {
+		return fmt.Errorf("refresh mode is not allowed for program type")
+	}
+	// Validate mode for sequence type (only refresh allowed)
+	if objType == TypeSequence && mode != ModeRefresh {
+		return fmt.Errorf("only refresh mode is allowed for sequence type")
 	}
 	s.Id = uid
 	s.Mode = mode

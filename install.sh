@@ -33,12 +33,14 @@ fi
 if [ ! -d "$HOME/data" ]; then
   mkdir -p $HOME/data
 fi
-if [ ! -f "$HOME/data/setup.txt" ]; then
-  echo "LODA_INFLUXDB_AUTH=loda:loda@$INFLUXDB_LODA_PASSWD" > "$HOME/data/setup.txt"
-  echo "LODA_INFLUXDB_HOST=http://localhost/influxdb" >> "$HOME/data/setup.txt"
-  echo "LODA_LOG_DIR=/var/log/loda" >> "$HOME/data/setup.txt"
-  echo "LODA_OEIS_FETCH_DIRECT=yes" >> "$HOME/data/setup.txt"
-  echo "LODA_IS_API_SERVER=yes" >> "$HOME/data/setup.txt"
+if [ ! -f "$HOME/data/setup.json" ]; then
+  echo "Please create $HOME/data/setup.json manually"
+  exit 1
+  #echo "LODA_INFLUXDB_AUTH=loda:loda@$INFLUXDB_LODA_PASSWD" > "$HOME/data/setup.txt"
+  #echo "LODA_INFLUXDB_HOST=http://localhost/influxdb" >> "$HOME/data/setup.txt"
+  #echo "LODA_LOG_DIR=/var/log/loda" >> "$HOME/data/setup.txt"
+  #echo "LODA_OEIS_FETCH_DIRECT=yes" >> "$HOME/data/setup.txt"
+  #echo "LODA_IS_API_SERVER=yes" >> "$HOME/data/setup.txt"
 fi
 if [ ! -f "$HOME/data/openapi.v2.yaml" ]; then
   cp ./openapi.v2.yaml $HOME/data/openapi.v2.yaml
