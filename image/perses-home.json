@@ -1,7 +1,8 @@
 {
   "kind": "Dashboard",
   "metadata": {
-    "name": "home"
+    "name": "home",
+    "project": "loda"
   },
   "spec": {
     "display": {
