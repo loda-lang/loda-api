@@ -1,0 +1,21 @@
+# Perses configuration file
+api_prefix: /perses
+
+database:
+  file:
+    folder: /var/lib/perses
+    extension: json
+
+provisioning:
+  folders:
+    - /etc/perses/provisioning
+
+security:
+  # Enable anonymous access for read-only operations
+  enable_auth: false
+  authorization:
+    guest_permissions:
+      - actions:
+          - read
+        scopes:
+          - "*"
